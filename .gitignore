@@ -1,0 +1,15 @@
+node_modules
+.next
+dist
+build
+.turbo
+.cache
+*.log
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+tmp/
+downloads/
+
+.vercel
