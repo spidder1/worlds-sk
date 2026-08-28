@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "prebuild": "pnpm --filter @worlds/types run build && pnpm --filter @worlds/ed-client run build && pnpm --filter @worlds/importer run build",
-    "build": "next build",
+    "build": "pnpm --filter @worlds/types run build && pnpm --filter @worlds/ed-client run build && pnpm --filter @worlds/importer run build && next build",
     "start": "next start -p 3000",
     "lint": "next lint"
   },
