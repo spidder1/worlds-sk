@@ -1,5 +1,3 @@
 {
-  "buildCommand": "pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build && pnpm --filter storefront build",
-  "outputDirectory": "apps/storefront/.next",
-  "framework": "nextjs"
+  "$schema": "https://openapi.vercel.sh/vercel.json"
 }
