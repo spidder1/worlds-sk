@@ -27,7 +27,7 @@ export class EDSystemClient {
   }
 
   private getSoapNamespace(): string {
-    return 'http://tempuri.org/';
+    return 'http://www.elinkx.cz/';
   }
 
   /**

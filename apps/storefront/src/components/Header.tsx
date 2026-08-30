@@ -30,12 +30,16 @@ export function Header() {
             <span className="hidden sm:inline">Viac ako 70 000 produktov skladom</span>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/o-nas" className="hover:text-white transition-colors">O nás</Link>
+            <span className="text-slate-600">•</span>
+            <Link href="/doprava-a-platba" className="hover:text-white transition-colors">Doprava a platba</Link>
+            <span className="text-slate-600">•</span>
+            <Link href="/kontakt" className="hover:text-white transition-colors">Kontakt</Link>
+            <span className="text-slate-600">•</span>
             <Link href="/admin" className="text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium">
               <LayoutDashboard className="w-3.5 h-3.5" />
-              Katalóg & AI Quality Admin
+              Katalóg & AI Admin
             </Link>
-            <span className="text-slate-500">•</span>
-            <span className="text-slate-300">B2B & B2C E-Shop</span>
           </div>
         </div>
       </div>

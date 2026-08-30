@@ -59,7 +59,13 @@ export function Footer() {
           <p className="text-xs leading-relaxed text-slate-400 mb-4">
             Moderná technologická e-commerce platforma s priamym napojením na centrálny sklad eD system a. s. s viac ako 70 000 IT produktmi.
           </p>
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-slate-400 space-y-1">
+            <p className="font-semibold text-slate-300">Prevádzkovateľ:</p>
+            <p>ETHOS Technology, s. r. o.</p>
+            <p>Tatranská 6396/101, 974 11 Banská Bystrica</p>
+            <p>IČO: 44 099 207 | IČ DPH: SK2022595311</p>
+          </div>
+          <div className="text-xs text-slate-500 mt-4">
             © {new Date().getFullYear()} Worlds.sk. Všetky práva vyhradené.
           </div>
         </div>
@@ -78,10 +84,12 @@ export function Footer() {
         <div>
           <h4 className="text-white font-semibold mb-3">Informácie & Podpora</h4>
           <ul className="space-y-2 text-xs">
-            <li><a href="#" className="hover:text-white transition-colors">Doprava a platba</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Obchodné podmienky</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Ochrana osobných údajov (GDPR)</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Reklamačný poriadok</a></li>
+            <li><Link href="/o-nas" className="hover:text-white transition-colors">O nás</Link></li>
+            <li><Link href="/kontakt" className="hover:text-white transition-colors">Kontakt a podpora</Link></li>
+            <li><Link href="/doprava-a-platba" className="hover:text-white transition-colors">Doprava a platba</Link></li>
+            <li><Link href="/obchodne-podmienky" className="hover:text-white transition-colors">Obchodné podmienky (VOP)</Link></li>
+            <li><Link href="/reklamacny-poriadok" className="hover:text-white transition-colors">Reklamačný poriadok a záruka</Link></li>
+            <li><Link href="/ochrana-osobnych-udajov" className="hover:text-white transition-colors">Ochrana osobných údajov (GDPR)</Link></li>
             <li><Link href="/sitemap.xml" className="hover:text-white transition-colors">Sitemap XML (Index)</Link></li>
           </ul>
         </div>
