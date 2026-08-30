@@ -1,43 +1,117 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { Sparkles, ArrowLeft } from 'lucide-react';
+import {
+  Sparkles,
+  ShieldCheck,
+  Zap,
+  Laptop,
+  ArrowLeft,
+  Building2,
+  CheckCircle,
+  Calendar,
+  Users,
+  Award
+} from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'O nás | Worlds.sk',
-  description: 'Profil spoločnosti ETHOS Technology, s. r. o. a predstavenie internetového obchodu Worlds.sk.',
+  description: 'Spoznajte Worlds.sk – moderný technologický e-shop prevádzkovaný spoločnosťou ETHOS Technology, s. r. o. od roku 2008.',
 };
 
 export default function ONasPage() {
   return (
-    <div className="container mx-auto px-4 py-12 max-w-4xl">
-      <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
-        <Link href="/" className="hover:text-blue-600 flex items-center gap-1">
-          <ArrowLeft className="w-4 h-4" /> Späť na domov
-        </Link>
-        <span>/</span>
-        <span className="text-slate-900 font-medium">O nás</span>
-      </nav>
+    <div className="bg-slate-50 min-h-screen py-12">
+      <div className="container mx-auto px-4 max-w-5xl">
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
+          <Link href="/" className="hover:text-blue-600 flex items-center gap-1 font-medium transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Späť na domovskú stránku
+          </Link>
+          <span>/</span>
+          <span className="text-slate-900 font-semibold">O nás</span>
+        </nav>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-8 md:p-12 shadow-sm space-y-8 text-slate-700 leading-relaxed text-sm">
-        <div className="border-b border-slate-200 pb-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold uppercase tracking-wider mb-3">
-            <Sparkles className="w-3.5 h-3.5" /> Profil spoločnosti
+        {/* Hero Header */}
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-8 md:p-12 shadow-sm mb-10 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-50/60 rounded-full blur-3xl -z-10 transform translate-x-1/3 -translate-y-1/3 pointer-events-none" />
+          
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-bold uppercase tracking-wider mb-4 border border-blue-100">
+            <Sparkles className="w-4 h-4" /> Príbeh a profil spoločnosti
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-900">O spoločnosti Worlds.sk</h1>
-          <p className="text-slate-500 text-sm mt-2">ETHOS Technology, s. r. o. – IT distribúcia od roku 2008</p>
+
+          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">
+            O spoločnosti Worlds.sk
+          </h1>
+          <p className="text-slate-600 text-base mt-3 max-w-3xl leading-relaxed">
+            Sme slovenská IT distribučná spoločnosť <strong>ETHOS Technology, s. r. o.</strong>, ktorá už od roku 2008 prináša špičkovú výpočtovú techniku, hardvér a riešenia pre koncových zákazníkov aj firemný sektor.
+          </p>
         </div>
 
-        <div dangerouslySetInnerHTML={{ __html: `<div className="page-title">
-<h1>O NÁS</h1>
-</div>
-<p><strong>Profil spoločnosti</strong></p>
-<p>Spoločnosť ETHOS Technology, s.r.o. je distribučná spoločnosť poskytujúca služby v oblasti IT technológií. Prevádzkuje elektronické riešenie internetového obchodu WORLD'S.  <br /> Založená bola v roku 2008. Naším hlavným zameraním a cieľom je poskytovať svojim zákazníkom a partnerom čo možno najširšie a najkomplexnejšie služby v oblasti IT technológií. Naša niekoľkoročná história je zárukou stability a kvality ponúkaných služieb. <br /><strong>Aj keď v slovenskom trhovom prostredí je stále dominantná cena tovaru, je naším prvoradým cieľom kvalita tovaru, jeho rýchla dostupnosť, bezpečné financovanie, rýchlosť vybavenia reklamácií a tiež široká a komplexná ponuka.</strong></p>
-<p>V roku 2016 sme zmenili webovú lokalitu. Došlo k zmene domény a programového riešenia obchodu. Túto situáciu si vynútilo neustále sa rozširujúce trhové prostredie. Doterajšie riešenie elektronického obchodu bolo založené na prenájme od dodávateľov a nevyhovovalo našim potrebám.<strong><br /> </strong>Vypracovali sme nové vlastné programové riešenie, ktoré je celé v našej správe a prevádzkované na špecializovanom webhostingu. Takisto bol vytvorený vlastný grafický dizajn elektronického obchodu WORLD'S.<strong><br /> Z hľadiska bezpečnosti našej spoločnosti a hlavne našich zákazníkov a partnerov sme celú webovú lokalitu a Doménu elektronického obchodu WORLD'S spoločnosti ETHOS Technology, s.r.o. zabezpečili platným bezpečnostným Certifikátom SSL (Secure Socket Layer), ktorý je overený GeoTrust Inc.. Akákoľvek komunikácia a prenos dát odchádzajúcich z našej webovej lokality WORLD'S je šifrovaná, všetky adresy, názvy, čísla platobných kariet, heslá a ďalšie dôverné informácie sú pri zadávaní a prenose Internetom šifrované a chránené pred útokmi zvonku. Cieľom bolo vytvoriť bezpečné a spoľahlivé nakupovanie pre našich zákazníkov a partnerov u našej spoločnosti.<br /></strong></p>
-<p><strong>Distribúcia výrobcov</strong></p>
-<p>Distribuujeme  široké portfólio značiek, ktoré sa neustále aktualizuje o nových výrobcov. <br /><strong>Každý produkt v našom obchode je autorizovaný pre slovenský trh a má Záručné aj pozáručné servisné pokrytie. Nedodávame tovar, ktorý nemá originálny pôvod a nespĺňa podmienky kvality pre spotrebiteľa.</strong> <br />Tovar sme schopný dodať aj v rámci Európskej únie s autorizáciou produktu pre konkrétnu krajinu.</p>
-<p><strong>Výrobcovia</strong></p>
-<p>3D robotics, 3D System, A4Tech, ABBYY, Acronis, Acer , AData, Adobe, AEG, Akasa, Allied Telesyn, AMD, Amiko, AOC, APC, Apple, Arctic Cooling, Armor, AsRock, Asus , ATOP, Avermedia, AVG, Axago, Beko, Belkin, BenQ, BlacBerry, Bose, Bosch, Brother, Bsmart, Cambridge Audio, Canon, Case Logic, CipherLab, Cisco Systems, Computer Associates, Commend, CoolerMaster, Corel, Corsair, CreativeLabs, Crono, C-Tech, D-Clean, D-Link, Dell, Dicota, Digitus (Assmann), Eaton&MG, eBeam, Eizo, Epson, Eset, Eurocase, Evolveo, Fortron, Foxcon, Fujitsu, Garmin, Gembird, Genius, Gibertini, Gigabyte, Gigaset, GoPro, Grundig, Hama, Handspree, Hewlett&ndash;Packard, Hitachi, HTC, Hoya, Huawei, Chicony, Chieftec, I-Tec, IBM, IBM/Lenovo, Imation, Intel, Intellinet, JCB, Kaspersky, Kelline, KGuard, Kingston, Konica Minolta, Krups, Kyocera, Legrand, Lexmark, LG, Logitech, Manfrotto, Manhattan, Matrox, Meizu Sales Ltd., Metz, Microsoft, Microtik, Mio, Motorola, Moulinex, MSI, Nashuatec, NEX, Neovo, NetApp, Nikon, Nokia, NZXT, OKI, Olympus, Opexia, Opticon, Optoma, Ozone Gaming, Panasonic, Philips, Pioneer, Polycom, QNAP, Rayfilm, Reflecta, Remax, Revance, Ricoh, Rollei, Ronol,  Samsonite, Samsung, Sandisk, Sapphire, Seagate, Seasonic, Sharp, Sigma, SKYLINK, Solarix, Solight, Sony, Stygian, Symantec, Synology, THL, Topcom, Toshiba, TP-LINK, Transcend, Tristar, Triton, Triumph Board, Trust, Ubiquiti, Utax, Velbon, Verbatim, Vikintek, Vogel's, VU Plus, Wacom, Western Digital, Wincor Nixdorf, Xerox, Zalman, Zebex a mnoho ďalších.</p>
-<p>Nezameriavame sa len na samotný predaj tovaru. Vieme zabezpečiť pre  našich zákazníkov a partnerov aj montáž a konfiguráciu špecializovaných zariadení, ako sú napr. serverové riešenia, montáže počítačových zostáv, navrhnúť optimálne riešenia technologických postupov a zariadení s dôrazom na kvalitu a cenu.<br /> Pre nás určite platí, že prvoradým cieľom je spokojný zákazník.</p>` }} />
+        {/* 4 kľúčové piliere */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2 text-center">
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-bold mx-auto">
+              <Calendar className="w-6 h-6" />
+            </div>
+            <h3 className="font-extrabold text-slate-900 text-lg">Od roku 2008</h3>
+            <p className="text-xs text-slate-500">Viac ako 17 rokov stabilného pôsobenia na slovenskom IT trhu.</p>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2 text-center">
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center font-bold mx-auto">
+              <Laptop className="w-6 h-6" />
+            </div>
+            <h3 className="font-extrabold text-slate-900 text-lg">70 000+ produktov</h3>
+            <p className="text-xs text-slate-500">Priame napojenie na centrálny distribučný sklad eD system a. s.</p>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2 text-center">
+            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center font-bold mx-auto">
+              <Award className="w-6 h-6" />
+            </div>
+            <h3 className="font-extrabold text-slate-900 text-lg">100% Originál</h3>
+            <p className="text-xs text-slate-500">Oficiálna slovenská a európska distribúcia s plnou zárukou.</p>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2 text-center">
+            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center font-bold mx-auto">
+              <Zap className="w-6 h-6" />
+            </div>
+            <h3 className="font-extrabold text-slate-900 text-lg">Expresné dodanie</h3>
+            <p className="text-xs text-slate-500">Doručenie kuriérom DPD a PPL po celom Slovensku do 24–48 hodín.</p>
+          </div>
+        </div>
+
+        {/* Hlavný obsah */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-8 md:p-12 shadow-sm space-y-8 text-slate-700 leading-relaxed text-sm">
+          <section className="space-y-3">
+            <h2 className="text-2xl font-bold text-slate-900">Naša filozofia a cieľ</h2>
+            <p>
+              Spoločnosť <strong>ETHOS Technology, s. r. o.</strong> prevádzkuje elektronický obchod <strong>WORLD'S</strong> s cieľom poskytovať zákazníkom nielen najnovšie technologické novinky, ale predovšetkým maximálnu spoľahlivosť, overené technické parametre a individuálny prístup ku každému nákupu.
+            </p>
+            <p>
+              V našej ponuke nájdete kompletné portfólio spotrebnej elektroniky, kancelárskej techniky, firemných aj herných notebookov, procesorov, grafických kariet, monitorov, diskov a príslušenstva od renomovaných svetových výrobcov ako <strong>ASUS, Lenovo, HP, Dell, Apple, Samsung, Intel, AMD, Kingston, Logitech</strong> a mnohých ďalších.
+            </p>
+          </section>
+
+          <section className="bg-gradient-to-r from-blue-50 to-indigo-50/60 p-8 rounded-2xl border border-blue-100 space-y-4">
+            <div className="flex items-center gap-3">
+              <Building2 className="w-6 h-6 text-blue-600" />
+              <h3 className="text-xl font-bold text-slate-900">B2B riešenia a firemné nákupy</h3>
+            </div>
+            <p className="text-slate-700 text-sm">
+              Pre firmy, školy, živnostníkov a inštitúcie poskytujeme komplexné dodávky IT vybavenia. Samozrejmosťou je vystavenie daňového dokladu s možnosťou odpočtu DPH, individuálne projektové ceny pri väčších odberoch a odborná konzultácia.
+            </p>
+            <div>
+              <Link
+                href="/kontakt"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-sm text-sm"
+              >
+                Kontaktovať náš tím
+              </Link>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );
