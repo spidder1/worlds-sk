@@ -10,6 +10,7 @@
     "lint": "pnpm -r run lint",
     "dev:storefront": "pnpm --filter storefront dev",
     "dev:importer": "pnpm --filter @worlds/importer dev",
+    "import:enterprise": "pnpm --filter @worlds/importer run import:enterprise",
     "process:deltas": "pnpm --filter @worlds/importer run process:deltas",
     "import:staging": "pnpm --filter @worlds/importer run import:staging",
     "import:all": "pnpm --filter @worlds/importer run import:all",
