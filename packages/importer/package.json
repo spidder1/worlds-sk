@@ -17,6 +17,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "process:deltas": "node dist/process-deltas-to-master.js",
     "import:staging": "node dist/import-staging.js",
     "import:all": "node dist/import-all-products.js",
     "import:notebooks": "node dist/import-notebooks.js",
