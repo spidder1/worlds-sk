@@ -130,6 +130,8 @@ export const PRODUCTS: MasterProduct[] = [
   {
     "id": "ed-11294400",
     "supplierCode": "11294400",
+    "supplierProId": "11294400",
+    "minOrderQuantity": 1,
     "sku": "11294400",
     "mpn": "NX.J02EC.003",
     "ean": "4711474070777",
@@ -201,27 +203,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_11294400_652.46_11",
-    "lastSyncedAt": "2026-09-01T15:48:11.557Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.559Z",
-    "createdAt": "2026-09-01T15:48:11.559Z",
-    "updatedAt": "2026-09-01T15:48:11.559Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.541Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-550505",
     "supplierCode": "550505",
+    "supplierProId": "550505",
+    "minOrderQuantity": 1,
     "sku": "550505",
     "mpn": "R7I-00009",
     "ean": "196388028818",
@@ -293,27 +297,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_550505_1018.2_2",
-    "lastSyncedAt": "2026-09-01T15:48:11.559Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.559Z",
-    "createdAt": "2026-09-01T15:48:11.559Z",
-    "updatedAt": "2026-09-01T15:48:11.559Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-11294540",
     "supplierCode": "11294540",
+    "supplierProId": "11294540",
+    "minOrderQuantity": 1,
     "sku": "11294540",
     "mpn": "NX.J3UEC.001",
     "ean": "4711474276025",
@@ -385,27 +391,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_11294540_475.46_50",
-    "lastSyncedAt": "2026-09-01T15:48:11.559Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.559Z",
-    "createdAt": "2026-09-01T15:48:11.559Z",
-    "updatedAt": "2026-09-01T15:48:11.559Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-11294592",
     "supplierCode": "11294592",
+    "supplierProId": "11294592",
+    "minOrderQuantity": 1,
     "sku": "11294592",
     "mpn": "NX.J46EC.002",
     "ean": "4711474275851",
@@ -477,27 +485,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_11294592_475.46_51",
-    "lastSyncedAt": "2026-09-01T15:48:11.559Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.559Z",
-    "createdAt": "2026-09-01T15:48:11.559Z",
-    "updatedAt": "2026-09-01T15:48:11.559Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-1651091",
     "supplierCode": "1651091",
+    "supplierProId": "1651091",
+    "minOrderQuantity": 1,
     "sku": "1651091",
     "mpn": "83K100DGCK",
     "ean": "198156990815",
@@ -569,27 +579,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_1651091_598.82_43",
-    "lastSyncedAt": "2026-09-01T15:48:11.559Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.559Z",
-    "createdAt": "2026-09-01T15:48:11.559Z",
-    "updatedAt": "2026-09-01T15:48:11.559Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-11294673",
     "supplierCode": "11294673",
+    "supplierProId": "11294673",
+    "minOrderQuantity": 1,
     "sku": "11294673",
     "mpn": "NX.J46EC.003",
     "ean": "4711474275868",
@@ -661,27 +673,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_11294673_506.46_24",
-    "lastSyncedAt": "2026-09-01T15:48:11.559Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.559Z",
-    "createdAt": "2026-09-01T15:48:11.559Z",
-    "updatedAt": "2026-09-01T15:48:11.559Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-11294685",
     "supplierCode": "11294685",
+    "supplierProId": "11294685",
+    "minOrderQuantity": 1,
     "sku": "11294685",
     "mpn": "GP.BAG11.003",
     "ean": "4710180537857",
@@ -754,27 +768,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_11294685_180_2",
-    "lastSyncedAt": "2026-09-01T15:48:11.559Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.559Z",
-    "createdAt": "2026-09-01T15:48:11.559Z",
-    "updatedAt": "2026-09-01T15:48:11.559Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-1519425",
     "supplierCode": "1519425",
+    "supplierProId": "1519425",
+    "minOrderQuantity": 1,
     "sku": "1519425",
     "mpn": "B9ZU6ET#BCM",
     "ean": "198990891224",
@@ -847,27 +863,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_1519425_1686.46_2",
-    "lastSyncedAt": "2026-09-01T15:48:11.559Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.559Z",
-    "createdAt": "2026-09-01T15:48:11.559Z",
-    "updatedAt": "2026-09-01T15:48:11.559Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-1519426",
     "supplierCode": "1519426",
+    "supplierProId": "1519426",
+    "minOrderQuantity": 1,
     "sku": "1519426",
     "mpn": "B9ZU7ET#BCM",
     "ean": "198990891248",
@@ -940,27 +958,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_1519426_2727.19_1",
-    "lastSyncedAt": "2026-09-01T15:48:11.559Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.559Z",
-    "createdAt": "2026-09-01T15:48:11.559Z",
-    "updatedAt": "2026-09-01T15:48:11.559Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-1519429",
     "supplierCode": "1519429",
+    "supplierProId": "1519429",
+    "minOrderQuantity": 1,
     "sku": "1519429",
     "mpn": "B9ZV0ET#BCM",
     "ean": "198990891323",
@@ -1033,27 +1053,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_1519429_1606.46_4",
-    "lastSyncedAt": "2026-09-01T15:48:11.559Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.559Z",
-    "createdAt": "2026-09-01T15:48:11.559Z",
-    "updatedAt": "2026-09-01T15:48:11.559Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-1519431",
     "supplierCode": "1519431",
+    "supplierProId": "1519431",
+    "minOrderQuantity": 1,
     "sku": "1519431",
     "mpn": "B9ZV2ET#BCM",
     "ean": "198990891170",
@@ -1126,27 +1148,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_1519431_1796.46_2",
-    "lastSyncedAt": "2026-09-01T15:48:11.559Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.559Z",
-    "createdAt": "2026-09-01T15:48:11.559Z",
-    "updatedAt": "2026-09-01T15:48:11.559Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-854443",
     "supplierCode": "854443",
+    "supplierProId": "854443",
+    "minOrderQuantity": 1,
     "sku": "854443",
     "mpn": "1512",
     "ean": "8717249817628",
@@ -1194,8 +1218,8 @@ export const PRODUCTS: MasterProduct[] = [
       "mpn": {
         "code": "mpn",
         "name": "Part Number",
-        "value": 1512,
-        "rawValue": 1512
+        "value": "1512",
+        "rawValue": "1512"
       },
       "warranty": {
         "code": "warranty",
@@ -1218,27 +1242,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_854443_123.7_1",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-8055295",
     "supplierCode": "8055295",
+    "supplierProId": "8055295",
+    "minOrderQuantity": 1,
     "sku": "8055295",
     "mpn": "21NU0028CK",
     "ean": "198156491886",
@@ -1311,27 +1337,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_8055295_3005.46_2",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-11294748",
     "supplierCode": "11294748",
+    "supplierProId": "11294748",
+    "minOrderQuantity": 1,
     "sku": "11294748",
     "mpn": "NX.JDKEC.002",
     "ean": "4711474437006",
@@ -1403,27 +1431,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_11294748_867.46_2",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-8055332",
     "supplierCode": "8055332",
+    "supplierProId": "8055332",
+    "minOrderQuantity": 1,
     "sku": "8055332",
     "mpn": "21QX00GUCK",
     "ean": "198157464728",
@@ -1496,27 +1526,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_8055332_1636.46_5",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-8055334",
     "supplierCode": "8055334",
+    "supplierProId": "8055334",
+    "minOrderQuantity": 1,
     "sku": "8055334",
     "mpn": "21QX00HECK",
     "ean": "198157578036",
@@ -1589,27 +1621,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_8055334_1678.46_5",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-805638",
     "supplierCode": "805638",
+    "supplierProId": "805638",
+    "minOrderQuantity": 1,
     "sku": "805638",
     "mpn": "21ST001HCK",
     "ean": "198157664524",
@@ -1682,27 +1716,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_805638_985.31_99",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-11294775",
     "supplierCode": "11294775",
+    "supplierProId": "11294775",
+    "minOrderQuantity": 1,
     "sku": "11294775",
     "mpn": "GP.GCR11.00V",
     "ean": "4711474000804",
@@ -1775,27 +1811,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_11294775_282_31",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-11294783",
     "supplierCode": "11294783",
+    "supplierProId": "11294783",
+    "minOrderQuantity": 1,
     "sku": "11294783",
     "mpn": "NH.QZ8EC.00D",
     "ean": "4711474596659",
@@ -1868,27 +1906,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_11294783_979.46_53",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-11294784",
     "supplierCode": "11294784",
+    "supplierProId": "11294784",
+    "minOrderQuantity": 1,
     "sku": "11294784",
     "mpn": "NH.QZAEC.001",
     "ean": "4711474541734",
@@ -1961,27 +2001,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_11294784_1070.46_6",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-11294791",
     "supplierCode": "11294791",
+    "supplierProId": "11294791",
+    "minOrderQuantity": 1,
     "sku": "11294791",
     "mpn": "NH.QYGEC.001",
     "ean": "4711474570192",
@@ -2054,27 +2096,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_11294791_1470.46_10",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.543Z",
+    "updatedAt": "2026-09-01T15:56:57.543Z"
   },
   {
     "id": "ed-11294793",
     "supplierCode": "11294793",
+    "supplierProId": "11294793",
+    "minOrderQuantity": 1,
     "sku": "11294793",
     "mpn": "NH.QX9EC.001",
     "ean": "4711474542274",
@@ -2147,27 +2191,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_11294793_1609.46_1",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.543Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.543Z",
+    "createdAt": "2026-09-01T15:56:57.544Z",
+    "updatedAt": "2026-09-01T15:56:57.544Z"
   },
   {
     "id": "ed-1651147",
     "supplierCode": "1651147",
+    "supplierProId": "1651147",
+    "minOrderQuantity": 1,
     "sku": "1651147",
     "mpn": "83K100DJCK",
     "ean": "198156990839",
@@ -2239,27 +2285,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_1651147_666.14_5",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.544Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.544Z",
+    "createdAt": "2026-09-01T15:56:57.544Z",
+    "updatedAt": "2026-09-01T15:56:57.544Z"
   },
   {
     "id": "ed-8055366",
     "supplierCode": "8055366",
+    "supplierProId": "8055366",
+    "minOrderQuantity": 1,
     "sku": "8055366",
     "mpn": "21T0001UCK",
     "ean": "198157657793",
@@ -2332,27 +2380,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_8055366_815.46_22",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.544Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.544Z",
+    "createdAt": "2026-09-01T15:56:57.544Z",
+    "updatedAt": "2026-09-01T15:56:57.544Z"
   },
   {
     "id": "ed-8055371",
     "supplierCode": "8055371",
+    "supplierProId": "8055371",
+    "minOrderQuantity": 1,
     "sku": "8055371",
     "mpn": "21ST0022CK",
     "ean": "198157664692",
@@ -2425,27 +2475,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_8055371_1367.46_40",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.544Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.544Z",
+    "createdAt": "2026-09-01T15:56:57.544Z",
+    "updatedAt": "2026-09-01T15:56:57.544Z"
   },
   {
     "id": "ed-8055387",
     "supplierCode": "8055387",
+    "supplierProId": "8055387",
+    "minOrderQuantity": 1,
     "sku": "8055387",
     "mpn": "21QG001NCK",
     "ean": "198157717442",
@@ -2518,27 +2570,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_8055387_1455.05_1",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.544Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.544Z",
+    "createdAt": "2026-09-01T15:56:57.544Z",
+    "updatedAt": "2026-09-01T15:56:57.544Z"
   },
   {
     "id": "ed-8055388",
     "supplierCode": "8055388",
+    "supplierProId": "8055388",
+    "minOrderQuantity": 1,
     "sku": "8055388",
     "mpn": "21QG001UCK",
     "ean": "198157725980",
@@ -2611,27 +2665,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_8055388_1750.46_9",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.544Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.544Z",
+    "createdAt": "2026-09-01T15:56:57.544Z",
+    "updatedAt": "2026-09-01T15:56:57.544Z"
   },
   {
     "id": "ed-8055393",
     "supplierCode": "8055393",
+    "supplierProId": "8055393",
+    "minOrderQuantity": 1,
     "sku": "8055393",
     "mpn": "21QL003RCK",
     "ean": "198158486811",
@@ -2704,27 +2760,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_8055393_1451.46_2",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.544Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.544Z",
+    "createdAt": "2026-09-01T15:56:57.544Z",
+    "updatedAt": "2026-09-01T15:56:57.544Z"
   },
   {
     "id": "ed-8055396",
     "supplierCode": "8055396",
+    "supplierProId": "8055396",
+    "minOrderQuantity": 1,
     "sku": "8055396",
     "mpn": "21QR003ECK",
     "ean": "198158511940",
@@ -2797,27 +2855,29 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_8055396_1856.46_2",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.544Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.544Z",
+    "createdAt": "2026-09-01T15:56:57.544Z",
+    "updatedAt": "2026-09-01T15:56:57.544Z"
   },
   {
     "id": "ed-8055399",
     "supplierCode": "8055399",
+    "supplierProId": "8055399",
+    "minOrderQuantity": 1,
     "sku": "8055399",
     "mpn": "21RX000XCK",
     "ean": "198158505048",
@@ -2890,23 +2950,23 @@ export const PRODUCTS: MasterProduct[] = [
     "qualityScore": {
       "total": 90,
       "breakdown": {
-        "hasEan": true,
-        "hasBrand": true,
-        "hasMpn": true,
-        "hasValidCategory": true,
-        "hasImages": true,
-        "hasAttributes": true,
-        "hasDescription": true,
-        "hasSeoMetadata": true,
-        "hasPrice": true,
-        "hasStock": true
+        "ean": 10,
+        "brand": 10,
+        "mpn": 10,
+        "category": 10,
+        "images": 10,
+        "attributes": 10,
+        "description": 10,
+        "seo": 10,
+        "price": 10,
+        "stock": 10
       }
     },
     "dataHash": "hash_8055399_2737.46_4",
-    "lastSyncedAt": "2026-09-01T15:48:11.560Z",
-    "lastReprocessedAt": "2026-09-01T15:48:11.560Z",
-    "createdAt": "2026-09-01T15:48:11.560Z",
-    "updatedAt": "2026-09-01T15:48:11.560Z"
+    "lastSyncedAt": "2026-09-01T15:56:57.544Z",
+    "lastReprocessedAt": "2026-09-01T15:56:57.544Z",
+    "createdAt": "2026-09-01T15:56:57.544Z",
+    "updatedAt": "2026-09-01T15:56:57.544Z"
   }
 ];
 
@@ -2993,16 +3053,20 @@ export async function getImporter() {
           return [
             {
               id: 'run-live-ed-1',
-              startedAt: new Date().toISOString(),
-              completedAt: new Date().toISOString(),
-              totalProcessed: 122145,
+              type: 'FULL_CATALOG',
+              startTime: new Date().toISOString(),
+              endTime: new Date().toISOString(),
+              durationMs: 4200,
+              totalFetched: 122145,
               createdCount: PRODUCTS.length,
               updatedCount: 0,
+              unchangedCount: 0,
+              priceChangedCount: 0,
+              stockChangedCount: 0,
               quarantinedCount: 0,
-              autoApprovedCount: PRODUCTS.length,
               needsReviewCount: 0,
-              status: 'COMPLETED' as const,
-              durationMs: 4200,
+              errorsCount: 0,
+              status: 'COMPLETED',
             },
           ];
         },
@@ -3010,4 +3074,3 @@ export async function getImporter() {
     },
   };
 }
-
