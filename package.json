@@ -13,7 +13,12 @@
     "import:notebooks": "pnpm --filter @worlds/importer run import:notebooks",
     "import:sample": "pnpm --filter @worlds/importer run import:sample"
   },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "fast-xml-parser": "^4.5.3"
+  },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
     "next": "^15.1.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
