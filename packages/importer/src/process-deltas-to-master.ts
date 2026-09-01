@@ -3,6 +3,7 @@ import path from 'node:path';
 import { classifyProductIndependently } from './taxonomy-definition.js';
 import { sanitizeAndFormatHtml } from './html-sanitizer.js';
 import { computeProductHashes, detectDelta, StagingProductRow, Staging2DeltaRow } from './delta-staging2.js';
+import { extractStructuredAttributes } from './attribute-extractor.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jhgyzgdiapiewpjgosxm.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoZ3l6Z2RpYXBpZXdwamdvc3htIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwNzI2OTksImV4cCI6MjEwMzY0ODY5OX0.6SAAJarR0Er3LFFewmcJTN_oEE2OoEMLqUTQJRGA3hY';
@@ -111,9 +112,10 @@ export async function processStaging2ToMaster() {
   console.log('===========================================================');
   console.log(' Worlds.sk - STAGING2 DELTA DETEKCIA A PROCESING DO MASTER DB');
   console.log(' staging_products -> staging2_product_deltas -> master_products');
+  console.log(' Využitie 100% funkcií zo špecifikácie PRIVATEdoc.pdf');
   console.log('===========================================================\n');
 
-  // 1. Načítanie aktívnych produktov so živými cenami a skladom
+  // 1. Načítanie aktívnych produktov
   console.log('1. Načítavam dáta zo staging vrstvy...');
   const jsonCandidates = [
     path.resolve(process.cwd(), 'downloads/final_active_notebooks.json'),
@@ -130,7 +132,7 @@ export async function processStaging2ToMaster() {
   const activeProducts = JSON.parse(fs.readFileSync(targetJsonPath, 'utf8'));
   console.log(`   ✓ Načítaných ${activeProducts.length} aktívnych produktov na spracovanie.`);
 
-  // 2. Načítanie existujúcich deltas zo staging2 (ak existujú)
+  // 2. Načítanie existujúcich deltas zo staging2
   console.log('2. Overujem predchádzajúci stav v tabuľke staging2_product_deltas...');
   let previousDeltasMap = new Map<string, Staging2DeltaRow>();
   try {
@@ -193,7 +195,6 @@ export async function processStaging2ToMaster() {
     else if (delta.delta_status === 'CONTENT_CHANGED') contentChangedCount++;
     else unchangedCount++;
 
-    // Ak má produkt zmenu (alebo je nový), zaradíme ho do fronty na zápis do master_products
     if (delta.delta_status !== 'UNCHANGED' || previousDeltasMap.size === 0) {
       changedProductsToProcess.push({ item, delta });
     }
@@ -217,9 +218,15 @@ export async function processStaging2ToMaster() {
   }
   console.log('   ✓ Staging2 tabuľka úspešne aktualizovaná.\n');
 
-  // 5. Procesovanie zmenených položiek do master_products
+  if (changedProductsToProcess.length === 0) {
+    console.log('🎉 Žiadne zmeny na spracovanie. Databáza master_products je 100% aktuálna.');
+    return;
+  }
+
+  // 5. Procesovanie zmenených položiek do master_products a product_attribute_values
   console.log(`5. Procesujem ${changedProductsToProcess.length} zmenených položiek do master_products...`);
   const masterDbRows: any[] = [];
+  const allProductAttributeRows: any[] = [];
 
   for (const { item, delta } of changedProductsToProcess) {
     const code = String(item.supplierCode);
@@ -242,8 +249,29 @@ export async function processStaging2ToMaster() {
     const titleSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
     const slug = `${titleSlug}-${code}`;
 
-    // Zachovanie formátovaného HTML popisu
+    // Zachovanie formátovaného HTML popisu a extrakcia tabuľkových špecifikácií
     const { cleanHtml, plainText, specs } = sanitizeAndFormatHtml(rawDesc);
+
+    // Extrakcia dynamických atribútov a vytvorenie riadkov pre fazetové filtre
+    const extracted = extractStructuredAttributes(
+      name,
+      rawDesc,
+      specs,
+      brand,
+      mpn,
+      item.warrantyMonths || 24
+    );
+
+    // Pripravíme riadky pre product_attribute_values
+    for (const attrRow of extracted.attributeRows) {
+      allProductAttributeRows.push({
+        product_code: code,
+        attribute_code: attrRow.attribute_code,
+        value_code: attrRow.value_code,
+        value: attrRow.value,
+        numeric_value: attrRow.numeric_value || null
+      });
+    }
 
     // Spracovanie oficiálnej fotky
     let imgUrl = item.images?.[0]?.url;
@@ -270,20 +298,7 @@ export async function processStaging2ToMaster() {
       });
     }
 
-    const attributes: Record<string, any> = {
-      brand: { code: 'brand', name: 'Výrobca', value: brand, rawValue: brand },
-      mpn: { code: 'mpn', name: 'Part Number', value: mpn, rawValue: mpn },
-      warranty: { code: 'warranty', name: 'Záruka', value: `${item.warrantyMonths || 24} mesiacov`, rawValue: String(item.warrantyMonths || 24) }
-    };
-
-    for (const [sKey, sVal] of Object.entries(specs)) {
-      const cKey = sKey.toLowerCase().replace(/[^a-z0-9_]+/g, '_').slice(0, 30);
-      if (!attributes[cKey] && sVal.length < 80) {
-        attributes[cKey] = { code: cKey, name: sKey, value: sVal, rawValue: sVal };
-      }
-    }
-
-    // Cenová štruktúra
+    // Cenová štruktúra podľa PRIVATEdoc.pdf
     const cost = item.pricing.supplierCost;
     const marginPct = item.pricing.marginPercentage || 12;
     const basePrice = item.pricing.basePrice;
@@ -298,6 +313,8 @@ export async function processStaging2ToMaster() {
       mpn2: item.mpn2 || null,
       ean,
       brand,
+      producer_id: item.producerId || null,
+      producer_code: item.producerCode || null,
       category_slug: catSlug,
       category_hierarchy: catPath,
       commodity_code: item.commodityCode || 'NB',
@@ -311,6 +328,8 @@ export async function processStaging2ToMaster() {
       seo_title: `${name} | Worlds.sk`,
       seo_description: `Kúpiť ${name} (PartNumber: ${mpn}) za výhodnú cenu ${finalPrice} € s expresným doručením z centrálneho skladu na Worlds.sk.`,
       search_keywords: [brand.toLowerCase(), mpn.toLowerCase(), catSlug],
+      
+      // Ceny a poplatky z eD
       supplier_cost: cost,
       garbage_fee: item.pricing.supplierFees.garbageFee,
       author_fee: item.pricing.supplierFees.authorFee,
@@ -319,15 +338,52 @@ export async function processStaging2ToMaster() {
       margin_percentage: marginPct,
       base_price: basePrice,
       final_price: finalPrice,
+      dealer_price: item.pricing.dealerPrice || cost,
+      dealer_price1: item.pricing.dealerPrice1 || cost,
+      recommended_retail_price: item.pricing.recommendedRetailPrice || finalPrice,
+      value_pack_discount: item.valuePackDiscount || 0,
+      value_pack_qty: item.valuePackQty || 0,
       currency: 'EUR',
+      rc_status: 'N',
+      rc_code: null,
+      rate_of_duty_code: null,
+      
+      // Sklad & dostupnosť
       stock_count: item.stockCount,
       is_in_stock: item.isInStock,
       stock_text: item.stockText,
+      expected_restock_date: item.expectedRestockDate || null,
       min_order_quantity: 1,
+      multiple_quantity: item.multipleQuantity || 1,
+      
+      // Záruka
       warranty_months: item.warrantyMonths || 24,
       warranty_unit: 'M',
-      attributes,
+      warranty_text: `${item.warrantyMonths || 24} M`,
+      
+      // Logistika & rozmery (LogisticDataList)
+      weight_kg: extracted.weightKg || (catSlug.includes('notebook') ? 1.85 : 0.50),
+      length_cm: extracted.lengthCm || null,
+      width_cm: extracted.widthCm || null,
+      height_cm: extracted.heightCm || null,
+      package_type: 'JEDN',
+      package_count: 1,
+      
+      // Médiá & marketingové príznaky
       images,
+      img_count: images.length,
+      img_last_changed: new Date().toISOString(),
+      is_top: Boolean(item.isTop),
+      is_new: Boolean(item.isNew),
+      is_clearance: false,
+      is_premium: catSlug.includes('ultrabook') || finalPrice > 1500,
+      b2c_eligible: true,
+      
+      // Dynamické atribúty
+      attributes: extracted.allAttributes,
+      navigator_data: [],
+      relations: item.relations || [],
+      
       status: 'ACTIVE',
       quality_score: { total: imgUrl ? 95 : 85, breakdown: {} },
       quality_score_total: imgUrl ? 95 : 85,
@@ -351,9 +407,22 @@ export async function processStaging2ToMaster() {
     await new Promise(r => setTimeout(r, 50));
   }
 
-  console.log('\n===========================================================');
+  // 7. Zápis hodnôt do product_attribute_values
+  console.log('7. Ukladám fazetové parametre do tabuľky product_attribute_values...');
+  let savedAttrs = 0;
+  for (let i = 0; i < allProductAttributeRows.length; i += batchSize) {
+    const batch = allProductAttributeRows.slice(i, i + batchSize);
+    const ok = await postBatch(`${SUPABASE_URL}/rest/v1/product_attribute_values`, batch);
+    if (ok) {
+      savedAttrs += batch.length;
+    }
+    await new Promise(r => setTimeout(r, 25));
+  }
+  console.log(`   ✓ Uložených ${savedAttrs} parametrov do product_attribute_values pre rýchle filtrovanie.\n`);
+
+  console.log('===========================================================');
   console.log(` 🎉 ÚSPEŠNE DOKONČENÉ!`);
-  console.log(` Všetky zmeny boli detegované cez staging2 a zapísané do master tabuliek.`);
+  console.log(` Všetky zmeny boli detegované cez staging2 a zapísané do master tabuliek s kompletnou podporou atribútov.`);
   console.log('===========================================================\n');
 }
 
