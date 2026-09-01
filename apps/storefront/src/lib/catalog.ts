@@ -606,10 +606,74 @@ export async function getFeaturedProducts(limit = 8): Promise<MasterProduct[]> {
 }
 
 export async function getCategories(): Promise<TaxonomyCategory[]> {
-  return CATEGORIES;
+  try {
+    const { data: nodes, error } = await supabase
+      .from('taxonomy_nodes')
+      .select('id, parent_id, name, slug, source_level, source_order, active')
+      .eq('active', true)
+      .order('source_order', { ascending: true });
+
+    if (error || !nodes || nodes.length === 0) {
+      return CATEGORIES;
+    }
+
+    // Build hierarchy dynamically from DB
+    const nodeMap = new Map<string, TaxonomyCategory>();
+    const rootNodes: TaxonomyCategory[] = [];
+
+    for (const n of nodes) {
+      nodeMap.set(n.id, {
+        id: n.id,
+        slug: n.slug,
+        name: n.name,
+        level: n.source_level || 1,
+        isSeoIndexed: true,
+        displayOrder: n.source_order || 1,
+        allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb', 'screen_size_inch', 'gpu_model'],
+        subcategories: []
+      });
+    }
+
+    for (const n of nodes) {
+      const cat = nodeMap.get(n.id)!;
+      if (n.parent_id && nodeMap.has(n.parent_id)) {
+        const parent = nodeMap.get(n.parent_id)!;
+        cat.parentSlug = parent.slug;
+        parent.subcategories = parent.subcategories || [];
+        parent.subcategories.push(cat);
+      } else {
+        rootNodes.push(cat);
+      }
+    }
+
+    return rootNodes.length > 0 ? rootNodes : CATEGORIES;
+  } catch (e) {
+    console.error('Chyba pri dynamickom načítaní kategórií z databázy:', e);
+    return CATEGORIES;
+  }
 }
 
-export function getCategoryBySlug(slug: string): TaxonomyCategory | null {
+export async function getCategoryBySlug(slug: string): Promise<TaxonomyCategory | null> {
+  try {
+    const { data: node } = await supabase
+      .from('taxonomy_nodes')
+      .select('id, parent_id, name, slug, source_level, source_order, active')
+      .eq('slug', slug)
+      .single();
+
+    if (node) {
+      return {
+        id: node.id,
+        slug: node.slug,
+        name: node.name,
+        level: node.source_level || 1,
+        isSeoIndexed: true,
+        displayOrder: node.source_order || 1,
+        allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb', 'screen_size_inch', 'gpu_model'],
+      };
+    }
+  } catch {}
+
   function findCat(cats: TaxonomyCategory[]): TaxonomyCategory | null {
     for (const c of cats) {
       if (c.slug === slug) return c;

@@ -13,7 +13,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const category = findCategoryBySlug(slug);
+  const category = await findCategoryBySlug(slug);
 
   if (!category) {
     return { title: 'Kategória nenájdená | Worlds.sk' };
@@ -32,7 +32,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const { brand: selectedBrand, inStock, sort } = await searchParams;
 
-  const category = findCategoryBySlug(slug);
+  const category = await findCategoryBySlug(slug);
   if (!category) {
     notFound();
   }
