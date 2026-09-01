@@ -107,10 +107,10 @@ function getCategoryPlaceholderImage(catSlug: string): string {
   return 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80';
 }
 
-export async function runEnterpriseImportPipeline(limit = 10) {
+export async function runEnterpriseImportPipeline(limit?: number) {
   console.log('==============================================================================');
   console.log(' Worlds.sk - KOMPLETNÁ IMPLEMENTÁCIA PODĽA implementation.md & sql proposal.sql');
-  console.log(` REŽIM VÝVOJA: VZORKA ${limit} REKORDOV (ATOMIC RPC TRANSACTION)`);
+  console.log(` IMPORT: ${limit ? `${limit} záznamov` : 'VŠETKY DOSTUPNÉ IT PRODUKTY'}`);
   console.log('==============================================================================\n');
 
   const jsonCandidates = [
@@ -126,12 +126,12 @@ export async function runEnterpriseImportPipeline(limit = 10) {
     return;
   }
   const allActiveProducts = JSON.parse(fs.readFileSync(targetJsonPath, 'utf8'));
-  const sampleProducts = allActiveProducts.slice(0, limit);
-  console.log(`1. Načítaných a pripravených ${sampleProducts.length} reprezentatívnych produktov.`);
+  const targetProducts = limit ? allActiveProducts.slice(0, limit) : allActiveProducts;
+  console.log(`1. Načítaných a transformovaných ${targetProducts.length} aktívnych produktov.`);
 
   const batchPayload: any[] = [];
 
-  for (const item of sampleProducts) {
+  for (const item of targetProducts) {
     const code = String(item.supplierCode);
     const name = item.title;
     const rawDesc = item.supplierDescription || '';
@@ -198,22 +198,38 @@ export async function runEnterpriseImportPipeline(limit = 10) {
     });
   }
 
-  console.log('2. Vykonávam atomický zápis do cieľových schém (catalog, commerce, search, public)...');
-  const ok = await rpcBatch(batchPayload);
+  console.log(`2. Vykonávam atomický zápis ${batchPayload.length} produktov do cieľových schém v dávkach...`);
+  
+  const chunkSize = 50;
+  let successCount = 0;
 
-  if (ok) {
-    console.log(`   ✓ Všetkých ${batchPayload.length} produktov bolo úspešne a atomicky zapísaných do PostgreSQL.`);
-  } else {
-    console.error('   ❌ Nastala chyba pri zápise cez RPC.');
+  for (let i = 0; i < batchPayload.length; i += chunkSize) {
+    const chunk = batchPayload.slice(i, i + chunkSize);
+    const ok = await rpcBatch(chunk);
+    if (ok) {
+      successCount += chunk.length;
+      process.stdout.write(`   ✓ Zapísaných ${successCount} / ${batchPayload.length} produktov...\r`);
+    } else {
+      console.warn(`   ⚠️ Problém so zápisom bloku ${i} - ${i + chunk.length}`);
+    }
   }
 
-  console.log('\n==============================================================================');
-  console.log(` 🎉 ÚSPECH! VZORKA ${sampleProducts.length} ZÁZNAMOV JE V DATABÁZE V PLNOM ROZSAHU!`);
+  console.log(`\n\n==============================================================================`);
+  console.log(` 🎉 ÚSPECH! SPRACOVANÝCH ${successCount} ZÁZNAMOV V PLNOM ROZSAHU CIEĽOVEJ ARCHITEKTÚRY!`);
   console.log('==============================================================================\n');
 }
 
 const args = process.argv.slice(2);
 const limitArg = args.find(a => a.startsWith('--limit='));
-const limit = limitArg ? parseInt(limitArg.split('=')[1], 10) : 10;
+let limit: number | undefined = undefined;
+
+if (limitArg) {
+  const val = limitArg.split('=')[1];
+  if (val !== 'all') {
+    limit = parseInt(val, 10);
+  }
+} else if (args.includes('--all')) {
+  limit = undefined;
+}
 
 runEnterpriseImportPipeline(limit).catch(console.error);

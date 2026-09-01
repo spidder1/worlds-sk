@@ -2,7 +2,7 @@ import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { getProductBySlug, getAllProducts } from '../../../lib/catalog';
+import { getProductBySlug } from '../../../lib/catalog';
 import { ProductDescription } from '../../../components/ProductDescription';
 import {
   ShieldCheck,
@@ -13,9 +13,13 @@ import {
   ShoppingCart,
   ChevronRight,
   Home,
-  Info,
   Layers,
   Award,
+  Cpu,
+  HardDrive,
+  Monitor,
+  Box,
+  Tag
 } from 'lucide-react';
 
 interface Props {
@@ -53,6 +57,26 @@ export default async function ProductDetailPage({ params }: Props) {
   }
 
   const primaryImage = product.images[0]?.url || 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80';
+
+  // Group attributes into clean categories for presentation
+  const allAttrs = Object.values(product.attributes || {});
+
+  const cpuAttrs = allAttrs.filter((a) =>
+    ['cpu_family', 'cpu_model', 'processor_model', 'cpu_cores', 'processor_frequency'].includes(a.code)
+  );
+  const memoryStorageAttrs = allAttrs.filter((a) =>
+    ['ram_gb', 'ram_size_gb', 'ram_type', 'ram_frequency_mhz', 'ssd_gb', 'storage_capacity_gb', 'hdd_capacity_gb', 'storage_type'].includes(a.code)
+  );
+  const displayGpuAttrs = allAttrs.filter((a) =>
+    ['screen_size_inch', 'display_diagonal_inch', 'display_resolution', 'panel_type', 'refresh_rate_hz', 'gpu_model', 'graphics_card', 'vram_gb'].includes(a.code)
+  );
+  const otherAttrs = allAttrs.filter(
+    (a) =>
+      !cpuAttrs.includes(a) &&
+      !memoryStorageAttrs.includes(a) &&
+      !displayGpuAttrs.includes(a) &&
+      !['brand', 'mpn', 'warranty_months'].includes(a.code)
+  );
 
   // Schema.org Product JSON-LD
   const productJsonLd = {
@@ -93,34 +117,39 @@ export default async function ProductDetailPage({ params }: Props) {
       />
 
       {/* Breadcrumbs */}
-      <nav className="flex items-center gap-2 text-xs text-slate-500 overflow-x-auto">
-        <Link href="/" className="hover:text-slate-900 flex items-center gap-1">
-          <Home className="w-3.5 h-3.5" />
+      <nav className="flex items-center gap-2 text-xs text-slate-500 overflow-x-auto pb-1">
+        <Link href="/" className="hover:text-slate-900 flex items-center gap-1 font-medium">
+          <Home className="w-3.5 h-3.5 text-slate-400" />
           Domov
         </Link>
         {product.categoryHierarchy.map((catName, idx) => (
           <React.Fragment key={idx}>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
             <span className="text-slate-700 font-medium truncate">{catName}</span>
           </React.Fragment>
         ))}
-        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-        <span className="text-slate-900 font-bold truncate max-w-[200px]">{product.title}</span>
+        <ChevronRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+        <span className="text-slate-900 font-bold truncate max-w-[240px]">{product.title}</span>
       </nav>
 
-      {/* Product Hero Section (Gallery + Purchase Info) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm">
+      {/* Product Hero Section (Gallery + Purchase Box) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm">
         {/* Gallery */}
         <div className="space-y-4">
-          <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex items-center justify-center h-80 md:h-96 relative overflow-hidden">
+          <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex items-center justify-center h-80 md:h-[400px] relative overflow-hidden group">
             <img
               src={primaryImage}
               alt={product.title}
-              className="max-h-full max-w-full object-contain"
+              className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
             />
-            <div className="absolute top-3 left-3 bg-slate-900/80 text-white text-xs font-bold px-2.5 py-1 rounded-md">
+            <div className="absolute top-4 left-4 bg-slate-900 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-md">
               {product.brand}
             </div>
+            {product.isInStock && (
+              <div className="absolute top-4 right-4 bg-emerald-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-md shadow-sm">
+                Skladom
+              </div>
+            )}
           </div>
 
           {product.images.length > 1 && (
@@ -128,7 +157,7 @@ export default async function ProductDetailPage({ params }: Props) {
               {product.images.map((img, idx) => (
                 <div
                   key={idx}
-                  className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg p-1.5 flex-shrink-0 cursor-pointer hover:border-brand-500"
+                  className="w-20 h-20 bg-slate-50 border border-slate-200 rounded-xl p-2 flex-shrink-0 cursor-pointer hover:border-brand-500 transition-colors"
                 >
                   <img src={img.url} alt={img.altText || ''} className="w-full h-full object-contain" />
                 </div>
@@ -139,11 +168,12 @@ export default async function ProductDetailPage({ params }: Props) {
 
         {/* Purchase & Details Box */}
         <div className="flex flex-col justify-between space-y-6">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 text-xs text-slate-500 font-mono">
-              <span>SKU: {product.sku}</span>
+          <div className="space-y-4">
+            {/* Identifiers & Brand */}
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 font-mono">
+              <span className="bg-slate-100 px-2 py-0.5 rounded font-semibold text-slate-700">SKU: {product.sku}</span>
               <span>•</span>
-              <span>Part Number: {product.mpn}</span>
+              <span>PartNumber: <strong className="text-slate-800">{product.mpn}</strong></span>
               {product.ean && (
                 <>
                   <span>•</span>
@@ -152,43 +182,49 @@ export default async function ProductDetailPage({ params }: Props) {
               )}
             </div>
 
-            <h1 className="text-xl md:text-2xl font-black text-slate-900 leading-tight">
+            <h1 className="text-xl md:text-2xl lg:text-3xl font-black text-slate-900 leading-tight">
               {product.title}
             </h1>
 
-            {/* Quality Score snippet */}
-            <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-1 rounded-full text-xs font-semibold text-slate-700">
-              <Award className="w-3.5 h-3.5 text-brand-600" />
-              <span>Kvalita dát: {product.qualityScore.total}/100</span>
-              <span className="text-slate-400">|</span>
-              <span className="text-emerald-600 font-bold">100% overené distribútorom</span>
+            {/* Quality & Origin Badge */}
+            <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-full text-xs font-semibold text-slate-700">
+              <Award className="w-4 h-4 text-brand-600" />
+              <span>Oficiálna SK distribúcia</span>
+              <span className="text-slate-300">|</span>
+              <span className="text-emerald-700 font-bold">100% nový tovar v originálnom balení</span>
             </div>
 
-            {/* Stock Availability */}
-            <div className="pt-2">
+            {/* Stock Status Box */}
+            <div>
               {product.isInStock ? (
-                <div className="flex items-center gap-2 text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-xl">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>{product.stockText || `Skladom ${product.stockCount} ks na centrále eD`}</span>
+                <div className="flex items-center gap-2.5 text-sm font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-4 py-2.5 rounded-xl">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  <div>
+                    <div>{product.stockText || `Skladom ${product.stockCount} ks`}</div>
+                    <div className="text-xs font-normal text-emerald-700">Expedujeme ihneď z centrálneho logistického skladu</div>
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3.5 py-2 rounded-xl">
-                  <AlertCircle className="w-4 h-4 text-amber-600" />
-                  <span>Dostupné u dodávateľa na objednávku</span>
+                <div className="flex items-center gap-2.5 text-sm font-bold text-amber-800 bg-amber-50 border border-amber-200 px-4 py-2.5 rounded-xl">
+                  <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                  <div>
+                    <div>Na objednávku u dodávateľa</div>
+                    <div className="text-xs font-normal text-amber-700">Dostupnosť overujeme pri spracovaní objednávky</div>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Price Box */}
-            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-2">
+            {/* Price Card */}
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-2">
               <div className="flex items-baseline gap-3">
-                <span className="text-3xl font-black text-slate-900">
+                <span className="text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
                   {product.pricing.finalPrice.toFixed(2)} €
                 </span>
-                <span className="text-xs text-slate-500 font-semibold">s DPH ({product.pricing.vatRate}%)</span>
+                <span className="text-xs text-slate-500 font-bold uppercase">s DPH ({product.pricing.vatRate}%)</span>
               </div>
-              <div className="text-xs text-slate-600 space-y-0.5">
-                <div>Cena bez DPH: <span className="font-semibold text-slate-800">{product.pricing.basePrice.toFixed(2)} €</span></div>
+              <div className="text-xs text-slate-600 space-y-1">
+                <div>Cena bez DPH: <span className="font-bold text-slate-800">{product.pricing.basePrice.toFixed(2)} €</span></div>
                 {(product.pricing.supplierFees.garbageFee > 0 || product.pricing.supplierFees.authorFee > 0) && (
                   <div className="text-[11px] text-slate-400">
                     Vrátane recyklačného poplatku (SNC): {product.pricing.supplierFees.garbageFee} € a autorského poplatku (AO): {product.pricing.supplierFees.authorFee} €
@@ -198,10 +234,10 @@ export default async function ProductDetailPage({ params }: Props) {
             </div>
 
             {/* Purchase CTA */}
-            <div className="flex gap-3 pt-2">
+            <div className="pt-2">
               <Link
                 href="/kosik"
-                className="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-brand-600/30 transition-all text-sm"
+                className="w-full bg-brand-600 hover:bg-brand-700 active:scale-[0.99] text-white font-extrabold py-4 px-6 rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-brand-600/30 transition-all text-base"
               >
                 <ShoppingCart className="w-5 h-5" />
                 Vložiť do košíka
@@ -210,7 +246,7 @@ export default async function ProductDetailPage({ params }: Props) {
           </div>
 
           {/* Value Badges */}
-          <div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-4 text-xs text-slate-600">
+          <div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-5 text-xs text-slate-700 font-medium">
             <div className="flex items-center gap-2">
               <Truck className="w-4 h-4 text-brand-600 flex-shrink-0" />
               <span>Doručenie do 24/48h</span>
@@ -227,11 +263,11 @@ export default async function ProductDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Description & Technical Specifications */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Description */}
-        <div className="md:col-span-2 bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <h2 className="text-lg font-black text-slate-900 border-b border-slate-100 pb-3">
+      {/* Description & Structured Technical Specifications */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Rich HTML Description */}
+        <div className="lg:col-span-2 bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-5">
+          <h2 className="text-xl font-black text-slate-900 border-b border-slate-100 pb-4">
             Popis produktu
           </h2>
           <ProductDescription
@@ -240,45 +276,108 @@ export default async function ProductDetailPage({ params }: Props) {
           />
         </div>
 
-        {/* Technical Attributes Table */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-3 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-brand-600" />
-            Parametre a špecifikácie
-          </h3>
+        {/* Structured Technical Attributes Cards */}
+        <div className="space-y-6">
+          {/* Main Specifications Card */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-3 flex items-center gap-2">
+              <Layers className="w-4 h-4 text-brand-600" />
+              Základné parametre
+            </h3>
 
-          <div className="divide-y divide-slate-100 text-xs">
-            <div className="py-2 flex justify-between">
-              <span className="text-slate-500 font-medium">Výrobca</span>
-              <span className="text-slate-900 font-bold">{product.brand}</span>
-            </div>
-            <div className="py-2 flex justify-between">
-              <span className="text-slate-500 font-medium">Kód výrobcu (MPN)</span>
-              <span className="text-slate-900 font-mono font-semibold">{product.mpn}</span>
-            </div>
-            {product.ean && (
-              <div className="py-2 flex justify-between">
-                <span className="text-slate-500 font-medium">EAN</span>
-                <span className="text-slate-900 font-mono">{product.ean}</span>
+            <div className="divide-y divide-slate-100 text-xs">
+              <div className="py-2.5 flex justify-between items-center">
+                <span className="text-slate-500 font-medium">Výrobca</span>
+                <span className="text-slate-900 font-bold">{product.brand}</span>
               </div>
-            )}
-            <div className="py-2 flex justify-between">
-              <span className="text-slate-500 font-medium">Záruka</span>
-              <span className="text-slate-900 font-semibold">{product.warrantyMonths} mesiacov</span>
+              <div className="py-2.5 flex justify-between items-center">
+                <span className="text-slate-500 font-medium">Model / MPN</span>
+                <span className="text-slate-900 font-mono font-bold">{product.mpn}</span>
+              </div>
+              {product.ean && (
+                <div className="py-2.5 flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">EAN kód</span>
+                  <span className="text-slate-900 font-mono">{product.ean}</span>
+                </div>
+              )}
+              <div className="py-2.5 flex justify-between items-center">
+                <span className="text-slate-500 font-medium">Záruka pre spotrebiteľa</span>
+                <span className="text-emerald-700 font-bold">{product.warrantyMonths} mesiacov</span>
+              </div>
             </div>
-            {product.dimensions?.weightKg && (
-              <div className="py-2 flex justify-between">
-                <span className="text-slate-500 font-medium">Hmotnosť</span>
-                <span className="text-slate-900">{product.dimensions.weightKg} kg</span>
-              </div>
-            )}
-            {Object.values(product.attributes || {}).map((attr, idx) => (
-              <div key={idx} className="py-2 flex justify-between">
-                <span className="text-slate-500 font-medium">{attr.name}</span>
-                <span className="text-slate-900 font-semibold">{String(attr.value)}</span>
-              </div>
-            ))}
           </div>
+
+          {/* CPU Specifications */}
+          {cpuAttrs.length > 0 && (
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2.5 flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-brand-600" />
+                Procesor a výkon
+              </h4>
+              <div className="divide-y divide-slate-100 text-xs">
+                {cpuAttrs.map((attr, idx) => (
+                  <div key={idx} className="py-2 flex justify-between">
+                    <span className="text-slate-500 font-medium">{attr.name}</span>
+                    <span className="text-slate-900 font-bold">{String(attr.value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Memory & Storage Specifications */}
+          {memoryStorageAttrs.length > 0 && (
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2.5 flex items-center gap-2">
+                <HardDrive className="w-4 h-4 text-brand-600" />
+                Pamäť a úložisko
+              </h4>
+              <div className="divide-y divide-slate-100 text-xs">
+                {memoryStorageAttrs.map((attr, idx) => (
+                  <div key={idx} className="py-2 flex justify-between">
+                    <span className="text-slate-500 font-medium">{attr.name}</span>
+                    <span className="text-slate-900 font-bold">{String(attr.value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Display & GPU Specifications */}
+          {displayGpuAttrs.length > 0 && (
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2.5 flex items-center gap-2">
+                <Monitor className="w-4 h-4 text-brand-600" />
+                Displej a grafika
+              </h4>
+              <div className="divide-y divide-slate-100 text-xs">
+                {displayGpuAttrs.map((attr, idx) => (
+                  <div key={idx} className="py-2 flex justify-between">
+                    <span className="text-slate-500 font-medium">{attr.name}</span>
+                    <span className="text-slate-900 font-bold">{String(attr.value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Other Extracted Specifications */}
+          {otherAttrs.length > 0 && (
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2.5 flex items-center gap-2">
+                <Tag className="w-4 h-4 text-brand-600" />
+                Ostatné špecifikácie
+              </h4>
+              <div className="divide-y divide-slate-100 text-xs max-h-60 overflow-y-auto pr-1">
+                {otherAttrs.map((attr, idx) => (
+                  <div key={idx} className="py-2 flex justify-between">
+                    <span className="text-slate-500 font-medium">{attr.name}</span>
+                    <span className="text-slate-900 font-semibold">{String(attr.value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
