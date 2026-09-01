@@ -537,21 +537,61 @@ export async function getAllProducts(): Promise<MasterProduct[]> {
 }
 
 /**
- * Získanie detailu produktu podľa slug priamo z PostgreSQL databázy Supabase
+ * Získanie detailu produktu podľa slug priamo z PostgreSQL databázy Supabase (s multi-strategy fallbackom)
  */
 export async function getProductBySlug(slug: string): Promise<MasterProduct | null> {
   try {
-    const { data, error } = await supabase
+    const cleanSlug = decodeURIComponent(slug).trim();
+
+    // 1. Priama zhoda na slug
+    const { data: directMatch } = await supabase
       .from('master_products')
       .select('*')
-      .eq('slug', slug)
-      .single();
+      .eq('slug', cleanSlug)
+      .maybeSingle();
 
-    if (error || !data) {
-      return null;
+    if (directMatch) {
+      return mapDbRowToMasterProduct(directMatch);
     }
 
-    return mapDbRowToMasterProduct(data);
+    // 2. Extrakcia SKU / kódu z konca slugu (napr. text-1523510 -> 1523510)
+    const trailingSkuMatch = cleanSlug.match(/-([0-9a-zA-Z]+)$/);
+    if (trailingSkuMatch && trailingSkuMatch[1]) {
+      const extractedSku = trailingSkuMatch[1];
+      const { data: skuMatch } = await supabase
+        .from('master_products')
+        .select('*')
+        .or(`sku.eq.${extractedSku},supplier_code.eq.${extractedSku}`)
+        .maybeSingle();
+
+      if (skuMatch) {
+        return mapDbRowToMasterProduct(skuMatch);
+      }
+    }
+
+    // 3. Priame SKU / ID / MPN
+    const { data: idOrSkuMatch } = await supabase
+      .from('master_products')
+      .select('*')
+      .or(`sku.eq.${cleanSlug},supplier_code.eq.${cleanSlug},mpn.eq.${cleanSlug},id.eq.${cleanSlug}`)
+      .maybeSingle();
+
+    if (idOrSkuMatch) {
+      return mapDbRowToMasterProduct(idOrSkuMatch);
+    }
+
+    // 4. Fuzzy slug match
+    const { data: fuzzyMatches } = await supabase
+      .from('master_products')
+      .select('*')
+      .ilike('slug', `%${cleanSlug}%`)
+      .limit(1);
+
+    if (fuzzyMatches && fuzzyMatches.length > 0) {
+      return mapDbRowToMasterProduct(fuzzyMatches[0]);
+    }
+
+    return null;
   } catch (e) {
     console.error(`Chyba pri čítaní produktu ${slug} z databázy:`, e);
     return null;
