@@ -1,5 +1,5 @@
 import slugify from 'slugify';
-import { EDRawProductDetail, MasterProduct, PricingBreakdown, ProductImage } from '@worlds/types';
+import { EDRawProductDetail, MasterProduct, PricingBreakdown, ProductImage, ProductDimensions } from '@worlds/types';
 
 // Normalization mappings for brands
 const BRAND_MAP: Record<string, string> = {
@@ -23,7 +23,7 @@ const BRAND_MAP: Record<string, string> = {
 
 export class ProductNormalizer {
   private defaultVatRate = 20; // 20% standard VAT
-  private defaultMargin = 15; // 15% target margin
+  private defaultMargin = 20; // 20% default margin matching PHP Settings fallback
 
   /**
    * Normalizes brand names to standard canonical format
@@ -36,6 +36,36 @@ export class ProductNormalizer {
   }
 
   /**
+   * Cleans SKU code matching PHP Feed_ED rule:
+   * Strips single and double quotes, replaces backslashes with '-'
+   */
+  normalizeSku(code?: string): string {
+    if (!code) return '';
+    let sku = code.trim().replace(/['"]/g, '');
+    sku = sku.replace(/\\/g, '-');
+    return sku;
+  }
+
+  /**
+   * Cleans EAN code matching PHP Feed_ED rule:
+   * Strips backticks `
+   */
+  normalizeEan(ean?: string): string {
+    if (!ean) return '';
+    return String(ean).replace(/`/g, '').trim();
+  }
+
+  /**
+   * Cleans title matching PHP Feed_ED rule:
+   * Replaces backslashes '\' with '-' and strips HTML tags/extra spaces
+   */
+  normalizeTitle(name?: string): string {
+    if (!name) return '';
+    const withDashes = name.replace(/\\/g, '-');
+    return this.cleanText(withDashes);
+  }
+
+  /**
    * Cleans text, removes HTML tags and double spaces
    */
   cleanText(text?: string): string {
@@ -44,6 +74,20 @@ export class ProductNormalizer {
       .replace(/<[^>]*>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  /**
+   * Parses stock count matching PHP Feed_ED rules:
+   * "100+" -> 1000, "50-99" -> 99, "10-49" -> 49, numeric string -> integer
+   */
+  parseStockCount(rawCount?: string | number): number {
+    if (rawCount === undefined || rawCount === null) return 0;
+    const str = String(rawCount).trim();
+    if (str === '100+') return 1000;
+    if (str === '50-99') return 99;
+    if (str === '10-49') return 49;
+    const num = parseInt(str, 10);
+    return isNaN(num) ? 0 : num;
   }
 
   /**
@@ -68,26 +112,65 @@ export class ProductNormalizer {
   }
 
   /**
-   * Computes accurate prices including supplier fees (SNC/AO) and VAT
+   * Returns margin % based on price range matching PHP Settings::get_margin_from_price
    */
-  computePricing(raw: EDRawProductDetail, targetMarginPct = this.defaultMargin): PricingBreakdown {
+  getMarginFromPrice(price: number, marginsText?: string): number {
+    if (!marginsText || !marginsText.trim()) {
+      return this.defaultMargin;
+    }
+    let lastMargin = this.defaultMargin;
+    const lines = marginsText.trim().split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const parts = trimmed.split(':');
+      if (parts.length < 2) continue;
+      const range = parts[0].split('-');
+      if (range.length < 2) continue;
+      const min = parseFloat(range[0].replace(',', '.').trim());
+      const max = parseFloat(range[1].replace(',', '.').trim());
+      const margin = parseFloat(parts[1].replace(',', '.').trim());
+      if (isNaN(margin)) continue;
+      lastMargin = margin;
+      if (price >= min && price <= max) {
+        return margin;
+      }
+    }
+    return lastMargin;
+  }
+
+  /**
+   * Computes accurate prices matching PHP Feed_ED & Settings rules:
+   * - supplierCost = YourPrice
+   * - ecotax = GarbageFee + AuthorFee
+   * - Margin is calculated on supplierCost: supplierCost * (1 + margin / 100)
+   * - ecotax is added afterwards: basePrice = calculatedPrice + ecotax
+   * - finalPrice = basePrice * (1 + vatRate / 100)
+   */
+  computePricing(
+    raw: EDRawProductDetail,
+    categoryMargin?: number,
+    marginsText?: string
+  ): PricingBreakdown {
     const supplierCost = Number(raw.YourPrice) || 0;
     const garbageFee = Number(raw.GarbageFee) || 0;
     const authorFee = Number(raw.AuthorFee) || 0;
-    const totalCostWithFees = Number(raw.YourPriceWithFees) || (supplierCost + garbageFee + authorFee);
+    const ecotax = garbageFee + authorFee;
+    const totalCostWithFees = Number(raw.YourPriceWithFees) || (supplierCost + ecotax);
     const vatRate = Number(raw.Vat) || this.defaultVatRate;
-    
-    // Selling price without VAT calculated with margin
-    const marginMultiplier = 1 + (targetMarginPct / 100);
-    const calculatedBasePrice = Math.round((totalCostWithFees * marginMultiplier) * 100) / 100;
-    
-    // Recommended end-user price from supplier if available, otherwise calculated
-    const endUserPrice = Number(raw.EndUserPrice) || 0;
-    const basePrice = (endUserPrice > 0 && endUserPrice > totalCostWithFees)
-      ? Math.round((endUserPrice / (1 + vatRate / 100)) * 100) / 100
-      : calculatedBasePrice;
 
+    let marginPct: number;
+    if (categoryMargin !== undefined && categoryMargin !== null && !isNaN(categoryMargin) && categoryMargin > 0) {
+      marginPct = categoryMargin;
+    } else {
+      marginPct = this.getMarginFromPrice(supplierCost, marginsText);
+    }
+
+    const calculatedPrice = supplierCost * (1 + marginPct / 100);
+    const basePrice = Math.round((calculatedPrice + ecotax) * 100) / 100;
     const finalPrice = Math.round((basePrice * (1 + vatRate / 100)) * 100) / 100;
+
+    const endUserPrice = Number(raw.EndUserPrice) || 0;
 
     return {
       supplierCost,
@@ -99,7 +182,7 @@ export class ProductNormalizer {
       },
       totalCostWithFees,
       vatRate,
-      marginPercentage: targetMarginPct,
+      marginPercentage: marginPct,
       basePrice,
       finalPrice,
       recommendedRetailPrice: endUserPrice > 0 ? endUserPrice : undefined,
@@ -108,16 +191,61 @@ export class ProductNormalizer {
   }
 
   /**
-   * Normalizes images array
+   * Builds combined long description matching PHP Feed_ED rule:
+   * Description + "<br>" + DescriptionShort, fallback to title, plus "<br><br>Záruka: {Warranty}"
+   */
+  buildLongDescription(raw: EDRawProductDetail): string {
+    const desc = raw.Description ? raw.Description.trim() : '';
+    const descShort = raw.DescriptionShort ? raw.DescriptionShort.trim() : '';
+    const title = this.normalizeTitle(raw.Name);
+
+    let descLong = (desc !== '' ? desc + '<br>' : '') + descShort;
+    if (!descLong) {
+      descLong = title;
+    }
+    if (raw.Warranty && String(raw.Warranty).trim() !== '') {
+      descLong += `<br><br>Záruka: ${String(raw.Warranty).trim()}`;
+    }
+    return descLong;
+  }
+
+  /**
+   * Normalizes images array matching PHP Feed_ED rule:
+   * Replaces _3. and _8. with . and converts http:// to https://
    */
   normalizeImages(rawImages?: Array<{ URL: string }>, title?: string): ProductImage[] {
     if (!rawImages || rawImages.length === 0) return [];
-    return rawImages.map((img, idx) => ({
-      id: `img-${idx + 1}`,
-      url: img.URL.trim(),
-      position: idx,
-      altText: title ? `${title} - obrázok ${idx + 1}` : undefined,
-      isPrimary: idx === 0,
-    }));
+    return rawImages.map((img, idx) => {
+      let url = img.URL.trim();
+      url = url.replace(/_3\./g, '.').replace(/_8\./g, '.');
+      url = url.replace(/^http:\/\//i, 'https://');
+      return {
+        id: `img-${idx + 1}`,
+        url,
+        position: idx,
+        altText: title ? `${title} - obrázok ${idx + 1}` : undefined,
+        isPrimary: idx === 0,
+      };
+    });
+  }
+
+  /**
+   * Parses logistic dimensions & weight matching PHP Feed_ED rule:
+   * Weight in raw logistic data is divided by 100 (converting dekagrams/grams to kg).
+   */
+  parseDimensions(logisticList?: any[]): ProductDimensions | undefined {
+    if (!logisticList || logisticList.length === 0) return undefined;
+    for (const item of logisticList) {
+      if (Number(item.count) === 1) {
+        return {
+          lengthCm: Number(item.length) || 0,
+          widthCm: Number(item.width) || 0,
+          heightCm: Number(item.height) || 0,
+          weightKg: (Number(item.weight) || 0) / 100,
+        };
+      }
+    }
+    return undefined;
   }
 }
+

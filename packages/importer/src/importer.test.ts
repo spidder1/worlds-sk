@@ -15,15 +15,41 @@ test('ProductNormalizer normalizes brand names correctly', () => {
   assert.equal(norm.normalizeBrand('Apple Inc.'), 'Apple');
 });
 
-test('ProductNormalizer normalizes memory & storage units', () => {
+test('ProductNormalizer cleans SKU, EAN and Title according to PHP rules', () => {
   const norm = new ProductNormalizer();
-  assert.equal(norm.normalizeCapacity('512GB'), '512 GB');
-  assert.equal(norm.normalizeCapacity('16 gb'), '16 GB');
-  assert.equal(norm.normalizeCapacity('2TB'), '2 TB');
-  assert.equal(norm.normalizeCapacity('128.0GB'), '128 GB');
+  assert.equal(norm.normalizeSku(`'MAN701662'`), 'MAN701662');
+  assert.equal(norm.normalizeSku(`"MAN\\701662"`), 'MAN-701662');
+  assert.equal(norm.normalizeEan('`8806094582123`'), '8806094582123');
+  assert.equal(norm.normalizeTitle('ASUS \\ Laptop \\ ROG'), 'ASUS - Laptop - ROG');
 });
 
-test('ProductNormalizer calculates correct prices including fees and VAT', () => {
+test('ProductNormalizer parses eD stock ranges according to PHP rules', () => {
+  const norm = new ProductNormalizer();
+  assert.equal(norm.parseStockCount('100+'), 1000);
+  assert.equal(norm.parseStockCount('50-99'), 99);
+  assert.equal(norm.parseStockCount('10-49'), 49);
+  assert.equal(norm.parseStockCount('15'), 15);
+  assert.equal(norm.parseStockCount(25), 25);
+  assert.equal(norm.parseStockCount(undefined), 0);
+});
+
+test('ProductNormalizer transforms image URLs and extracts dimensions matching PHP rules', () => {
+  const norm = new ProductNormalizer();
+  const images = norm.normalizeImages([
+    { URL: 'http://img.elinkx.biz/foto_3.jpg' },
+    { URL: 'http://img.elinkx.biz/foto_8.jpg' },
+  ], 'Test Product');
+
+  assert.equal(images[0].url, 'https://img.elinkx.biz/foto.jpg');
+  assert.equal(images[1].url, 'https://img.elinkx.biz/foto.jpg');
+
+  const dims = norm.parseDimensions([
+    { typ: 'JEDN', count: 1, length: 30, width: 20, height: 10, weight: 150 },
+  ]);
+  assert.equal(dims?.weightKg, 1.5); // 150 / 100 = 1.5 kg
+});
+
+test('ProductNormalizer calculates correct prices including fees and VAT according to PHP rules', () => {
   const norm = new ProductNormalizer();
   const pricing = norm.computePricing({
     ProId: '1',
@@ -31,21 +57,44 @@ test('ProductNormalizer calculates correct prices including fees and VAT', () =>
     Name: 'Test',
     PartNumber: 'PN1',
     YourPrice: 100,
-    YourPriceWithFees: 105, // includes 5€ fees
+    YourPriceWithFees: 105, // includes 5€ fees (Garbage 3 + Author 2)
     GarbageFee: 3,
     AuthorFee: 2,
     ValuePack: 0,
     ValuePackQty: 0,
     Vat: 20,
     OnStock: true,
-  });
+  }, 20); // 20% margin
 
   assert.equal(pricing.supplierCost, 100);
   assert.equal(pricing.totalCostWithFees, 105);
-  // Base price with 15% margin: 105 * 1.15 = 120.75
-  assert.equal(pricing.basePrice, 120.75);
-  // Final price with 20% VAT: 120.75 * 1.20 = 144.90
-  assert.equal(pricing.finalPrice, 144.9);
+  // Base price: supplierCost * (1 + 0.20) + ecotax = 100 * 1.20 + 5 = 125
+  assert.equal(pricing.basePrice, 125);
+  // Final price with 20% VAT: 125 * 1.20 = 150
+  assert.equal(pricing.finalPrice, 150);
+});
+
+test('ProductNormalizer builds combined long description with warranty matching PHP rules', () => {
+  const norm = new ProductNormalizer();
+  const desc = norm.buildLongDescription({
+    ProId: '1',
+    Code: 'TEST-1',
+    Name: 'Test Notebook',
+    PartNumber: 'PN1',
+    YourPrice: 100,
+    YourPriceWithFees: 105,
+    GarbageFee: 0,
+    AuthorFee: 0,
+    ValuePack: 0,
+    ValuePackQty: 0,
+    Vat: 20,
+    OnStock: true,
+    Description: 'Hlavný popis notebooku.',
+    DescriptionShort: 'Krátky popis.',
+    Warranty: '24 mesiacov',
+  });
+
+  assert.equal(desc, 'Hlavný popis notebooku.<br>Krátky popis.<br><br>Záruka: 24 mesiacov');
 });
 
 test('TaxonomyEngine correctly assigns products to managed taxonomy', () => {
@@ -94,3 +143,4 @@ test('ImporterService executes full batch ingestion workflow with delta detectio
   assert.equal(secondRun.createdCount, 0);
   assert.equal(secondRun.unchangedCount, 5);
 });
+
