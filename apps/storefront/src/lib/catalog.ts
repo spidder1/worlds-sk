@@ -1,4 +1,4 @@
-import { MasterProduct, TaxonomyCategory } from '@worlds/types';
+import { MasterProduct, TaxonomyCategory, QuarantineRecord, ImportRunSummary } from '@worlds/types';
 
 export const CATEGORIES: TaxonomyCategory[] = [
   {
@@ -2925,7 +2925,7 @@ export async function getCategories(): Promise<TaxonomyCategory[]> {
   return CATEGORIES;
 }
 
-export async function getCategoryBySlug(slug: string): Promise<TaxonomyCategory | null> {
+export function getCategoryBySlug(slug: string): TaxonomyCategory | null {
   function findCat(cats: TaxonomyCategory[]): TaxonomyCategory | null {
     for (const c of cats) {
       if (c.slug === slug) return c;
@@ -2939,6 +2939,8 @@ export async function getCategoryBySlug(slug: string): Promise<TaxonomyCategory 
   return findCat(CATEGORIES);
 }
 
+export const findCategoryBySlug = getCategoryBySlug;
+
 export async function searchProducts(query: string): Promise<MasterProduct[]> {
   const q = query.toLowerCase().trim();
   if (!q) return [];
@@ -2951,3 +2953,49 @@ export async function searchProducts(query: string): Promise<MasterProduct[]> {
     );
   });
 }
+
+export async function getImporter() {
+  return {
+    getRepository() {
+      return {
+        async getStats() {
+          return {
+            totalProducts: PRODUCTS.length,
+            inStockProducts: PRODUCTS.filter((p) => p.isInStock).length,
+            totalMasterProducts: PRODUCTS.length,
+            activeCount: PRODUCTS.filter((p) => p.status === 'ACTIVE').length,
+            needsReviewCount: 0,
+            autoApprovedCount: PRODUCTS.length,
+            quarantinedCount: 0,
+            averageQualityScore: 92,
+            brandCount: Array.from(new Set(PRODUCTS.map((p) => p.brand))).length,
+          };
+        },
+        async getAllProducts() {
+          return PRODUCTS;
+        },
+        async getQuarantineRecords(): Promise<QuarantineRecord[]> {
+          return [];
+        },
+        async getImportRuns(): Promise<ImportRunSummary[]> {
+          return [
+            {
+              id: 'run-live-ed-1',
+              startedAt: new Date().toISOString(),
+              completedAt: new Date().toISOString(),
+              totalProcessed: 122145,
+              createdCount: PRODUCTS.length,
+              updatedCount: 0,
+              quarantinedCount: 0,
+              autoApprovedCount: PRODUCTS.length,
+              needsReviewCount: 0,
+              status: 'COMPLETED' as const,
+              durationMs: 4200,
+            },
+          ];
+        },
+      };
+    },
+  };
+}
+
