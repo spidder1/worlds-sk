@@ -1,5 +1,7 @@
 /**
  * HTML Sanitizer & Specification Cleaner for eD System Product Descriptions
+ * Zachováva kompletnú HTML štruktúru (odseky, zoznamy, tabuľky, nadpisy, tučné písmo)
+ * a pripravuje ju na elegantné zobrazenie na webe.
  */
 
 export function decodeHtmlEntities(html: string): string {
@@ -49,23 +51,23 @@ export function decodeHtmlEntities(html: string): string {
 }
 
 /**
- * Vyčistí HTML popis a pripraví ho na bezpečné a estetické renderovanie na storefront
+ * Zachováva a čistí formátovaný HTML popis pre moderný e-shop
  */
 export function sanitizeAndFormatHtml(rawHtml: string): { cleanHtml: string; plainText: string; specs: Record<string, string> } {
   if (!rawHtml) return { cleanHtml: '', plainText: '', specs: {} };
 
-  // 1. Dekódovanie entít (viackrát ak boli dvojito escapované)
+  // 1. Dôsledné dekódovanie entít (aj v prípade viacnásobného escapovania)
   let decoded = decodeHtmlEntities(rawHtml);
   if (decoded.includes('&lt;') || decoded.includes('&gt;')) {
     decoded = decodeHtmlEntities(decoded);
   }
 
-  // 2. Odstránenie skriptov, štýlov a iframeov
+  // 2. Bezpečnosť: Odstránenie skriptov a vložených prvkov
   decoded = decoded.replace(/<script[\s\S]*?<\/script>/gi, '');
   decoded = decoded.replace(/<style[\s\S]*?<\/style>/gi, '');
   decoded = decoded.replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
 
-  // 3. Extrakcia parametrov z HTML tabuliek pred vyčistením
+  // 3. Extrakcia parametrov z tabuliek
   const specs: Record<string, string> = {};
   const rowMatches = decoded.matchAll(/<tr>[\s\S]*?<\/tr>/gi);
   for (const row of rowMatches) {
@@ -81,14 +83,13 @@ export function sanitizeAndFormatHtml(rawHtml: string): { cleanHtml: string; pla
     }
   }
 
-  // 4. Odstránenie inline štýlov, fontov a nežiadúcich atribútov
+  // 4. Odstránenie starých CSS atribútov (font, face, color, style), ale ZACHOVANIE štruktúrnych HTML značiek
   let clean = decoded
     .replace(/style="[^"]*"/gi, '')
     .replace(/style='[^']*'/gi, '')
     .replace(/dir="[^"]*"/gi, '')
     .replace(/align="[^"]*"/gi, '')
     .replace(/id="[^"]*"/gi, '')
-    .replace(/class="[^"]*"/gi, '')
     .replace(/face="[^"]*"/gi, '')
     .replace(/color="[^"]*"/gi, '')
     .replace(/size="[^"]*"/gi, '')
@@ -99,29 +100,10 @@ export function sanitizeAndFormatHtml(rawHtml: string): { cleanHtml: string; pla
     .replace(/<p>\s*&nbsp;\s*<\/p>/gi, '')
     .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '');
 
-  // 5. Normalizácia tagov pre moderný Tailwind dizajn
-  clean = clean
-    .replace(/<table[^>]*>/gi, '<table className="w-full text-xs text-slate-700 border-collapse my-4 divide-y divide-slate-200">')
-    .replace(/<th[^>]*>/gi, '<th className="py-2.5 px-3 bg-slate-100 text-left font-bold text-slate-900">')
-    .replace(/<td[^>]*>/gi, '<td className="py-2 px-3 border-b border-slate-100">')
-    .replace(/<tr[^>]*>/gi, '<tr className="hover:bg-slate-50/80 transition-colors">')
-    .replace(/<p[^>]*>/gi, '<p className="mb-3 leading-relaxed text-sm text-slate-700">')
-    .replace(/<ul[^>]*>/gi, '<ul className="list-disc pl-5 my-3 space-y-1 text-sm text-slate-700">')
-    .replace(/<ol[^>]*>/gi, '<ol className="list-decimal pl-5 my-3 space-y-1 text-sm text-slate-700">')
-    .replace(/<li[^>]*>/gi, '<li className="leading-relaxed">')
-    .replace(/<h1[^>]*>/gi, '<h3 className="text-base font-bold text-slate-900 mt-4 mb-2">')
-    .replace(/<\/h1>/gi, '</h3>')
-    .replace(/<h2[^>]*>/gi, '<h3 className="text-base font-bold text-slate-900 mt-4 mb-2">')
-    .replace(/<\/h2>/gi, '</h3>')
-    .replace(/<h3[^>]*>/gi, '<h4 className="text-sm font-bold text-slate-900 mt-3 mb-1.5">')
-    .replace(/<\/h3>/gi, '</h4>')
-    .replace(/<br\s*\/?>/gi, '<br />')
-    .replace(/<hr\s*\/?>/gi, '<hr className="my-4 border-slate-200" />');
-
-  // 6. Odstránenie hlásení "Popis produktu bol preložený pomocou umelej inteligencie..."
+  // 5. Odstránenie automatických hlásení o strojovom preklade
   clean = clean.replace(/<p[^>]*>.*?(preložený pomocou umelej inteligencie|prelozeny pomocou).*?<\/p>/gi, '');
 
-  // 7. Generovanie čistého plain textu
+  // 6. Generovanie čistého textu pre vyhľadávanie a SEO
   const plainText = decoded
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')

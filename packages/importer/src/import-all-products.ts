@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
 import { XMLParser } from 'fast-xml-parser';
-import { isComputerHardware, mapToCleanTaxonomy } from './taxonomy-definition.js';
+import { classifyProductIndependently } from './taxonomy-definition.js';
 import { sanitizeAndFormatHtml } from './html-sanitizer.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jhgyzgdiapiewpjgosxm.supabase.co';
@@ -246,14 +246,6 @@ export async function runFullCatalogImport() {
     const name = String(p.Name || p.ProductName || '').trim();
     if (!name || name.length < 3) continue;
 
-    const comCode = String(p.CommodityCode || '');
-    const comName = String(p.CommodityName || '');
-
-    // KĽÚČOVÝ FILTER: Iba skutočný počítačový hardvér a IT zariadenia
-    if (!isComputerHardware(name, comCode, comName)) {
-      continue;
-    }
-
     const code = String(p.Code || p.ProId);
     const stockInfo = stockMap.get(code) || stockMap.get(String(p.PartNumber));
     const cost = stockInfo ? stockInfo.price : Number(p.YourPriceWithFees || p.YourPrice || 0);
@@ -273,7 +265,14 @@ export async function runFullCatalogImport() {
       const basePrice = Number((cost * (1 + marginPct / 100)).toFixed(2));
       const finalPrice = Number((basePrice * 1.20).toFixed(2));
 
-      const { slug: catSlug, hierarchy: catPath } = mapToCleanTaxonomy(name, comCode, comName);
+      const { slug: catSlug, hierarchy: catPath } = classifyProductIndependently({
+        title: name,
+        mpn: String(p.PartNumber || p.PartNumber2 || code),
+        ean: String(p.EANCode || p.EAN || ''),
+        description: p.Description || '',
+        descriptionShort: p.DescriptionShort || '',
+        producerName: p.ProducerName || p.ProducerCode
+      });
       const brand = extractBrand(name, p.ProducerName || p.ProducerCode);
       const mpn = String(p.PartNumber || p.PartNumber2 || code);
       const ean = String(p.EANCode || p.EAN || `${code}0000`);
@@ -341,8 +340,8 @@ export async function runFullCatalogImport() {
         brand,
         category_slug: catSlug,
         category_hierarchy: catPath,
-        commodity_code: comCode,
-        commodity_name: comName,
+        commodity_code: String(p.CommodityCode || 'IT'),
+        commodity_name: String(p.CommodityName || 'Hardvér'),
         title: name,
         slug,
         short_description: plainText.slice(0, 220),

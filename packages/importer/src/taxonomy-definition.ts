@@ -456,187 +456,329 @@ export const WORLDS_IT_CATEGORIES: TaxonomyCategory[] = [
   },
 ];
 
-/**
- * Zoznam povolených hardvérových kľúčových slov a komodít
- */
-const COMPUTER_HARDWARE_KEYWORDS = [
-  'notebook', 'laptop', 'thinkpad', 'ideapad', 'expertbook', 'zenbook', 'macbook', 'vivobook', 'latitude',
-  'inspiron', 'probook', 'elitebook', 'victus', 'omen', 'legion', 'predator', 'nitro', 'yoga', 'swift', 'aspire',
-  'počítač', 'pocitac', 'desktop', 'optiplex', 'thinkcentre', 'prodesk', 'elitedesk', 'all in one', 'aio', 'workstation', 'server',
-  'procesor', 'cpu', 'intel core', 'amd ryzen', 'xeon', 'threadripper',
-  'grafická karta', 'graficka karta', 'vga', 'gpu', 'geforce', 'radeon', 'rtx', 'gtx', 'quadro',
-  'pamäť', 'pamet', 'ram', 'ddr4', 'ddr5', 'so-dimm', 'dimm', 'fury',
-  'disk', 'ssd', 'nvme', 'm.2', 'pcie ssd', 'hdd', 'sata', 'barracuda', 'ironwolf', 'wd blue', 'wd black', 'wd red',
-  'základná doska', 'zakladna doska', 'motherboard', 'mainboard', 'b650', 'b760', 'z790', 'x670', 'socket',
-  'zdroj', 'power supply', 'psu', '80 plus', 'modular',
-  'skrinka', 'case', 'chassis', 'tower',
-  'chladenie', 'chladic', 'cooler', 'aio cooler', 'ventilator', 'fan',
-  'monitor', 'lcd', 'display', 'oled', 'ips', 'qhd', '4k', 'gaming monitor', 'curved', '144hz', '165hz', '240hz',
-  'klávesnica', 'klavesnica', 'keyboard', 'myš', 'mys', 'mouse', 'trackball', 'podložka pod myš',
-  'slúchadlá', 'sluchadla', 'headset', 'mikrofón', 'mikrofon', 'webkamera', 'webcam', 'reproduktory', 'speakers',
-  'dokovacia stanica', 'dokovaci stanice', 'dock', 'docking', 'usb hub', 'replikátor',
-  'router', 'wi-fi', 'wifi', 'switch', 'access point', 'mesh', 'nas', 'synology', 'qnap', 'patch panel',
-  'tlačiareň', 'tlaciaren', 'printer', 'laserjet', 'deskjet', 'pixma', 'ecotank', 'toner', 'cartridge', 'skener', 'scanner',
-  'ups', 'záložný zdroj', 'zalozny zdroj', 'prepäťová ochrana', 'prepatova ochrana', 'apc', 'eaton',
-  'flash disk', 'usb disk', 'pamäťová karta', 'pametova karta', 'sd karta', 'microsd', 'externý disk', 'externi disk'
-];
-
-/**
- * Filter: Určí, či je produkt skutočný počítačový hardvér
- */
-export function isComputerHardware(name: string, comCode: string, comName: string, categoryName?: string): boolean {
-  const text = `${name} ${comCode} ${comName} ${categoryName || ''}`.toLowerCase();
-
-  // Vylúčime jednoznačne nesúvisiace položky
-  const blackList = [
-    'auto-moto', 'autokozmetika', 'žiarovka', 'ziarovka', 'pneumatika', 'autobatéria', 'autobaterie',
-    'kuchyn', 'gril', 'panvica', 'kávovar', 'vysávač', 'vysavac', 'žehlička', 'zehlicka', 'hračka', 'hracka',
-    'detský', 'detsky', 'bicykel', 'kolobežka', 'kolobezka', 'záhrada', 'zahrada', 'kosačka', 'kosacka',
-    'parfém', 'kozmetika', 'oblečenie', 'topánky', 'chladnička', 'práčka', 'sporák', 'rúra'
-  ];
-
-  for (const b of blackList) {
-    if (text.includes(b)) return false;
-  }
-
-  // Overíme prítomnosť počítačového hardvéru
-  return COMPUTER_HARDWARE_KEYWORDS.some(k => text.includes(k));
+export interface ProductInputFields {
+  title: string;
+  mpn?: string;
+  ean?: string;
+  description?: string;
+  descriptionShort?: string;
+  producerName?: string;
+  attributes?: Record<string, any>;
 }
 
 /**
- * Inteligentné mapovanie produktu do taxonómie Worlds.sk
+ * Nezávislý inteligentný klasifikátor: Kategorizuje produkt na základe jeho skutočných dát (názov, popis, partnumber, parametre)
+ * NEPOUŽÍVA nespoľahlivú kategorizáciu dodávateľa.
  */
-export function mapToCleanTaxonomy(name: string, comCode: string, comName: string): { slug: string; hierarchy: string[] } {
-  const n = name.toLowerCase();
-  const c = comName.toLowerCase();
-  const code = comCode.toLowerCase();
+export function classifyProductIndependently(item: ProductInputFields): { slug: string; hierarchy: string[] } {
+  const t = (item.title || '').toLowerCase();
+  const desc = ((item.description || '') + ' ' + (item.descriptionShort || '')).toLowerCase();
+  const fullText = `${t} ${desc} ${item.mpn || ''}`.toLowerCase();
 
-  // 1. Notebooky
-  if (c.includes('notebook') || code === 'nb' || n.includes('notebook') || n.includes('laptop') || n.includes('thinkpad') || n.includes('ideapad') || n.includes('expertbook') || n.includes('zenbook') || n.includes('macbook')) {
-    if (n.includes('legion') || n.includes('predator') || n.includes('nitro') || n.includes('victus') || n.includes('omen') || n.includes('tuf ') || n.includes('gaming')) {
+  // 1. NOTEBOOKY
+  const isNotebook = t.includes('ntb') || t.includes('notebook') || t.includes('laptop') ||
+    t.includes('thinkpad') || t.includes('ideapad') || t.includes('expertbook') || t.includes('zenbook') ||
+    t.includes('macbook') || t.includes('vivobook') || t.includes('latitude') || t.includes('inspiron') ||
+    t.includes('probook') || t.includes('elitebook') || t.includes('victus') || t.includes('omen') ||
+    t.includes('legion') || t.includes('predator') || t.includes('nitro') || t.includes('yoga') ||
+    t.includes('swift') || t.includes('aspire') || t.includes('tuf gaming') || t.includes('rog zephyrus') ||
+    t.includes('rog strix') || t.includes('katana') || t.includes('cyborg') || t.includes('v15 g') ||
+    t.includes('250 g9') || t.includes('250 g10') || t.includes('450 g10') || t.includes('650 g10');
+
+  const isAccessory = t.includes('carepack') || t.includes('care pack') || t.includes('rozšírenie záruky') ||
+    t.includes('batoh') || t.includes('backpack') || t.includes('dokovac') || t.includes('dock') ||
+    t.includes('puzdro') || t.includes('obal') || t.includes('baterka') || t.includes('bateria') ||
+    t.includes('batéria') || t.includes('licencia') || t.includes('držiak') || t.includes('drziak');
+
+  if (isNotebook && !isAccessory) {
+    // 1a. Herné notebooky (RTX grafiky, herné modelové rady)
+    if (
+      t.includes('rtx') || t.includes('geforce') || t.includes('radeon rx') ||
+      t.includes('legion') || t.includes('predator') || t.includes('nitro') ||
+      t.includes('victus') || t.includes('omen') || t.includes('tuf') ||
+      t.includes('rog') || t.includes('katana') || t.includes('cyborg') ||
+      t.includes('raider') || t.includes('stealth') || t.includes('gaming') ||
+      desc.includes('rtx 40') || desc.includes('rtx 30') || desc.includes('rtx 20')
+    ) {
       return { slug: 'herne-notebooky', hierarchy: ['Počítače a notebooky', 'Notebooky', 'Herné notebooky'] };
     }
-    if (n.includes('thinkpad') || n.includes('probook') || n.includes('elitebook') || n.includes('latitude') || n.includes('expertbook')) {
-      return { slug: 'firemne-notebooky', hierarchy: ['Počítače a notebooky', 'Notebooky', 'Firemné a pracovné notebooky'] };
-    }
-    if (n.includes('zenbook') || n.includes('swift') || n.includes('macbook') || n.includes('yoga') || n.includes('gram')) {
-      return { slug: 'ultrabooky', hierarchy: ['Počítače a notebooky', 'Notebooky', 'Ultrabooky a kompaktné'] };
-    }
-    if (n.includes('2in1') || n.includes('2v1') || n.includes('touch') || n.includes('x360') || n.includes('flip')) {
+
+    // 1b. 2v1 a dotykové notebooky
+    if (
+      t.includes('2in1') || t.includes('2v1') || t.includes('2-in-1') ||
+      t.includes('touch') || t.includes('dotykov') || t.includes('x360') ||
+      t.includes('flip') || t.includes('duet') || t.includes('spin') ||
+      t.includes('detachable') || desc.includes('dotykový displej') || desc.includes('touchscreen')
+    ) {
       return { slug: '2v1-a-dotykove-notebooky', hierarchy: ['Počítače a notebooky', 'Notebooky', '2v1 a dotykové notebooky'] };
     }
+
+    // 1c. Firemné a pracovné notebooky
+    if (
+      t.includes('thinkpad') || t.includes('probook') || t.includes('elitebook') ||
+      t.includes('latitude') || t.includes('precision') || t.includes('zbook') ||
+      t.includes('expertbook') || t.includes('travelmate') || t.includes('thinkbook') ||
+      t.includes('vostro') || desc.includes('windows 11 pro') || desc.includes('windows 10 pro')
+    ) {
+      return { slug: 'firemne-notebooky', hierarchy: ['Počítače a notebooky', 'Notebooky', 'Firemné a pracovné notebooky'] };
+    }
+
+    // 1d. Ultrabooky a prémiové ľahké modely
+    if (
+      t.includes('zenbook') || t.includes('swift') || t.includes('macbook') ||
+      t.includes('gram') || t.includes('xps') || t.includes('surface laptop') ||
+      t.includes('envy') || t.includes('yoga slim') || desc.includes('ultrabook') ||
+      desc.includes('hmotnosť len 1.') || desc.includes('hmotnosť len 0.')
+    ) {
+      return { slug: 'ultrabooky', hierarchy: ['Počítače a notebooky', 'Notebooky', 'Ultrabooky a kompaktné'] };
+    }
+
+    // Všeobecný notebook
     return { slug: 'notebooky', hierarchy: ['Počítače a notebooky', 'Notebooky'] };
   }
 
-  // 2. Stolné PC & Servery
-  if (c.includes('server') || n.includes('proliant') || n.includes('poweredge') || n.includes('thinksystem')) {
+  // 2. STOLNÉ POČÍTAČE, AIO & SERVERY
+  if (
+    t.includes('server') || t.includes('proliant') || t.includes('poweredge') ||
+    t.includes('thinksystem') || t.includes('workstation') || t.includes('rack server')
+  ) {
     return { slug: 'servery-a-workstation', hierarchy: ['Počítače a notebooky', 'Servery a pracovné stanice'] };
   }
-  if (n.includes('aio') || n.includes('all in one') || n.includes('all-in-one')) {
+
+  if (
+    t.includes('all-in-one') || t.includes('all in one') || t.includes('aio') ||
+    t.includes('imac') || t.includes('ideacentre aio') || t.includes('proone') ||
+    t.includes('optiplex aio') || t.includes('veriton aio')
+  ) {
     return { slug: 'all-in-one-pocitace', hierarchy: ['Počítače a notebooky', 'Stolné počítače', 'All-in-One PC'] };
   }
-  if (n.includes('mini pc') || n.includes('nuc') || n.includes('tiny') || n.includes('micro')) {
+
+  if (
+    t.includes('mini pc') || t.includes('minipc') || t.includes('nuc') ||
+    t.includes('tiny') || t.includes('micro pc') || t.includes('usff') ||
+    t.includes('mac mini') || t.includes('mac studio') || t.includes('deskmini')
+  ) {
     return { slug: 'mini-pc', hierarchy: ['Počítače a notebooky', 'Stolné počítače', 'Mini PC'] };
   }
-  if (n.includes('herný počítač') || n.includes('herni pc') || n.includes('legion t') || n.includes('predator orion') || n.includes('omen 25l') || n.includes('omen 40l')) {
+
+  if (
+    (t.includes('počítač') || t.includes('pocitac') || t.includes('desktop') || t.includes('tower')) &&
+    (t.includes('rtx') || t.includes('geforce') || t.includes('gaming') || t.includes('herný') || t.includes('herni'))
+  ) {
     return { slug: 'herne-pocitace', hierarchy: ['Počítače a notebooky', 'Stolné počítače', 'Herné počítače'] };
   }
-  if (c.includes('počítač') || c.includes('desktop') || c.includes('pc') || n.includes('optiplex') || n.includes('thinkcentre') || n.includes('prodesk')) {
+
+  if (
+    t.includes('optiplex') || t.includes('thinkcentre') || t.includes('prodesk') ||
+    t.includes('elitedesk') || t.includes('veriton') || t.includes('vostro desktop') ||
+    t.includes('kancelársky pc') || t.includes('kancelarsky pc') || t.includes('stolný počítač')
+  ) {
     return { slug: 'kancelarske-pocitace', hierarchy: ['Počítače a notebooky', 'Stolné počítače', 'Kancelárske a domáce PC'] };
   }
 
-  // 3. Monitory
-  if (c.includes('monitor') || c.includes('lcd') || n.startsWith('lcd ') || n.includes('monitor')) {
+  // 3. MONITORY
+  if (
+    t.includes('monitor') || t.includes('lcd displej') || t.startsWith('lcd ') ||
+    t.includes('oled monitor') || t.includes('gaming monitor') || t.includes('ultrawide') ||
+    (t.includes('ips') && (t.includes('144hz') || t.includes('165hz') || t.includes('240hz') || t.includes('qhd') || t.includes('4k uhd')))
+  ) {
     return { slug: 'monitory-a-displeje', hierarchy: ['Monitory a displeje'] };
   }
 
-  // 4. Komponenty
-  if (c.includes('procesor') || c.includes('cpu') || n.includes('core i') || n.includes('ryzen') || n.includes('intel core') || n.includes('amd ryzen')) {
+  // 4. KOMPONENTY
+  if (
+    t.includes('procesor') || t.includes('cpu') || t.includes('intel core i') ||
+    t.includes('amd ryzen') || t.includes('core ultra') || t.includes('threadripper') ||
+    t.includes('lga1700') || t.includes('socket am5')
+  ) {
     return { slug: 'procesory', hierarchy: ['Počítačové komponenty', 'Procesory (CPU)'] };
   }
-  if (c.includes('grafick') || c.includes('vga') || c.includes('gpu') || n.includes('geforce') || n.includes('radeon') || n.includes('rtx ') || n.includes('gtx ')) {
+
+  if (
+    (t.includes('grafická karta') || t.includes('graficka karta') || t.includes('vga') || t.includes('gpu')) ||
+    ((t.includes('rtx 40') || t.includes('rtx 30') || t.includes('rx 7') || t.includes('rx 6')) && !t.includes('notebook') && !t.includes('laptop'))
+  ) {
     return { slug: 'graficke-karty', hierarchy: ['Počítačové komponenty', 'Grafické karty (GPU)'] };
   }
-  if (c.includes('pamäť') || c.includes('pamet') || c.includes('ram') || n.includes('ddr4') || n.includes('ddr5') || n.includes('so-dimm')) {
+
+  if (
+    t.includes('operačná pamäť') || t.includes('operacna pamet') ||
+    t.includes('ram ddr5') || t.includes('ram ddr4') || t.includes('ddr5 5600') ||
+    t.includes('ddr5 6000') || t.includes('ddr4 3200') || t.includes('so-dimm') ||
+    t.includes('kingston fury') || t.includes('corsair vengeance')
+  ) {
     return { slug: 'pamate-ram', hierarchy: ['Počítačové komponenty', 'Operačné pamäte (RAM)'] };
   }
-  if (c.includes('ssd') || c.includes('hdd') || c.includes('disk') || n.includes('ssd') || n.includes('nvme') || n.includes('m.2')) {
+
+  if (
+    t.includes('ssd') || t.includes('nvme') || t.includes('m.2 2280') ||
+    t.includes('pcie 4.0 ssd') || t.includes('pcie 5.0 ssd') || t.includes('hdd 3.5') ||
+    t.includes('barracuda') || t.includes('ironwolf') || t.includes('wd blue') ||
+    t.includes('wd black') || t.includes('wd red') || t.includes('pevný disk')
+  ) {
     return { slug: 'ssd-a-pevne-disky', hierarchy: ['Počítačové komponenty', 'SSD disky a úložiská'] };
   }
-  if (c.includes('základná doska') || c.includes('motherboard') || c.includes('mb') || n.includes('motherboard') || n.includes('socket')) {
+
+  if (
+    t.includes('základná doska') || t.includes('zakladna doska') || t.includes('motherboard') ||
+    t.includes('mainboard') || t.includes('b650') || t.includes('b760') || t.includes('z790') ||
+    t.includes('x670') || t.includes('a620') || t.includes('z890')
+  ) {
     return { slug: 'zakladne-dosky', hierarchy: ['Počítačové komponenty', 'Základné dosky'] };
   }
-  if (c.includes('zdroj') || c.includes('psu') || c.includes('power supply')) {
+
+  if (
+    t.includes('napájací zdroj') || t.includes('pocitacovy zdroj') || t.includes('power supply') ||
+    t.includes('psu') || t.includes('80 plus gold') || t.includes('80 plus bronze') ||
+    (t.includes('atx 3.0') && t.includes('w'))
+  ) {
     return { slug: 'pocitacove-zdroje', hierarchy: ['Počítačové komponenty', 'Počítačové zdroje (PSU)'] };
   }
-  if (c.includes('skrink') || c.includes('case') || c.includes('chassis')) {
+
+  if (
+    t.includes('počítačová skrinka') || t.includes('pocitacova skrinka') ||
+    t.includes('pc case') || t.includes('midi tower') || t.includes('mini itx case') ||
+    t.includes('chassis')
+  ) {
     return { slug: 'pocitacove-skrinky', hierarchy: ['Počítačové komponenty', 'Počítačové skrinky (Case)'] };
   }
-  if (c.includes('chladenie') || c.includes('cooler') || c.includes('ventilator') || n.includes('cooler') || n.includes('noctua')) {
+
+  if (
+    t.includes('chladič') || t.includes('chladic') || t.includes('cooler') ||
+    t.includes('aio liquid') || t.includes('vodné chladenie') || t.includes('vodne chladenie') ||
+    t.includes('ventilátor do skrinky') || t.includes('noctua') || t.includes('arctic liquid')
+  ) {
     return { slug: 'chladenie-pc', hierarchy: ['Počítačové komponenty', 'Chladenie a ventilátory'] };
   }
 
-  // 5. Periférie
-  if (c.includes('klávesnic') || c.includes('myš') || c.includes('keyboard') || c.includes('mouse') || n.includes('keyboard') || n.includes('myš') || n.includes('mys')) {
+  // 5. PERIFÉRIE
+  if (
+    t.includes('klávesnica') || t.includes('klavesnica') || t.includes('keyboard') ||
+    t.includes('myš') || t.includes('mys') || t.includes('mouse') ||
+    t.includes('trackball') || t.includes('podložka pod myš') || t.includes('podlozka pod mys')
+  ) {
     return { slug: 'klavesnice-a-mysi', hierarchy: ['Príslušenstvo a periférie', 'Klávesnice a myši'] };
   }
-  if (c.includes('slúchadl') || c.includes('headset') || n.includes('headset') || n.includes('slúchadlá')) {
+
+  if (
+    t.includes('slúchadlá') || t.includes('sluchadla') || t.includes('headset') ||
+    t.includes('herné slúchadlá') || t.includes('sluchátka')
+  ) {
     return { slug: 'sluchadla-a-headsety', hierarchy: ['Príslušenstvo a periférie', 'Slúchadlá a headsety'] };
   }
-  if (c.includes('dokov') || c.includes('dock') || c.includes('hub') || n.includes('dock') || n.includes('dokovacia')) {
+
+  if (
+    t.includes('dokovacia stanica') || t.includes('dokovaci stanice') ||
+    t.includes('thunderbolt dock') || t.includes('usb-c dock') || t.includes('usb hub') ||
+    t.includes('replikátor portov')
+  ) {
     return { slug: 'dokovacie-stanice', hierarchy: ['Príslušenstvo a periférie', 'Dokovacie stanice a USB huby'] };
   }
-  if (c.includes('webkam') || c.includes('mikrof') || n.includes('webcam') || n.includes('webkamera') || n.includes('mikrofón')) {
+
+  if (
+    t.includes('webkamera') || t.includes('webcam') || t.includes('mikrofón') ||
+    t.includes('mikrofon') || t.includes('streaming mikrofón')
+  ) {
     return { slug: 'webkamery-a-mikrofony', hierarchy: ['Príslušenstvo a periférie', 'Webkamery a mikrofóny'] };
   }
-  if (c.includes('reproduktor') || c.includes('speaker') || n.includes('reproduktory')) {
+
+  if (
+    t.includes('reproduktory') || t.includes('reproduktory k pc') || t.includes('pc reproduktory') ||
+    t.includes('soundbar k monitoru')
+  ) {
     return { slug: 'reproduktory-k-pc', hierarchy: ['Príslušenstvo a periférie', 'Reproduktory k počítaču'] };
   }
 
-  // 6. Sieťové prvky
-  if (c.includes('router') || c.includes('mesh') || n.includes('router') || n.includes('mesh')) {
+  // 6. SIEŤOVÉ PRVKY
+  if (
+    t.includes('router') || t.includes('mesh systém') || t.includes('mesh system') ||
+    t.includes('wi-fi router') || t.includes('wifi router') || t.includes('access point')
+  ) {
     return { slug: 'wifi-routere-a-mesh', hierarchy: ['Sieťové prvky a Wi-Fi', 'Wi-Fi routere a Mesh systémy'] };
   }
-  if (c.includes('switch') || c.includes('prepínač') || n.includes('switch')) {
+
+  if (
+    t.includes('switch') || t.includes('prepínač') || t.includes('prepinac') ||
+    t.includes('poe switch') || t.includes('gigabit switch')
+  ) {
     return { slug: 'switche-a-prepinace', hierarchy: ['Sieťové prvky a Wi-Fi', 'Switche a sieťové prepínače'] };
   }
-  if (c.includes('nas') || n.includes('synology') || n.includes('qnap') || n.includes('diskstation')) {
+
+  if (
+    t.includes('nas') || t.includes('synology') || t.includes('qnap') ||
+    t.includes('diskstation') || t.includes('sieťové úložisko')
+  ) {
     return { slug: 'nas-sietove-uloziska', hierarchy: ['Sieťové prvky a Wi-Fi', 'NAS sieťové dátové úložiská'] };
   }
 
-  // 7. Tlačiarne a kancelária
-  if (c.includes('toner') || c.includes('cartridge') || c.includes('náplň') || n.includes('toner') || n.includes('cartridge')) {
+  // 7. TLAČIARNE A KANCELÁRIA
+  if (
+    t.includes('toner') || t.includes('cartridge') || t.includes('atramentová náplň') ||
+    t.includes('atramentova napln')
+  ) {
     return { slug: 'tonery-a-naplne', hierarchy: ['Tlačiarne a kancelária', 'Tonery, cartridge a náplne'] };
   }
-  if (c.includes('skener') || c.includes('scanner') || n.includes('scanner') || n.includes('skener')) {
+
+  if (
+    t.includes('skener') || t.includes('scanner') || t.includes('dokumentový skener')
+  ) {
     return { slug: 'skenery', hierarchy: ['Tlačiarne a kancelária', 'Dokumentové skenery'] };
   }
-  if (c.includes('tlačiar') || c.includes('printer') || n.includes('laserjet') || n.includes('deskjet') || n.includes('pixma') || n.includes('tlačiareň')) {
+
+  if (
+    t.includes('tlačiareň') || t.includes('tlaciaren') || t.includes('printer') ||
+    t.includes('laserjet') || t.includes('deskjet') || t.includes('pixma') ||
+    t.includes('ecotank') || t.includes('multifunkčn') || t.includes('multifunkcn')
+  ) {
     return { slug: 'tlaciarne-a-multifunkcie', hierarchy: ['Tlačiarne a kancelária', 'Tlačiarne a multifunkčné zariadenia'] };
   }
 
-  // 8. Napájanie a káble
-  if (c.includes('ups') || c.includes('záložn') || n.includes('ups') || n.includes('back-ups') || n.includes('smart-ups')) {
+  // 8. NAPÁJANIE, ZÁLOŽNÉ ZDROJE A KÁBLE
+  if (
+    t.includes('ups') || t.includes('záložný zdroj') || t.includes('zalozny zdroj') ||
+    t.includes('prepäťová ochrana') || t.includes('prepatova ochrana') ||
+    t.includes('back-ups') || t.includes('smart-ups')
+  ) {
     return { slug: 'ups-zalozne-zdroje', hierarchy: ['Napájanie, záložné zdroje a káble', 'UPS záložné zdroje a prepäťové ochrany'] };
   }
-  if (c.includes('kábel') || c.includes('kabel') || c.includes('redukc') || c.includes('adaptér') || n.includes('hdmi') || n.includes('displayport') || n.includes('patch kabel')) {
+
+  if (
+    t.includes('kábel') || t.includes('kabel') || t.includes('redukcia') ||
+    t.includes('hdmi') || t.includes('displayport') || t.includes('patch kábel') ||
+    t.includes('usb-c kábel')
+  ) {
     return { slug: 'kable-a-redukcie', hierarchy: ['Napájanie, záložné zdroje a káble', 'Káble, redukcie a adaptéry'] };
   }
-  if (c.includes('nabíjač') || c.includes('nabijack') || n.includes('nabíjačka') || n.includes('adaptér')) {
+
+  if (
+    t.includes('nabíjačka') || t.includes('nabijacka') || t.includes('napájací adaptér') ||
+    t.includes('napadaci adapter') || t.includes('power adapter')
+  ) {
     return { slug: 'nabijacky-a-adaptery', hierarchy: ['Napájanie, záložné zdroje a káble', 'Nabíjačky a napájacie adaptéry'] };
   }
 
-  // 9. Pamäťové médiá
-  if (c.includes('flash') || n.includes('flash disk') || n.includes('usb kľúč') || n.includes('datatraveler')) {
+  // 9. PAMÄŤOVÉ MÉDIÁ
+  if (
+    t.includes('flash disk') || t.includes('usb flash') || t.includes('usb kľúč') ||
+    t.includes('usb kluc') || t.includes('datatraveler')
+  ) {
     return { slug: 'usb-flash-disky', hierarchy: ['Pamäťové médiá a USB', 'USB flash disky'] };
   }
-  if (c.includes('extern') || n.includes('externý disk') || n.includes('external hdd') || n.includes('portable ssd')) {
+
+  if (
+    t.includes('externý disk') || t.includes('externy disk') || t.includes('external hdd') ||
+    t.includes('portable ssd') || t.includes('externé ssd')
+  ) {
     return { slug: 'externe-disky-ssd-hdd', hierarchy: ['Pamäťové médiá a USB', 'Externé disky (SSD a HDD)'] };
   }
-  if (c.includes('karta') || n.includes('microsd') || n.includes('sdhc') || n.includes('sdxc')) {
+
+  if (
+    t.includes('pamäťová karta') || t.includes('pametova karta') || t.includes('microsd') ||
+    t.includes('sdhc') || t.includes('sdxc')
+  ) {
     return { slug: 'pamatove-karty-sd', hierarchy: ['Pamäťové médiá a USB', 'Pamäťové karty (SD / microSD)'] };
   }
 
-  // Default fallback
+  // Default fallback pre ostatné IT periférie
   return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
 }

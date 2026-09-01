@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
 import { XMLParser } from 'fast-xml-parser';
-import { isComputerHardware, mapToCleanTaxonomy } from './packages/importer/dist/taxonomy-definition.js';
+import { classifyProductIndependently } from './packages/importer/dist/taxonomy-definition.js';
 import { sanitizeAndFormatHtml } from './packages/importer/dist/html-sanitizer.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jhgyzgdiapiewpjgosxm.supabase.co';
@@ -110,7 +110,7 @@ async function sendBatchWithRetry(batch, maxRetries = 3) {
 
 async function main() {
   console.log('===========================================================');
-  console.log(' Worlds.sk - IMPORT POČÍTAČOVÉHO HARDVÉRU, POPISOV A FOTIEK');
+  console.log(' Worlds.sk - NEZÁVISLÁ KATEGORIZÁCIA, ČISTÉ HTML A FOTKY');
   console.log('===========================================================\n');
 
   console.log('1. Načítavam master XML katalóg...');
@@ -147,6 +147,7 @@ async function main() {
       partNumber: pn,
       imageUrl: img,
       rawDescription: desc,
+      descriptionShort: p.DescriptionShort,
       commodityCode: p.CommodityCode,
       commodityName: p.CommodityName,
       producerName: p.ProducerName,
@@ -160,29 +161,40 @@ async function main() {
   console.log(`   ✓ Zaindexovaných ${xmlProductMap.size} položiek z XML.\n`);
 
   // 3. Načítame aktívne produkty so živými cenami a skladovými stavmi
-  console.log('3. Párujem produkty so živými cenami a čistím popisy...');
+  console.log('3. Nezávisle kategorizujem každý produkt a spracovávam HTML popis...');
   const activeProducts = JSON.parse(fs.readFileSync('downloads/final_active_notebooks.json', 'utf8'));
 
   const finalDbRows = [];
   let withDirectPhotos = 0;
+  const categoryStats = new Map();
 
   for (const item of activeProducts) {
     const code = String(item.supplierCode);
     const xmlInfo = xmlProductMap.get(code) || xmlProductMap.get(String(item.mpn)) || {};
 
     const name = item.title;
-    const comCode = String(xmlInfo.commodityCode || item.commodityCode || 'NB');
-    const comName = String(xmlInfo.commodityName || item.commodityName || 'Notebooky');
+    const rawDesc = xmlInfo.rawDescription || item.supplierDescription || '';
+    const descShort = xmlInfo.descriptionShort || item.shortDescription || '';
 
-    const { slug: catSlug, hierarchy: catPath } = mapToCleanTaxonomy(name, comCode, comName);
+    // NEZÁVISLÁ KATEGORIZÁCIA NA ZÁKLADE VŠETKÝCH DÁT PRODUKTU
+    const { slug: catSlug, hierarchy: catPath } = classifyProductIndependently({
+      title: name,
+      mpn: String(item.mpn || xmlInfo.partNumber || ''),
+      ean: String(item.ean || xmlInfo.ean || ''),
+      description: rawDesc,
+      descriptionShort: descShort,
+      producerName: item.brand || xmlInfo.producerName
+    });
+
+    categoryStats.set(catSlug, (categoryStats.get(catSlug) || 0) + 1);
+
     const brand = extractBrand(name, item.brand || xmlInfo.producerName);
     const mpn = String(item.mpn || xmlInfo.partNumber || code);
     const ean = String(item.ean || xmlInfo.ean || `${code}0000`);
     const titleSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
     const slug = `${titleSlug}-${code}`;
 
-    // Čistenie popisu z XML
-    const rawDesc = xmlInfo.rawDescription || item.supplierDescription || '';
+    // Zachovanie kompletného formátovaného HTML popisu s dekódovanými entitami
     const { cleanHtml, plainText, specs } = sanitizeAndFormatHtml(rawDesc);
 
     // Fotografia z eD XML
@@ -234,8 +246,8 @@ async function main() {
       brand,
       category_slug: catSlug,
       category_hierarchy: catPath,
-      commodity_code: comCode,
-      commodity_name: comName,
+      commodity_code: xmlInfo.commodityCode || 'NB',
+      commodity_name: xmlInfo.commodityName || 'Notebooky',
       title: name,
       slug,
       short_description: plainText.slice(0, 220),
@@ -273,9 +285,13 @@ async function main() {
   }
 
   console.log('===========================================================');
-  console.log(` Pripravených produktov s čistým HTML a fotkami: ${finalDbRows.length}`);
+  console.log(' ŠTATISTIKA NEZÁVISLEJ KATEGORIZÁCIE:');
+  for (const [cat, count] of categoryStats.entries()) {
+    console.log(`  - ${cat}: ${count} produktov`);
+  }
+  console.log('-----------------------------------------------------------');
+  console.log(` Celkovo produktov s formátovaným HTML a fotkami: ${finalDbRows.length}`);
   console.log(` S priamou fotkou z eD CDN: ${withDirectPhotos}`);
-  console.log(` Skladom v centrále: ${finalDbRows.filter(r => r.is_in_stock).length}`);
   console.log('===========================================================\n');
 
   // 4. Zápis do Supabase databázy
@@ -294,7 +310,7 @@ async function main() {
   }
 
   console.log('\n===========================================================');
-  console.log(` 🎉 ÚSPEŠNE ULOŽENÝCH ${saved} POČÍTAČOVÝCH PRODUKTOV S FOTKAMI A ČISTÝM POPISOM DO SUPABASE!`);
+  console.log(` 🎉 ÚSPEŠNE ULOŽENÝCH ${saved} PRODUKTOV S NEZÁVISLOU KATEGORIZÁCIOU DO SUPABASE!`);
   console.log('===========================================================\n');
 }
 
