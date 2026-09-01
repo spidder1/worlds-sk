@@ -8,6 +8,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
     level: 1,
     isSeoIndexed: true,
     displayOrder: 1,
+    allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb', 'screen_size_inch'],
     subcategories: [
       {
         id: 'cat-2',
@@ -17,6 +18,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
         level: 2,
         isSeoIndexed: true,
         displayOrder: 1,
+        allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb', 'screen_size_inch'],
         subcategories: [
           {
             id: 'cat-3',
@@ -26,6 +28,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
             level: 3,
             isSeoIndexed: true,
             displayOrder: 1,
+            allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb', 'screen_size_inch'],
           },
           {
             id: 'cat-4',
@@ -35,6 +38,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
             level: 3,
             isSeoIndexed: true,
             displayOrder: 2,
+            allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb', 'screen_size_inch'],
           },
           {
             id: 'cat-5',
@@ -44,6 +48,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
             level: 3,
             isSeoIndexed: true,
             displayOrder: 3,
+            allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb', 'screen_size_inch'],
           },
         ],
       },
@@ -55,6 +60,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
         level: 2,
         isSeoIndexed: true,
         displayOrder: 2,
+        allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb'],
       },
     ],
   },
@@ -65,6 +71,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
     level: 1,
     isSeoIndexed: true,
     displayOrder: 2,
+    allowedFilterAttributes: ['brand'],
     subcategories: [
       {
         id: 'cat-9',
@@ -74,6 +81,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
         level: 2,
         isSeoIndexed: true,
         displayOrder: 1,
+        allowedFilterAttributes: ['brand', 'cpu_family'],
       },
       {
         id: 'cat-10',
@@ -83,6 +91,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
         level: 2,
         isSeoIndexed: true,
         displayOrder: 2,
+        allowedFilterAttributes: ['brand'],
       },
       {
         id: 'cat-11',
@@ -92,6 +101,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
         level: 2,
         isSeoIndexed: true,
         displayOrder: 3,
+        allowedFilterAttributes: ['brand', 'ram_gb'],
       },
       {
         id: 'cat-12',
@@ -101,6 +111,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
         level: 2,
         isSeoIndexed: true,
         displayOrder: 4,
+        allowedFilterAttributes: ['brand', 'ssd_gb'],
       },
     ],
   },
@@ -111,6 +122,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
     level: 1,
     isSeoIndexed: true,
     displayOrder: 3,
+    allowedFilterAttributes: ['brand', 'screen_size_inch'],
   },
 ];
 
