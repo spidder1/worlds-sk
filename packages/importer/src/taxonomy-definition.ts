@@ -1,7 +1,9 @@
-import { MasterProduct, TaxonomyCategory, QuarantineRecord, ImportRunSummary } from '@worlds/types';
-import { supabase } from './supabase-client';
+import { TaxonomyCategory } from '@worlds/types';
 
-export const CATEGORIES: TaxonomyCategory[] = [
+/**
+ * Čistá, prehľadná taxonómia počítačového hardvéru a IT techniky pre Worlds.sk
+ */
+export const WORLDS_IT_CATEGORIES: TaxonomyCategory[] = [
   {
     id: 'cat-pocitace-a-notebooky',
     slug: 'pocitace-a-notebooky',
@@ -19,7 +21,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
         level: 2,
         isSeoIndexed: true,
         displayOrder: 1,
-        allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb', 'screen_size_inch', 'gpu_model'],
+        allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb', 'screen_size_inch', 'gpu_model', 'os'],
         subcategories: [
           {
             id: 'cat-herne-notebooky',
@@ -39,7 +41,7 @@ export const CATEGORIES: TaxonomyCategory[] = [
             level: 3,
             isSeoIndexed: true,
             displayOrder: 2,
-            allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb'],
+            allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb', 'os'],
           },
           {
             id: 'cat-ultrabooky',
@@ -454,250 +456,187 @@ export const CATEGORIES: TaxonomyCategory[] = [
   },
 ];
 
-function mapDbRowToMasterProduct(row: any): MasterProduct {
-  return {
-    id: row.id,
-    supplierCode: row.supplier_code,
-    supplierProId: row.supplier_pro_id || row.supplier_code,
-    sku: row.sku,
-    mpn: row.mpn,
-    mpn2: row.mpn2,
-    ean: row.ean,
-    brand: row.brand,
-    rawBrand: row.raw_brand,
-    categorySlug: row.category_slug,
-    categoryHierarchy: Array.isArray(row.category_hierarchy) ? row.category_hierarchy : ['Počítače a IT'],
-    commodityCode: row.commodity_code,
-    commodityName: row.commodity_name,
-    title: row.title,
-    slug: row.slug,
-    shortDescription: row.short_description,
-    supplierDescription: row.supplier_description,
-    enrichedDescription: row.enriched_description,
-    seoTitle: row.seo_title,
-    seoDescription: row.seo_description,
-    searchKeywords: Array.isArray(row.search_keywords) ? row.search_keywords : [],
-    pricing: {
-      supplierCost: Number(row.supplier_cost || 0),
-      supplierFees: {
-        garbageFee: Number(row.garbage_fee || 0),
-        authorFee: Number(row.author_fee || 0),
-      },
-      totalCostWithFees: Number(row.total_cost_with_fees || row.supplier_cost || 0),
-      vatRate: Number(row.vat_rate || 20),
-      marginPercentage: Number(row.margin_percentage || 12),
-      basePrice: Number(row.base_price || 0),
-      finalPrice: Number(row.final_price || 0),
-      recommendedRetailPrice: row.recommended_retail_price ? Number(row.recommended_retail_price) : undefined,
-      currency: row.currency || 'EUR',
-    },
-    stockCount: Number(row.stock_count || 0),
-    isInStock: Boolean(row.is_in_stock),
-    stockText: row.stock_text,
-    expectedRestockDate: row.expected_restock_date,
-    minOrderQuantity: row.min_order_quantity || 1,
-    warrantyMonths: row.warranty_months || 24,
-    attributes: typeof row.attributes === 'object' && row.attributes !== null ? row.attributes : {},
-    images: Array.isArray(row.images) ? row.images : [],
-    dimensions: row.dimensions,
-    status: row.status || 'ACTIVE',
-    reviewStatus: row.review_status || 'AUTO_APPROVED',
-    aiEnrichment: row.ai_enrichment,
-    qualityScore: typeof row.quality_score === 'object' && row.quality_score !== null ? row.quality_score : { total: 90, breakdown: {} },
-    dataHash: row.data_hash || '',
-    lastSyncedAt: row.last_synced_at || new Date().toISOString(),
-    lastReprocessedAt: row.last_reprocessed_at || new Date().toISOString(),
-    createdAt: row.created_at || new Date().toISOString(),
-    updatedAt: row.updated_at || new Date().toISOString(),
-  };
+/**
+ * Zoznam povolených hardvérových kľúčových slov a komodít
+ */
+const COMPUTER_HARDWARE_KEYWORDS = [
+  'notebook', 'laptop', 'thinkpad', 'ideapad', 'expertbook', 'zenbook', 'macbook', 'vivobook', 'latitude',
+  'inspiron', 'probook', 'elitebook', 'victus', 'omen', 'legion', 'predator', 'nitro', 'yoga', 'swift', 'aspire',
+  'počítač', 'pocitac', 'desktop', 'optiplex', 'thinkcentre', 'prodesk', 'elitedesk', 'all in one', 'aio', 'workstation', 'server',
+  'procesor', 'cpu', 'intel core', 'amd ryzen', 'xeon', 'threadripper',
+  'grafická karta', 'graficka karta', 'vga', 'gpu', 'geforce', 'radeon', 'rtx', 'gtx', 'quadro',
+  'pamäť', 'pamet', 'ram', 'ddr4', 'ddr5', 'so-dimm', 'dimm', 'fury',
+  'disk', 'ssd', 'nvme', 'm.2', 'pcie ssd', 'hdd', 'sata', 'barracuda', 'ironwolf', 'wd blue', 'wd black', 'wd red',
+  'základná doska', 'zakladna doska', 'motherboard', 'mainboard', 'b650', 'b760', 'z790', 'x670', 'socket',
+  'zdroj', 'power supply', 'psu', '80 plus', 'modular',
+  'skrinka', 'case', 'chassis', 'tower',
+  'chladenie', 'chladic', 'cooler', 'aio cooler', 'ventilator', 'fan',
+  'monitor', 'lcd', 'display', 'oled', 'ips', 'qhd', '4k', 'gaming monitor', 'curved', '144hz', '165hz', '240hz',
+  'klávesnica', 'klavesnica', 'keyboard', 'myš', 'mys', 'mouse', 'trackball', 'podložka pod myš',
+  'slúchadlá', 'sluchadla', 'headset', 'mikrofón', 'mikrofon', 'webkamera', 'webcam', 'reproduktory', 'speakers',
+  'dokovacia stanica', 'dokovaci stanice', 'dock', 'docking', 'usb hub', 'replikátor',
+  'router', 'wi-fi', 'wifi', 'switch', 'access point', 'mesh', 'nas', 'synology', 'qnap', 'patch panel',
+  'tlačiareň', 'tlaciaren', 'printer', 'laserjet', 'deskjet', 'pixma', 'ecotank', 'toner', 'cartridge', 'skener', 'scanner',
+  'ups', 'záložný zdroj', 'zalozny zdroj', 'prepäťová ochrana', 'prepatova ochrana', 'apc', 'eaton',
+  'flash disk', 'usb disk', 'pamäťová karta', 'pametova karta', 'sd karta', 'microsd', 'externý disk', 'externi disk'
+];
+
+/**
+ * Filter: Určí, či je produkt skutočný počítačový hardvér
+ */
+export function isComputerHardware(name: string, comCode: string, comName: string, categoryName?: string): boolean {
+  const text = `${name} ${comCode} ${comName} ${categoryName || ''}`.toLowerCase();
+
+  // Vylúčime jednoznačne nesúvisiace položky
+  const blackList = [
+    'auto-moto', 'autokozmetika', 'žiarovka', 'ziarovka', 'pneumatika', 'autobatéria', 'autobaterie',
+    'kuchyn', 'gril', 'panvica', 'kávovar', 'vysávač', 'vysavac', 'žehlička', 'zehlicka', 'hračka', 'hracka',
+    'detský', 'detsky', 'bicykel', 'kolobežka', 'kolobezka', 'záhrada', 'zahrada', 'kosačka', 'kosacka',
+    'parfém', 'kozmetika', 'oblečenie', 'topánky', 'chladnička', 'práčka', 'sporák', 'rúra'
+  ];
+
+  for (const b of blackList) {
+    if (text.includes(b)) return false;
+  }
+
+  // Overíme prítomnosť počítačového hardvéru
+  return COMPUTER_HARDWARE_KEYWORDS.some(k => text.includes(k));
 }
 
 /**
- * Získanie všetkých produktov priamo z PostgreSQL databázy Supabase
+ * Inteligentné mapovanie produktu do taxonómie Worlds.sk
  */
-export async function getAllProducts(): Promise<MasterProduct[]> {
-  try {
-    const { data, error } = await supabase
-      .from('master_products')
-      .select('*')
-      .order('is_in_stock', { ascending: false })
-      .order('final_price', { ascending: true })
-      .limit(100);
+export function mapToCleanTaxonomy(name: string, comCode: string, comName: string): { slug: string; hierarchy: string[] } {
+  const n = name.toLowerCase();
+  const c = comName.toLowerCase();
+  const code = comCode.toLowerCase();
 
-    if (error || !data || data.length === 0) {
-      console.warn('Supabase getAllProducts warning/empty:', error?.message);
-      return [];
+  // 1. Notebooky
+  if (c.includes('notebook') || code === 'nb' || n.includes('notebook') || n.includes('laptop') || n.includes('thinkpad') || n.includes('ideapad') || n.includes('expertbook') || n.includes('zenbook') || n.includes('macbook')) {
+    if (n.includes('legion') || n.includes('predator') || n.includes('nitro') || n.includes('victus') || n.includes('omen') || n.includes('tuf ') || n.includes('gaming')) {
+      return { slug: 'herne-notebooky', hierarchy: ['Počítače a notebooky', 'Notebooky', 'Herné notebooky'] };
     }
-
-    return data.map(mapDbRowToMasterProduct);
-  } catch (e) {
-    console.error('Chyba pri čítaní z databázy Supabase:', e);
-    return [];
-  }
-}
-
-/**
- * Získanie detailu produktu podľa slug priamo z PostgreSQL databázy Supabase
- */
-export async function getProductBySlug(slug: string): Promise<MasterProduct | null> {
-  try {
-    const { data, error } = await supabase
-      .from('master_products')
-      .select('*')
-      .eq('slug', slug)
-      .single();
-
-    if (error || !data) {
-      return null;
+    if (n.includes('thinkpad') || n.includes('probook') || n.includes('elitebook') || n.includes('latitude') || n.includes('expertbook')) {
+      return { slug: 'firemne-notebooky', hierarchy: ['Počítače a notebooky', 'Notebooky', 'Firemné a pracovné notebooky'] };
     }
-
-    return mapDbRowToMasterProduct(data);
-  } catch (e) {
-    console.error(`Chyba pri čítaní produktu ${slug} z databázy:`, e);
-    return null;
-  }
-}
-
-/**
- * Získanie produktov podľa kategórie priamo z databázy Supabase
- */
-export async function getProductsByCategory(categorySlug: string): Promise<MasterProduct[]> {
-  try {
-    const { data, error } = await supabase
-      .from('master_products')
-      .select('*')
-      .eq('category_slug', categorySlug)
-      .order('is_in_stock', { ascending: false })
-      .order('final_price', { ascending: true })
-      .limit(50);
-
-    if (error || !data) {
-      return [];
+    if (n.includes('zenbook') || n.includes('swift') || n.includes('macbook') || n.includes('yoga') || n.includes('gram')) {
+      return { slug: 'ultrabooky', hierarchy: ['Počítače a notebooky', 'Notebooky', 'Ultrabooky a kompaktné'] };
     }
-
-    return data.map(mapDbRowToMasterProduct);
-  } catch (e) {
-    console.error(`Chyba pri čítaní kategórie ${categorySlug} z databázy:`, e);
-    return [];
-  }
-}
-
-/**
- * Získanie odporúčaných / skladových produktov pre homepage
- */
-export async function getFeaturedProducts(limit = 8): Promise<MasterProduct[]> {
-  try {
-    const { data, error } = await supabase
-      .from('master_products')
-      .select('*')
-      .eq('is_in_stock', true)
-      .order('final_price', { ascending: true })
-      .limit(limit);
-
-    if (error || !data || data.length === 0) {
-      return [];
+    if (n.includes('2in1') || n.includes('2v1') || n.includes('touch') || n.includes('x360') || n.includes('flip')) {
+      return { slug: '2v1-a-dotykove-notebooky', hierarchy: ['Počítače a notebooky', 'Notebooky', '2v1 a dotykové notebooky'] };
     }
-
-    return data.map(mapDbRowToMasterProduct);
-  } catch (e) {
-    console.error('Chyba pri čítaní featured produktov z databázy:', e);
-    return [];
+    return { slug: 'notebooky', hierarchy: ['Počítače a notebooky', 'Notebooky'] };
   }
-}
 
-export async function getCategories(): Promise<TaxonomyCategory[]> {
-  return CATEGORIES;
-}
-
-export function getCategoryBySlug(slug: string): TaxonomyCategory | null {
-  function findCat(cats: TaxonomyCategory[]): TaxonomyCategory | null {
-    for (const c of cats) {
-      if (c.slug === slug) return c;
-      if (c.subcategories) {
-        const found = findCat(c.subcategories);
-        if (found) return found;
-      }
-    }
-    return null;
+  // 2. Stolné PC & Servery
+  if (c.includes('server') || n.includes('proliant') || n.includes('poweredge') || n.includes('thinksystem')) {
+    return { slug: 'servery-a-workstation', hierarchy: ['Počítače a notebooky', 'Servery a pracovné stanice'] };
   }
-  return findCat(CATEGORIES);
-}
-
-export const findCategoryBySlug = getCategoryBySlug;
-
-/**
- * Fulltextové vyhľadávanie produktov v PostgreSQL databáze Supabase
- */
-export async function searchProducts(query: string): Promise<MasterProduct[]> {
-  const q = query.trim();
-  if (!q) return [];
-
-  try {
-    const { data, error } = await supabase
-      .from('master_products')
-      .select('*')
-      .or(`title.ilike.%${q}%,mpn.ilike.%${q}%,brand.ilike.%${q}%,ean.ilike.%${q}%`)
-      .limit(20);
-
-    if (error || !data) {
-      return [];
-    }
-
-    return data.map(mapDbRowToMasterProduct);
-  } catch (e) {
-    console.error('Chyba pri vyhľadávaní v databáze:', e);
-    return [];
+  if (n.includes('aio') || n.includes('all in one') || n.includes('all-in-one')) {
+    return { slug: 'all-in-one-pocitace', hierarchy: ['Počítače a notebooky', 'Stolné počítače', 'All-in-One PC'] };
   }
-}
+  if (n.includes('mini pc') || n.includes('nuc') || n.includes('tiny') || n.includes('micro')) {
+    return { slug: 'mini-pc', hierarchy: ['Počítače a notebooky', 'Stolné počítače', 'Mini PC'] };
+  }
+  if (n.includes('herný počítač') || n.includes('herni pc') || n.includes('legion t') || n.includes('predator orion') || n.includes('omen 25l') || n.includes('omen 40l')) {
+    return { slug: 'herne-pocitace', hierarchy: ['Počítače a notebooky', 'Stolné počítače', 'Herné počítače'] };
+  }
+  if (c.includes('počítač') || c.includes('desktop') || c.includes('pc') || n.includes('optiplex') || n.includes('thinkcentre') || n.includes('prodesk')) {
+    return { slug: 'kancelarske-pocitace', hierarchy: ['Počítače a notebooky', 'Stolné počítače', 'Kancelárske a domáce PC'] };
+  }
 
-export async function getImporter() {
-  return {
-    getRepository() {
-      return {
-        async getStats() {
-          const { count } = await supabase.from('master_products').select('*', { count: 'exact', head: true });
-          const { count: inStockCount } = await supabase.from('master_products').select('*', { count: 'exact', head: true }).eq('is_in_stock', true);
-          
-          return {
-            totalProducts: count || 0,
-            inStockProducts: inStockCount || 0,
-            totalMasterProducts: count || 0,
-            activeCount: count || 0,
-            needsReviewCount: 0,
-            autoApprovedCount: count || 0,
-            quarantinedCount: 0,
-            averageQualityScore: 94,
-            brandCount: 12,
-          };
-        },
-        async getAllProducts() {
-          return getAllProducts();
-        },
-        async getQuarantineRecords(): Promise<QuarantineRecord[]> {
-          return [];
-        },
-        async getImportRuns(): Promise<ImportRunSummary[]> {
-          return [
-            {
-              id: 'run-live-ed-1',
-              type: 'FULL_CATALOG',
-              startTime: new Date().toISOString(),
-              endTime: new Date().toISOString(),
-              durationMs: 4200,
-              totalFetched: 122145,
-              createdCount: 862,
-              updatedCount: 0,
-              unchangedCount: 0,
-              priceChangedCount: 0,
-              stockChangedCount: 0,
-              quarantinedCount: 0,
-              needsReviewCount: 0,
-              errorsCount: 0,
-              status: 'COMPLETED',
-            },
-          ];
-        },
-      };
-    },
-  };
+  // 3. Monitory
+  if (c.includes('monitor') || c.includes('lcd') || n.startsWith('lcd ') || n.includes('monitor')) {
+    return { slug: 'monitory-a-displeje', hierarchy: ['Monitory a displeje'] };
+  }
+
+  // 4. Komponenty
+  if (c.includes('procesor') || c.includes('cpu') || n.includes('core i') || n.includes('ryzen') || n.includes('intel core') || n.includes('amd ryzen')) {
+    return { slug: 'procesory', hierarchy: ['Počítačové komponenty', 'Procesory (CPU)'] };
+  }
+  if (c.includes('grafick') || c.includes('vga') || c.includes('gpu') || n.includes('geforce') || n.includes('radeon') || n.includes('rtx ') || n.includes('gtx ')) {
+    return { slug: 'graficke-karty', hierarchy: ['Počítačové komponenty', 'Grafické karty (GPU)'] };
+  }
+  if (c.includes('pamäť') || c.includes('pamet') || c.includes('ram') || n.includes('ddr4') || n.includes('ddr5') || n.includes('so-dimm')) {
+    return { slug: 'pamate-ram', hierarchy: ['Počítačové komponenty', 'Operačné pamäte (RAM)'] };
+  }
+  if (c.includes('ssd') || c.includes('hdd') || c.includes('disk') || n.includes('ssd') || n.includes('nvme') || n.includes('m.2')) {
+    return { slug: 'ssd-a-pevne-disky', hierarchy: ['Počítačové komponenty', 'SSD disky a úložiská'] };
+  }
+  if (c.includes('základná doska') || c.includes('motherboard') || c.includes('mb') || n.includes('motherboard') || n.includes('socket')) {
+    return { slug: 'zakladne-dosky', hierarchy: ['Počítačové komponenty', 'Základné dosky'] };
+  }
+  if (c.includes('zdroj') || c.includes('psu') || c.includes('power supply')) {
+    return { slug: 'pocitacove-zdroje', hierarchy: ['Počítačové komponenty', 'Počítačové zdroje (PSU)'] };
+  }
+  if (c.includes('skrink') || c.includes('case') || c.includes('chassis')) {
+    return { slug: 'pocitacove-skrinky', hierarchy: ['Počítačové komponenty', 'Počítačové skrinky (Case)'] };
+  }
+  if (c.includes('chladenie') || c.includes('cooler') || c.includes('ventilator') || n.includes('cooler') || n.includes('noctua')) {
+    return { slug: 'chladenie-pc', hierarchy: ['Počítačové komponenty', 'Chladenie a ventilátory'] };
+  }
+
+  // 5. Periférie
+  if (c.includes('klávesnic') || c.includes('myš') || c.includes('keyboard') || c.includes('mouse') || n.includes('keyboard') || n.includes('myš') || n.includes('mys')) {
+    return { slug: 'klavesnice-a-mysi', hierarchy: ['Príslušenstvo a periférie', 'Klávesnice a myši'] };
+  }
+  if (c.includes('slúchadl') || c.includes('headset') || n.includes('headset') || n.includes('slúchadlá')) {
+    return { slug: 'sluchadla-a-headsety', hierarchy: ['Príslušenstvo a periférie', 'Slúchadlá a headsety'] };
+  }
+  if (c.includes('dokov') || c.includes('dock') || c.includes('hub') || n.includes('dock') || n.includes('dokovacia')) {
+    return { slug: 'dokovacie-stanice', hierarchy: ['Príslušenstvo a periférie', 'Dokovacie stanice a USB huby'] };
+  }
+  if (c.includes('webkam') || c.includes('mikrof') || n.includes('webcam') || n.includes('webkamera') || n.includes('mikrofón')) {
+    return { slug: 'webkamery-a-mikrofony', hierarchy: ['Príslušenstvo a periférie', 'Webkamery a mikrofóny'] };
+  }
+  if (c.includes('reproduktor') || c.includes('speaker') || n.includes('reproduktory')) {
+    return { slug: 'reproduktory-k-pc', hierarchy: ['Príslušenstvo a periférie', 'Reproduktory k počítaču'] };
+  }
+
+  // 6. Sieťové prvky
+  if (c.includes('router') || c.includes('mesh') || n.includes('router') || n.includes('mesh')) {
+    return { slug: 'wifi-routere-a-mesh', hierarchy: ['Sieťové prvky a Wi-Fi', 'Wi-Fi routere a Mesh systémy'] };
+  }
+  if (c.includes('switch') || c.includes('prepínač') || n.includes('switch')) {
+    return { slug: 'switche-a-prepinace', hierarchy: ['Sieťové prvky a Wi-Fi', 'Switche a sieťové prepínače'] };
+  }
+  if (c.includes('nas') || n.includes('synology') || n.includes('qnap') || n.includes('diskstation')) {
+    return { slug: 'nas-sietove-uloziska', hierarchy: ['Sieťové prvky a Wi-Fi', 'NAS sieťové dátové úložiská'] };
+  }
+
+  // 7. Tlačiarne a kancelária
+  if (c.includes('toner') || c.includes('cartridge') || c.includes('náplň') || n.includes('toner') || n.includes('cartridge')) {
+    return { slug: 'tonery-a-naplne', hierarchy: ['Tlačiarne a kancelária', 'Tonery, cartridge a náplne'] };
+  }
+  if (c.includes('skener') || c.includes('scanner') || n.includes('scanner') || n.includes('skener')) {
+    return { slug: 'skenery', hierarchy: ['Tlačiarne a kancelária', 'Dokumentové skenery'] };
+  }
+  if (c.includes('tlačiar') || c.includes('printer') || n.includes('laserjet') || n.includes('deskjet') || n.includes('pixma') || n.includes('tlačiareň')) {
+    return { slug: 'tlaciarne-a-multifunkcie', hierarchy: ['Tlačiarne a kancelária', 'Tlačiarne a multifunkčné zariadenia'] };
+  }
+
+  // 8. Napájanie a káble
+  if (c.includes('ups') || c.includes('záložn') || n.includes('ups') || n.includes('back-ups') || n.includes('smart-ups')) {
+    return { slug: 'ups-zalozne-zdroje', hierarchy: ['Napájanie, záložné zdroje a káble', 'UPS záložné zdroje a prepäťové ochrany'] };
+  }
+  if (c.includes('kábel') || c.includes('kabel') || c.includes('redukc') || c.includes('adaptér') || n.includes('hdmi') || n.includes('displayport') || n.includes('patch kabel')) {
+    return { slug: 'kable-a-redukcie', hierarchy: ['Napájanie, záložné zdroje a káble', 'Káble, redukcie a adaptéry'] };
+  }
+  if (c.includes('nabíjač') || c.includes('nabijack') || n.includes('nabíjačka') || n.includes('adaptér')) {
+    return { slug: 'nabijacky-a-adaptery', hierarchy: ['Napájanie, záložné zdroje a káble', 'Nabíjačky a napájacie adaptéry'] };
+  }
+
+  // 9. Pamäťové médiá
+  if (c.includes('flash') || n.includes('flash disk') || n.includes('usb kľúč') || n.includes('datatraveler')) {
+    return { slug: 'usb-flash-disky', hierarchy: ['Pamäťové médiá a USB', 'USB flash disky'] };
+  }
+  if (c.includes('extern') || n.includes('externý disk') || n.includes('external hdd') || n.includes('portable ssd')) {
+    return { slug: 'externe-disky-ssd-hdd', hierarchy: ['Pamäťové médiá a USB', 'Externé disky (SSD a HDD)'] };
+  }
+  if (c.includes('karta') || n.includes('microsd') || n.includes('sdhc') || n.includes('sdxc')) {
+    return { slug: 'pamatove-karty-sd', hierarchy: ['Pamäťové médiá a USB', 'Pamäťové karty (SD / microSD)'] };
+  }
+
+  // Default fallback
+  return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
 }

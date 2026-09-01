@@ -10,6 +10,7 @@
     "lint": "pnpm -r run lint",
     "dev:storefront": "pnpm --filter storefront dev",
     "dev:importer": "pnpm --filter @worlds/importer dev",
+    "import:all": "pnpm --filter @worlds/importer run import:all",
     "import:notebooks": "pnpm --filter @worlds/importer run import:notebooks",
     "import:sample": "pnpm --filter @worlds/importer run import:sample"
   },

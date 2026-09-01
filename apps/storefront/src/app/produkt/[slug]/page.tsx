@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { getProductBySlug, getAllProducts } from '../../../lib/catalog';
+import { ProductDescription } from '../../../components/ProductDescription';
 import {
   ShieldCheck,
   Truck,
@@ -233,9 +234,10 @@ export default async function ProductDetailPage({ params }: Props) {
           <h2 className="text-lg font-black text-slate-900 border-b border-slate-100 pb-3">
             Popis produktu
           </h2>
-          <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
-            {product.supplierDescription || 'Podrobný popis pre tento produkt pripravujeme.'}
-          </div>
+          <ProductDescription
+            content={product.enrichedDescription || product.supplierDescription}
+            fallbackText="Podrobný technický popis pre tento produkt pripravujeme."
+          />
         </div>
 
         {/* Technical Attributes Table */}

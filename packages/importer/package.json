@@ -17,6 +17,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "import:all": "node dist/import-all-products.js",
     "import:notebooks": "node dist/import-notebooks.js",
     "import:sample": "node dist/cli.js --sample",
     "test": "node --test dist/**/*.test.js"
