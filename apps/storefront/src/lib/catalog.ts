@@ -537,6 +537,15 @@ export async function getAllProducts(): Promise<MasterProduct[]> {
 }
 
 /**
+ * Bezpečne zapúzdri hodnotu pre PostgREST `.or()` filter reťazec, aby znaky ako
+ * čiarka/bodka (ktoré PostgREST používa ako oddeľovače) neboli interpretované
+ * ako súčasť filter syntaxe (napr. injekcia ďalších podmienok cez %2C v URL).
+ */
+function quoteFilterValue(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+/**
  * Získanie detailu produktu podľa slug priamo z PostgreSQL databázy Supabase (s multi-strategy fallbackom)
  */
 export async function getProductBySlug(slug: string): Promise<MasterProduct | null> {
@@ -544,11 +553,15 @@ export async function getProductBySlug(slug: string): Promise<MasterProduct | nu
     const cleanSlug = decodeURIComponent(slug).trim();
 
     // 1. Priama zhoda na slug
-    const { data: directMatch } = await supabase
+    const { data: directMatch, error: directError } = await supabase
       .from('master_products')
       .select('*')
       .eq('slug', cleanSlug)
       .maybeSingle();
+
+    if (directError) {
+      console.warn(`getProductBySlug: direct match query failed for "${cleanSlug}":`, directError.message);
+    }
 
     if (directMatch) {
       return mapDbRowToMasterProduct(directMatch);
@@ -558,34 +571,51 @@ export async function getProductBySlug(slug: string): Promise<MasterProduct | nu
     const trailingSkuMatch = cleanSlug.match(/-([0-9a-zA-Z]+)$/);
     if (trailingSkuMatch && trailingSkuMatch[1]) {
       const extractedSku = trailingSkuMatch[1];
-      const { data: skuMatch } = await supabase
+      const { data: skuMatch, error: skuError } = await supabase
         .from('master_products')
         .select('*')
-        .or(`sku.eq.${extractedSku},supplier_code.eq.${extractedSku}`)
+        .or(`sku.eq.${quoteFilterValue(extractedSku)},supplier_code.eq.${quoteFilterValue(extractedSku)}`)
         .maybeSingle();
+
+      if (skuError) {
+        console.warn(`getProductBySlug: SKU match query failed for "${extractedSku}":`, skuError.message);
+      }
 
       if (skuMatch) {
         return mapDbRowToMasterProduct(skuMatch);
       }
     }
 
-    // 3. Priame SKU / ID / MPN
-    const { data: idOrSkuMatch } = await supabase
+    // 3. Priame SKU / MPN (id sa vynecháva - stĺpec je uuid a text slug by spôsobil chybu castovania)
+    const { data: idOrSkuMatch, error: idOrSkuError } = await supabase
       .from('master_products')
       .select('*')
-      .or(`sku.eq.${cleanSlug},supplier_code.eq.${cleanSlug},mpn.eq.${cleanSlug},id.eq.${cleanSlug}`)
+      .or(
+        `sku.eq.${quoteFilterValue(cleanSlug)},supplier_code.eq.${quoteFilterValue(cleanSlug)},mpn.eq.${quoteFilterValue(cleanSlug)}`
+      )
       .maybeSingle();
+
+    if (idOrSkuError) {
+      console.warn(`getProductBySlug: SKU/MPN match query failed for "${cleanSlug}":`, idOrSkuError.message);
+    }
 
     if (idOrSkuMatch) {
       return mapDbRowToMasterProduct(idOrSkuMatch);
     }
 
-    // 4. Fuzzy slug match
-    const { data: fuzzyMatches } = await supabase
+    // 4. Fuzzy slug match (deterministicky zoradené, aby rovnaké URL vždy vrátilo rovnaký produkt)
+    const { data: fuzzyMatches, error: fuzzyError } = await supabase
       .from('master_products')
       .select('*')
       .ilike('slug', `%${cleanSlug}%`)
+      .order('is_in_stock', { ascending: false })
+      .order('final_price', { ascending: true })
+      .order('slug', { ascending: true })
       .limit(1);
+
+    if (fuzzyError) {
+      console.warn(`getProductBySlug: fuzzy match query failed for "${cleanSlug}":`, fuzzyError.message);
+    }
 
     if (fuzzyMatches && fuzzyMatches.length > 0) {
       return mapDbRowToMasterProduct(fuzzyMatches[0]);
