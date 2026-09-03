@@ -150,6 +150,47 @@ function safeSlug(title: string, code: string): string {
   return `${titleSlug || 'produkt'}-${slugify(code, { lower: true, strict: true })}`;
 }
 
+function asArray<T>(input: T | T[] | null | undefined): T[] {
+  if (input === null || input === undefined) return [];
+  return Array.isArray(input) ? input : [input];
+}
+
+/**
+ * eD serializes images as ImageList.ProductImage.URL. fast-xml-parser keeps
+ * that wrapper, and a single ProductImage is an object while multiple images
+ * are an array. Accept the older flat variants as well so cached/test feeds
+ * remain compatible.
+ */
+export function extractProductImageUrls(product: Record<string, unknown>): string[] {
+  const imageList = product.ImageList;
+  const wrappedImages = imageList && typeof imageList === 'object' && !Array.isArray(imageList)
+    ? (imageList as Record<string, unknown>).ProductImage
+      ?? (imageList as Record<string, unknown>).Image
+      ?? imageList
+    : imageList;
+  const candidates = [
+    ...asArray(wrappedImages),
+    product.ImageUrl,
+    product.ImgUrl,
+  ];
+  const urls = new Set<string>();
+
+  for (const candidate of candidates) {
+    const rawUrl = candidate && typeof candidate === 'object'
+      ? value((candidate as Record<string, unknown>).URL ?? (candidate as Record<string, unknown>).Url)
+      : value(candidate);
+    if (!/^https?:\/\//i.test(rawUrl)) continue;
+
+    const normalized = rawUrl
+      .replace(/^http:\/\//i, 'https://')
+      .replace(/_3(?=\.[a-z0-9]+(?:\?|$))/i, '')
+      .replace(/_8(?=\.[a-z0-9]+(?:\?|$))/i, '');
+    urls.add(normalized);
+  }
+
+  return [...urls];
+}
+
 function transformFullProduct(product: Record<string, unknown>): Record<string, unknown> | null {
   const code = value(product.Code ?? product.ProId);
   const title = value(product.Name ?? product.ProductName);
@@ -191,10 +232,9 @@ function transformFullProduct(product: Record<string, unknown>): Record<string, 
     producerName: brand,
   });
   const extracted = extractStructuredAttributes(title, rawDescription, specs, brand, mpn, warrantyMonths);
-  const imageUrlRaw = value(product.ImageUrl ?? product.ImgUrl);
-  const imageUrl = /^https?:\/\//i.test(imageUrlRaw) ? imageUrlRaw : null;
+  const imageUrls = extractProductImageUrls(product);
   const proId = value(product.ProId) || code;
-  const contentHash = hash([title, brand, mpn, mpn2, ean, cleanHtml, category.slug, imageUrl, extracted.allAttributes]);
+  const contentHash = hash([title, brand, mpn, mpn2, ean, cleanHtml, category.slug, imageUrls, extracted.allAttributes]);
   const priceHash = hash([supplierCost, garbageFee, authorFee, totalCostWithFees, vatRate, basePrice, finalPrice]);
   const inventoryHash = hash([stockCount, isInStock, value(product.DateOfDelivery)]);
 
@@ -232,9 +272,14 @@ function transformFullProduct(product: Record<string, unknown>): Record<string, 
     commodity_code: normalizeIdentifier(product.CommodityCode),
     commodity_name: normalizeIdentifier(product.CommodityName),
     order_multiple: Math.max(1, numberValue(product.MultipleQuantity, 1)),
-    b2c_eligible: true,
-    is_premium: booleanValue(product.Premium) || finalPrice > 1500,
-    images: imageUrl ? [{ url: imageUrl, position: 0, isPrimary: true, altText: title }] : [],
+    b2c_eligible: booleanValue(product.B2C ?? true),
+    is_premium: booleanValue(product.IsPremium ?? product.Premium) || finalPrice > 1500,
+    images: imageUrls.map((url, position) => ({
+      url,
+      position,
+      isPrimary: position === 0,
+      altText: title,
+    })),
     attributes: extracted.allAttributes,
     identity_hash: hash([code, proId, mpn, mpn2, ean]),
     content_hash: contentHash,

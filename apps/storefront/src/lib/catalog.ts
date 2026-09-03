@@ -525,28 +525,103 @@ const STOREFRONT_PRODUCT_COLUMNS = [
   'last_synced_at', 'created_at', 'updated_at',
 ].join(',');
 
+export const PRODUCTS_PER_PAGE = 24;
+
+export type ProductSort = 'recommended' | 'price_asc' | 'price_desc' | 'name';
+
+export interface ProductPageOptions {
+  page?: number;
+  pageSize?: number;
+  categorySlug?: string;
+  query?: string;
+  inStockOnly?: boolean;
+  sort?: ProductSort;
+}
+
+export interface ProductPageResult {
+  products: MasterProduct[];
+  page: number;
+  pageSize: number;
+  total: number;
+  pageCount: number;
+}
+
+function collectCategorySlugs(category: TaxonomyCategory): string[] {
+  return [category.slug, ...(category.subcategories?.flatMap(collectCategorySlugs) ?? [])];
+}
+
+function normalizeSearchQuery(query: string): string {
+  return query
+    .trim()
+    .replace(/[^\p{L}\p{N}\s._-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .slice(0, 80);
+}
+
+/**
+ * Server-side, price-safe catalogue pagination. The public database view is
+ * already restricted to active products with a positive current price;
+ * the additional price predicate is deliberate defence in depth.
+ */
+export async function getProductsPage(options: ProductPageOptions = {}): Promise<ProductPageResult> {
+  const pageSize = Math.min(60, Math.max(1, Math.floor(options.pageSize ?? PRODUCTS_PER_PAGE)));
+  const page = Math.max(1, Math.floor(options.page ?? 1));
+  const from = (page - 1) * pageSize;
+  const query = normalizeSearchQuery(options.query ?? '');
+
+  let request = supabase
+    .from('storefront_products')
+    .select(STOREFRONT_PRODUCT_COLUMNS, { count: 'exact' })
+    .gt('final_price', 0);
+
+  if (options.categorySlug) {
+    const category = await getCategoryBySlug(options.categorySlug);
+    const slugs = category ? collectCategorySlugs(category) : [options.categorySlug];
+    request = request.in('category_slug', slugs);
+  }
+  if (options.inStockOnly) request = request.eq('is_in_stock', true).gt('stock_count', 0);
+  if (query) {
+    request = request.or(`title.ilike.%${query}%,mpn.ilike.%${query}%,brand.ilike.%${query}%,ean.ilike.%${query}%`);
+  }
+
+  switch (options.sort) {
+    case 'price_asc':
+      request = request.order('final_price', { ascending: true }).order('id', { ascending: true });
+      break;
+    case 'price_desc':
+      request = request.order('final_price', { ascending: false }).order('id', { ascending: true });
+      break;
+    case 'name':
+      request = request.order('title', { ascending: true }).order('id', { ascending: true });
+      break;
+    default:
+      request = request
+        .order('is_in_stock', { ascending: false })
+        .order('updated_at', { ascending: false })
+        .order('id', { ascending: true });
+  }
+
+  const { data, error, count } = await request.range(from, from + pageSize - 1);
+  if (error) {
+    console.error('Chyba pri stránkovanom čítaní katalógu:', error.message);
+    return { products: [], page, pageSize, total: 0, pageCount: 0 };
+  }
+
+  const total = count ?? 0;
+  return {
+    products: (data ?? []).map(mapDbRowToMasterProduct),
+    page,
+    pageSize,
+    total,
+    pageCount: total === 0 ? 0 : Math.ceil(total / pageSize),
+  };
+}
+
 /**
  * Získanie všetkých produktov priamo z PostgreSQL databázy Supabase
  */
 export async function getAllProducts(): Promise<MasterProduct[]> {
-  try {
-    const { data, error } = await supabase
-      .from('storefront_products')
-      .select(STOREFRONT_PRODUCT_COLUMNS)
-      .order('is_in_stock', { ascending: false })
-      .order('final_price', { ascending: true })
-      .limit(100);
-
-    if (error || !data || data.length === 0) {
-      console.warn('Supabase getAllProducts warning/empty:', error?.message);
-      return [];
-    }
-
-    return data.map(mapDbRowToMasterProduct);
-  } catch (e) {
-    console.error('Chyba pri čítaní z databázy Supabase:', e);
-    return [];
-  }
+  return (await getProductsPage({ pageSize: 60 })).products;
 }
 
 /**
@@ -616,32 +691,7 @@ export async function getProductBySlug(slug: string): Promise<MasterProduct | nu
  * Získanie produktov podľa kategórie priamo z databázy Supabase
  */
 export async function getProductsByCategory(categorySlug: string): Promise<MasterProduct[]> {
-  try {
-    const category = await getCategoryBySlug(categorySlug);
-    const categorySlugs: string[] = [];
-    const collectSlugs = (node: TaxonomyCategory) => {
-      categorySlugs.push(node.slug);
-      node.subcategories?.forEach(collectSlugs);
-    };
-    if (category) collectSlugs(category);
-
-    const { data, error } = await supabase
-      .from('storefront_products')
-      .select(STOREFRONT_PRODUCT_COLUMNS)
-      .in('category_slug', categorySlugs.length > 0 ? categorySlugs : [categorySlug])
-      .order('is_in_stock', { ascending: false })
-      .order('final_price', { ascending: true })
-      .limit(50);
-
-    if (error || !data) {
-      return [];
-    }
-
-    return data.map(mapDbRowToMasterProduct);
-  } catch (e) {
-    console.error(`Chyba pri čítaní kategórie ${categorySlug} z databázy:`, e);
-    return [];
-  }
+  return (await getProductsPage({ categorySlug, pageSize: 60 })).products;
 }
 
 /**
@@ -736,29 +786,9 @@ export const findCategoryBySlug = getCategoryBySlug;
  * Fulltextové vyhľadávanie produktov v PostgreSQL databáze Supabase
  */
 export async function searchProducts(query: string): Promise<MasterProduct[]> {
-  const q = query
-    .trim()
-    .replace(/[^\p{L}\p{N}\s._-]/gu, ' ')
-    .replace(/\s+/g, ' ')
-    .slice(0, 80);
+  const q = normalizeSearchQuery(query);
   if (!q) return [];
-
-  try {
-    const { data, error } = await supabase
-      .from('storefront_products')
-      .select(STOREFRONT_PRODUCT_COLUMNS)
-      .or(`title.ilike.%${q}%,mpn.ilike.%${q}%,brand.ilike.%${q}%,ean.ilike.%${q}%`)
-      .limit(20);
-
-    if (error || !data) {
-      return [];
-    }
-
-    return data.map(mapDbRowToMasterProduct);
-  } catch (e) {
-    console.error('Chyba pri vyhľadávaní v databáze:', e);
-    return [];
-  }
+  return (await getProductsPage({ query: q, pageSize: 60 })).products;
 }
 
 export interface ProductSitemapRecord {

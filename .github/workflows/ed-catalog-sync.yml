@@ -40,6 +40,7 @@ jobs:
       - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
       - run: pnpm sync:stock-price
         env:
+          IMPORT_BATCH_SIZE: 200
           ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
           ED_LOGIN: ${{ secrets.ED_LOGIN }}
           ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
@@ -63,6 +64,7 @@ jobs:
       - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
       - run: pnpm sync:catalog
         env:
+          IMPORT_BATCH_SIZE: 200
           ED_CATALOG_SCOPE: it-only
           ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
           ED_LOGIN: ${{ secrets.ED_LOGIN }}

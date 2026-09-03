@@ -1,8 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { MasterProduct } from '@worlds/types';
 import { CheckCircle2, AlertCircle, Eye } from 'lucide-react';
+import { ProductImage } from './ProductImage';
 
 export function ProductCard({ product }: { product: MasterProduct }) {
   const primaryImg = product.images[0]?.url || '/product-placeholder.svg';
@@ -18,10 +18,9 @@ export function ProductCard({ product }: { product: MasterProduct }) {
 
       {/* Product Image */}
       <Link href={`/produkt/${product.slug}`} className="block relative w-full h-48 bg-slate-50 overflow-hidden">
-        <Image
+        <ProductImage
           src={primaryImg}
           alt={product.title}
-          fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 25vw"
           className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
         />

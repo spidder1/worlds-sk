@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
+import { getCategories } from '../lib/catalog';
 
 export const metadata: Metadata = {
   title: 'Worlds.sk | Moderný IT & Tech E-Shop s AI Data Engine',
@@ -20,15 +21,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const categories = await getCategories();
+
   return (
     <html lang="sk">
       <body className="min-h-screen flex flex-col antialiased">
-        <Header />
+        <Header categories={categories} />
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
           {children}
         </main>

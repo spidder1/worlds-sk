@@ -1,126 +1,124 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, ShoppingCart, ShieldCheck, Laptop, Gamepad2, BriefcaseBusiness, Cable } from 'lucide-react';
+import { ChevronDown, Grid3X3, Menu, Search, ShieldCheck, ShoppingCart } from 'lucide-react';
+import type { TaxonomyCategory } from '@worlds/types';
 
-export function Header() {
+function DesktopCategory({ category }: { category: TaxonomyCategory }) {
+  return (
+    <div className="group static flex-shrink-0">
+      <Link href={`/kategoria/${category.slug}`} className="flex items-center gap-1 rounded-lg px-3 py-2 font-semibold text-slate-700 transition-colors hover:bg-white hover:text-brand-700 group-focus-within:bg-white">
+        {category.name}
+        {category.subcategories?.length ? <ChevronDown className="h-3.5 w-3.5 transition-transform group-hover:rotate-180" /> : null}
+      </Link>
+      {category.subcategories?.length ? (
+        <div className="invisible absolute left-1/2 top-full z-50 w-[min(80rem,calc(100vw-2rem))] -translate-x-1/2 translate-y-2 rounded-b-2xl border border-slate-200 bg-white p-5 opacity-0 shadow-2xl transition-all duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+          <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+            <Link href={`/kategoria/${category.slug}`} className="font-black text-slate-900 hover:text-brand-700">Všetko v kategórii {category.name}</Link>
+            <span className="text-xs text-slate-400">Prejdite myšou alebo kliknite</span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-7 gap-y-5 md:grid-cols-3">
+            {category.subcategories.map((subcategory) => (
+              <div key={subcategory.id}>
+                <Link href={`/kategoria/${subcategory.slug}`} className="text-sm font-bold text-slate-800 hover:text-brand-700">{subcategory.name}</Link>
+                {subcategory.subcategories?.length ? (
+                  <ul className="mt-2 space-y-1.5">
+                    {subcategory.subcategories.map((child) => (
+                      <li key={child.id}><Link href={`/kategoria/${child.slug}`} className="text-xs text-slate-500 hover:text-brand-700">{child.name}</Link></li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MobileCategory({ category }: { category: TaxonomyCategory }) {
+  if (!category.subcategories?.length) {
+    return <Link href={`/kategoria/${category.slug}`} className="block border-t border-slate-100 px-4 py-3 text-sm font-bold text-slate-800">{category.name}</Link>;
+  }
+  return (
+    <details className="border-t border-slate-100">
+      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-bold text-slate-800">
+        {category.name}<ChevronDown className="h-4 w-4" />
+      </summary>
+      <div className="space-y-3 bg-slate-50 px-5 pb-4">
+        <Link href={`/kategoria/${category.slug}`} className="block pt-2 text-sm font-semibold text-brand-700">Zobraziť celú kategóriu</Link>
+        {category.subcategories.map((subcategory) => (
+          <div key={subcategory.id}>
+            <Link href={`/kategoria/${subcategory.slug}`} className="text-sm font-semibold text-slate-700">{subcategory.name}</Link>
+            {subcategory.subcategories?.length ? (
+              <div className="mt-1 flex flex-wrap gap-2">
+                {subcategory.subcategories.map((child) => <Link key={child.id} href={`/kategoria/${child.slug}`} className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-600">{child.name}</Link>)}
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+export function Header({ categories }: { categories: TaxonomyCategory[] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/vyhladavanie?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
+  const handleSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    if (query) router.push(`/vyhladavanie?q=${encodeURIComponent(query)}`);
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
-      {/* Top Banner */}
-      <div className="bg-slate-900 text-slate-300 text-xs py-1.5 px-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Dáta z distribučného katalógu eD system
-            </span>
-            <span className="hidden sm:inline text-slate-500">•</span>
-            <span className="hidden sm:inline">Aktuálna ponuka z distribučného katalógu</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/o-nas" className="hover:text-white transition-colors">O nás</Link>
-            <span className="text-slate-600">•</span>
-            <Link href="/doprava-a-platba" className="hover:text-white transition-colors">Doprava a platba</Link>
-            <span className="text-slate-600">•</span>
-            <Link href="/kontakt" className="hover:text-white transition-colors">Kontakt</Link>
+    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-sm">
+      <div className="bg-slate-900 px-4 py-1.5 text-xs text-slate-300">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Aktuálne dáta z katalógu eD system</span>
+          <div className="hidden items-center gap-4 sm:flex">
+            <Link href="/o-nas" className="hover:text-white">O nás</Link>
+            <Link href="/doprava-a-platba" className="hover:text-white">Doprava a platba</Link>
+            <Link href="/kontakt" className="hover:text-white">Kontakt</Link>
           </div>
         </div>
       </div>
 
-      {/* Main Header Bar */}
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-6">
-        {/* Logo */}
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 lg:flex-nowrap lg:gap-6">
         <Link href="/" className="flex items-center gap-2 text-2xl font-black tracking-tight text-slate-900">
-          <div className="bg-brand-600 text-white p-1.5 rounded-lg flex items-center justify-center font-black text-xl">
-            W
-          </div>
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-xl text-white">W</span>
           <span>Worlds<span className="text-brand-600">.sk</span></span>
         </Link>
-
-        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-2xl relative">
+        <form onSubmit={handleSearch} className="order-3 w-full lg:order-none lg:max-w-2xl lg:flex-1">
           <div className="relative flex items-center">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Hľadajte notebooky, procesory, monitory, MPN alebo EAN..."
-              className="w-full bg-slate-100 border border-slate-300 text-slate-900 rounded-full pl-11 pr-24 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all"
-            />
-            <Search className="w-5 h-5 text-slate-400 absolute left-4 pointer-events-none" />
-            <button
-              type="submit"
-              className="absolute right-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-4 py-1.5 rounded-full transition-colors"
-            >
-              Hľadať
-            </button>
+            <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} aria-label="Hľadať produkty" placeholder="Názov, výrobca, MPN alebo EAN..." className="w-full rounded-full border border-slate-300 bg-slate-100 py-2.5 pl-11 pr-24 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            <Search className="pointer-events-none absolute left-4 h-5 w-5 text-slate-400" />
+            <button type="submit" className="absolute right-1.5 rounded-full bg-brand-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-700">Hľadať</button>
           </div>
         </form>
-
-        {/* Header Right Actions */}
-        <div className="flex items-center gap-4">
-          <Link
-            href="/kosik"
-            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2 rounded-full font-medium text-sm transition-colors relative"
-          >
-            <ShoppingCart className="w-4 h-4 text-brand-600" />
-            <span>Košík</span>
-            <span className="sr-only">Objednávanie sa pripravuje</span>
-          </Link>
-        </div>
+        <Link href="/kosik" className="flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-200">
+          <ShoppingCart className="h-4 w-4 text-brand-600" /><span className="hidden sm:inline">Košík</span>
+        </Link>
       </div>
 
-      {/* Navigation Mega Bar */}
-      <nav className="bg-slate-50 border-t border-slate-200 text-sm">
-        <div className="max-w-7xl mx-auto px-4 flex items-center gap-1 overflow-x-auto py-2 text-slate-700 font-medium">
-          <Link
-            href="/kategoria/notebooky"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white hover:text-brand-600 hover:shadow-sm transition-all"
-          >
-            <Laptop className="w-4 h-4 text-slate-500" />
-            Notebooky
-          </Link>
-          <Link
-            href="/kategoria/herne-notebooky"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white hover:text-brand-600 hover:shadow-sm transition-all"
-          >
-            <Gamepad2 className="w-4 h-4 text-slate-500" />
-            Herné notebooky
-          </Link>
-          <Link
-            href="/kategoria/firemne-notebooky"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white hover:text-brand-600 hover:shadow-sm transition-all"
-          >
-            <BriefcaseBusiness className="w-4 h-4 text-slate-500" />
-            Firemné notebooky
-          </Link>
-          <Link
-            href="/kategoria/prislusenstvo-a-periferie"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white hover:text-brand-600 hover:shadow-sm transition-all"
-          >
-            <Cable className="w-4 h-4 text-slate-500" />
-            Príslušenstvo
-          </Link>
-          <Link
-            href="/kategoria/ups-zalozne-zdroje"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-amber-700 bg-amber-50 hover:bg-amber-100 font-semibold transition-all"
-          >
-            ⚡ UPS a záložné zdroje
-          </Link>
+      <nav className="relative hidden border-t border-slate-200 bg-slate-50 lg:block" aria-label="Hlavné kategórie">
+        <div className="mx-auto flex max-w-7xl items-center px-4 text-sm">
+          <Link href="/produkty" className="mr-1 flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 font-bold text-white hover:bg-brand-700"><Grid3X3 className="h-4 w-4" /> Všetky produkty</Link>
+          {categories.map((category) => <DesktopCategory key={category.id} category={category} />)}
         </div>
       </nav>
+
+      <details className="border-t border-slate-200 bg-white lg:hidden">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold text-slate-800"><Menu className="h-4 w-4" /> Kategórie a produkty</summary>
+        <div className="max-h-[65vh] overflow-y-auto border-t border-slate-100">
+          <Link href="/produkty" className="block bg-brand-600 px-4 py-3 text-sm font-bold text-white">Všetky produkty</Link>
+          {categories.map((category) => <MobileCategory key={category.id} category={category} />)}
+        </div>
+      </details>
     </header>
   );
 }
