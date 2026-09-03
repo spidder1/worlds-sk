@@ -1,16 +1,17 @@
 import React from 'react';
 import Link from 'next/link';
-import { getCategories, getFeaturedProducts, getProductCount } from '../lib/catalog';
+import { getCategories, getFeaturedProducts, getManufacturers, getProductCount } from '../lib/catalog';
 import { ProductCard } from '../components/ProductCard';
-import { Sparkles, ArrowRight, Laptop, Gamepad2, BriefcaseBusiness, Cable, ShieldCheck, Zap, Server } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, Zap, Server, Building2 } from 'lucide-react';
 
 export const revalidate = 60; // ISR revalidate every 60 seconds
 
 export default async function HomePage() {
-  const [products, categories, productCount] = await Promise.all([
+  const [products, categories, productCount, manufacturers] = await Promise.all([
     getFeaturedProducts(8),
     getCategories(),
     getProductCount(),
+    getManufacturers(),
   ]);
 
   return (
@@ -30,7 +31,7 @@ export default async function HomePage() {
           </p>
           <div className="flex flex-wrap gap-3 pt-2">
             <Link
-              href="/produkty"
+              href="/vyhladavanie"
               className="bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold px-6 py-3 rounded-xl transition-colors flex items-center gap-2 shadow-lg shadow-brand-600/30"
             >
               Prezrieť {productCount.toLocaleString('sk-SK')} produktov
@@ -45,13 +46,51 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Top Manufacturers / Brands Grid */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-brand-600" />
+              Top Výrobcovia a Značky
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">Vyberte si svojho obľúbeného výrobcu a prezrite si jeho kompletné portfolio</p>
+          </div>
+          <Link href="/vyhladavanie" className="text-xs text-brand-600 hover:underline font-semibold flex items-center gap-1">
+            Všetci výrobcovia
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {manufacturers.map((brand) => (
+            <Link
+              key={brand.name}
+              href={`/vyhladavanie?vyrobca=${encodeURIComponent(brand.name)}`}
+              className="bg-white p-4 rounded-xl border border-slate-200 hover:border-brand-500 hover:shadow-md transition-all group flex flex-col items-center justify-center text-center"
+            >
+              <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-brand-50 text-slate-700 group-hover:text-brand-600 font-black text-sm flex items-center justify-center mb-2 transition-colors">
+                {brand.name.substring(0, 2).toUpperCase()}
+              </div>
+              <h3 className="font-bold text-sm text-slate-900 group-hover:text-brand-600 transition-colors line-clamp-1">
+                {brand.name}
+              </h3>
+              <span className="text-[11px] font-medium text-slate-400 mt-0.5">
+                {brand.count.toLocaleString('sk-SK')} produktov
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Categories Accordion Section */}
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-4">
           <div>
             <h2 className="text-xl font-black tracking-tight text-slate-900">Všetky kategórie</h2>
             <p className="mt-1 text-xs text-slate-500">Celý IT katalóg prehľadne rozdelený do hlavných sekcií a podkategórií.</p>
           </div>
-          <Link href="/produkty" className="flex flex-shrink-0 items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">Celý katalóg <ArrowRight className="h-3.5 w-3.5" /></Link>
+          <Link href="/vyhladavanie" className="flex flex-shrink-0 items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">Celý katalóg <ArrowRight className="h-3.5 w-3.5" /></Link>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {categories.map((category) => (
@@ -66,63 +105,6 @@ export default async function HomePage() {
               ) : <p className="mt-2 text-xs text-slate-500">Zobraziť produkty</p>}
             </article>
           ))}
-        </div>
-      </section>
-
-      {/* Top Categories Grid */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">Populárne kategórie</h2>
-          <Link href="/kategoria/pocitace-a-notebooky" className="text-xs text-brand-600 hover:underline font-semibold flex items-center gap-1">
-            Zobraziť všetky kategórie
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Link
-            href="/kategoria/notebooky"
-            className="bg-white p-5 rounded-xl border border-slate-200 hover:border-brand-500 hover:shadow-md transition-all group flex flex-col items-center text-center"
-          >
-            <div className="bg-blue-50 text-brand-600 p-3 rounded-xl mb-3 group-hover:scale-110 transition-transform">
-              <Laptop className="w-6 h-6" />
-            </div>
-            <h3 className="font-bold text-sm text-slate-900 group-hover:text-brand-600">Notebooky</h3>
-            <p className="text-xs text-slate-500 mt-1">Pracovné, herné a ultrabooky</p>
-          </Link>
-
-          <Link
-              href="/kategoria/herne-notebooky"
-            className="bg-white p-5 rounded-xl border border-slate-200 hover:border-brand-500 hover:shadow-md transition-all group flex flex-col items-center text-center"
-          >
-            <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl mb-3 group-hover:scale-110 transition-transform">
-              <Gamepad2 className="w-6 h-6" />
-            </div>
-            <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-600">Herné notebooky</h3>
-            <p className="text-xs text-slate-500 mt-1">Výkonné modely pre hranie</p>
-          </Link>
-
-          <Link
-              href="/kategoria/firemne-notebooky"
-            className="bg-white p-5 rounded-xl border border-slate-200 hover:border-brand-500 hover:shadow-md transition-all group flex flex-col items-center text-center"
-          >
-            <div className="bg-purple-50 text-purple-600 p-3 rounded-xl mb-3 group-hover:scale-110 transition-transform">
-              <BriefcaseBusiness className="w-6 h-6" />
-            </div>
-            <h3 className="font-bold text-sm text-slate-900 group-hover:text-purple-600">Firemné notebooky</h3>
-            <p className="text-xs text-slate-500 mt-1">Pracovné a profesionálne modely</p>
-          </Link>
-
-          <Link
-              href="/kategoria/prislusenstvo-a-periferie"
-            className="bg-white p-5 rounded-xl border border-slate-200 hover:border-brand-500 hover:shadow-md transition-all group flex flex-col items-center text-center"
-          >
-            <div className="bg-amber-50 text-amber-600 p-3 rounded-xl mb-3 group-hover:scale-110 transition-transform">
-              <Cable className="w-6 h-6" />
-            </div>
-            <h3 className="font-bold text-sm text-slate-900 group-hover:text-amber-600">Príslušenstvo</h3>
-            <p className="text-xs text-slate-500 mt-1">Periférie, adaptéry a doplnky</p>
-          </Link>
         </div>
       </section>
 

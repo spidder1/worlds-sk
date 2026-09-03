@@ -1,14 +1,14 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { Check, ChevronRight, Home, LayoutGrid } from 'lucide-react';
+import { Check, ChevronRight, Home, LayoutGrid, Building2, X } from 'lucide-react';
 import { Pagination } from '../../../components/Pagination';
 import { ProductCard } from '../../../components/ProductCard';
-import { findCategoryBySlug, getProductsPage, type ProductSort } from '../../../lib/catalog';
+import { findCategoryBySlug, getManufacturers, getProductsPage, type ProductSort } from '../../../lib/catalog';
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string; inStock?: string; sort?: string }>;
+  searchParams: Promise<{ page?: string; inStock?: string; sort?: string; vyrobca?: string }>;
 }
 
 function parsePage(value?: string): number {
@@ -39,12 +39,18 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const page = parsePage(filters.page);
   const sort = parseSort(filters.sort);
   const inStockOnly = filters.inStock === 'true';
-  const result = await getProductsPage({ categorySlug: slug, page, sort, inStockOnly });
+  const brandFilter = filters.vyrobca?.trim() ?? '';
+
+  const [result, manufacturers] = await Promise.all([
+    getProductsPage({ categorySlug: slug, page, sort, inStockOnly, brand: brandFilter }),
+    getManufacturers(),
+  ]);
 
   const hrefWith = (key: string, value?: string) => {
     const query = new URLSearchParams();
     if (filters.inStock === 'true' && key !== 'inStock') query.set('inStock', 'true');
     if (filters.sort && key !== 'sort') query.set('sort', filters.sort);
+    if (filters.vyrobca && key !== 'vyrobca') query.set('vyrobca', filters.vyrobca);
     if (value) query.set(key, value);
     const serialized = query.toString();
     return `/kategoria/${slug}${serialized ? `?${serialized}` : ''}`;
@@ -55,16 +61,33 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       <nav className="flex items-center gap-2 overflow-x-auto text-xs text-slate-500" aria-label="Navigačná cesta">
         <Link href="/" className="flex items-center gap-1 hover:text-slate-900"><Home className="h-3.5 w-3.5" /> Domov</Link>
         <ChevronRight className="h-3.5 w-3.5" />
-        <Link href="/produkty" className="hover:text-slate-900">Produkty</Link>
+        <Link href="/vyhladavanie" className="hover:text-slate-900">Produkty</Link>
         <ChevronRight className="h-3.5 w-3.5" />
         <span className="font-semibold text-slate-900">{category.name}</span>
       </nav>
 
       <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">{category.name}</h1>
-          <p className="mt-1 text-sm text-slate-500">{result.total.toLocaleString('sk-SK')} produktov s platnou cenou</p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
+              {category.name} {brandFilter ? <span className="text-brand-600">({brandFilter})</span> : null}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">{result.total.toLocaleString('sk-SK')} produktov s platnou cenou</p>
+          </div>
+
+          {brandFilter ? (
+            <Link
+              href={hrefWith('vyrobca', undefined)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              Výrobca: {brandFilter}
+              <X className="w-3.5 h-3.5" />
+            </Link>
+          ) : null}
         </div>
+
+        {/* Subcategories */}
         {category.subcategories?.length ? (
           <div className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 lg:grid-cols-3">
             {category.subcategories.map((subcategory) => (
@@ -75,6 +98,29 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             ))}
           </div>
         ) : null}
+
+        {/* Brand / Manufacturer Filter Pills */}
+        <div className="border-t border-slate-100 pt-3">
+          <p className="text-xs font-bold text-slate-700 mb-2">Filtrovať podľa výrobcu:</p>
+          <div className="flex flex-wrap gap-2">
+            {manufacturers.slice(0, 10).map((b) => {
+              const isSelected = brandFilter.toLowerCase() === b.name.toLowerCase();
+              return (
+                <Link
+                  key={b.name}
+                  href={hrefWith('vyrobca', isSelected ? undefined : b.name)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                    isSelected
+                      ? 'bg-brand-600 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {b.name}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
       <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">

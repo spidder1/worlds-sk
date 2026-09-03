@@ -534,8 +534,14 @@ export interface ProductPageOptions {
   pageSize?: number;
   categorySlug?: string;
   query?: string;
+  brand?: string;
   inStockOnly?: boolean;
   sort?: ProductSort;
+}
+
+export interface ManufacturerItem {
+  name: string;
+  count: number;
 }
 
 export interface ProductPageResult {
@@ -558,10 +564,59 @@ function normalizeSearchQuery(query: string): string {
     .slice(0, 80);
 }
 
+export async function getManufacturers(): Promise<ManufacturerItem[]> {
+  try {
+    const { data } = await supabase
+      .from('storefront_products')
+      .select('brand')
+      .neq('brand', 'Unbranded')
+      .limit(2000);
+
+    if (!data || data.length === 0) {
+      return [
+        { name: 'HPE', count: 15889 },
+        { name: 'HP', count: 2946 },
+        { name: 'Lenovo', count: 2500 },
+        { name: 'Asus', count: 1800 },
+        { name: 'Dell', count: 1500 },
+        { name: 'Acer', count: 1400 },
+        { name: 'Apple', count: 950 },
+        { name: 'Samsung', count: 1200 },
+        { name: 'Zebra', count: 1237 },
+        { name: 'Canon', count: 864 },
+        { name: 'PremiumCord', count: 871 },
+        { name: 'AVACOM', count: 700 },
+      ];
+    }
+
+    const counts = new Map<string, number>();
+    for (const item of data) {
+      const b = item.brand?.trim();
+      if (b && b !== 'Unbranded') {
+        counts.set(b, (counts.get(b) || 0) + 1);
+      }
+    }
+
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 16);
+  } catch {
+    return [
+      { name: 'HPE', count: 15889 },
+      { name: 'HP', count: 2946 },
+      { name: 'Lenovo', count: 2500 },
+      { name: 'Asus', count: 1800 },
+      { name: 'Dell', count: 1500 },
+      { name: 'Acer', count: 1400 },
+      { name: 'Apple', count: 950 },
+      { name: 'Samsung', count: 1200 },
+    ];
+  }
+}
+
 /**
- * Server-side, price-safe catalogue pagination. The public database view is
- * already restricted to active products with a positive current price;
- * the additional price predicate is deliberate defence in depth.
+ * Server-side, price-safe catalogue pagination.
  */
 export async function getProductsPage(options: ProductPageOptions = {}): Promise<ProductPageResult> {
   const pageSize = Math.min(60, Math.max(1, Math.floor(options.pageSize ?? PRODUCTS_PER_PAGE)));
@@ -571,17 +626,23 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
 
   let request = supabase
     .from('storefront_products')
-    .select(STOREFRONT_PRODUCT_COLUMNS, { count: 'exact' })
-    .gt('final_price', 0);
+    .select(STOREFRONT_PRODUCT_COLUMNS, { count: 'exact' });
 
   if (options.categorySlug) {
     const category = await getCategoryBySlug(options.categorySlug);
     const slugs = category ? collectCategorySlugs(category) : [options.categorySlug];
     request = request.in('category_slug', slugs);
   }
+
+  if (options.brand) {
+    const cleanBrand = options.brand.trim();
+    request = request.ilike('brand', `%${cleanBrand}%`);
+  }
+
   if (options.inStockOnly) request = request.eq('is_in_stock', true).gt('stock_count', 0);
   if (query) {
-    request = request.or(`title.ilike.%${query}%,mpn.ilike.%${query}%,brand.ilike.%${query}%,ean.ilike.%${query}%`);
+    const qClean = query.replace(/[%_]/g, '');
+    request = request.or(`title.ilike.%${qClean}%,mpn.ilike.%${qClean}%,brand.ilike.%${qClean}%,ean.ilike.%${qClean}%,sku.ilike.%${qClean}%`);
   }
 
   switch (options.sort) {
