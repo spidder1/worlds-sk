@@ -398,14 +398,19 @@ function extractXml(zipPath: string, targetPath: string): string {
   return targetPath;
 }
 
-async function resolveSource(options: CliOptions): Promise<{ filePath: string; sourceMethod: string }> {
+interface ResolvedSource {
+  filePath: string;
+  sourceMethod: string;
+}
+
+async function resolveSources(options: CliOptions): Promise<ResolvedSource[]> {
   if (options.sourceFile) {
     const explicit = path.resolve(options.sourceFile);
     if (!fs.existsSync(explicit)) throw new Error(`Source file does not exist: ${explicit}`);
     if (explicit.toLowerCase().endsWith('.zip')) {
-      return { filePath: extractXml(explicit, path.resolve('downloads/cache/catalog-source.xml')), sourceMethod: 'LOCAL_FULL_ZIP' };
+      return [{ filePath: extractXml(explicit, path.resolve('downloads/cache/catalog-source.xml')), sourceMethod: 'LOCAL_FULL_ZIP' }];
     }
-    return { filePath: explicit, sourceMethod: options.mode === 'full' ? 'LOCAL_FULL_XML' : 'LOCAL_STOCK_XML' };
+    return [{ filePath: explicit, sourceMethod: options.mode === 'full' ? 'LOCAL_FULL_XML' : 'LOCAL_STOCK_XML' }];
   }
 
   const credentials = optionalEdCredentials();
@@ -421,22 +426,40 @@ async function resolveSource(options: CliOptions): Promise<{ filePath: string; s
       }
       const target = path.resolve('downloads/cache/latest-stock.xml');
       await downloadToFile(status.Url, target);
-      return { filePath: target, sourceMethod: 'getProductCatalogueStockDownloadXML' };
+      return [{ filePath: target, sourceMethod: 'getProductCatalogueStockDownloadXML' }];
     }
 
-    const status = await client.getProductCatalogueFullDownloadZIPv1({ onStock: false });
-    if (!status.IsReady || !status.Url) {
-      const message = status.Status
-        ? `${status.Status.StatusCode}${status.Status.ErrorText ? `: ${status.Status.ErrorText}` : ''}`
-        : 'unknown status';
-      throw new Error(`eD full catalog is not ready: ${message}`);
+    const commodities = await client.getProductCommodityList();
+    const commodityRoots = commodities
+      .filter((commodity) => value(commodity.CommodityCode) && !value(commodity.CommodityParentCode))
+      .map((commodity) => value(commodity.CommodityCode));
+    if (commodityRoots.length === 0) {
+      throw new Error('eD commodity list did not contain any root commodities.');
     }
-    const zipPath = path.resolve('downloads/cache/latest-full.zip');
-    await downloadToFile(status.Url, zipPath);
-    return {
-      filePath: extractXml(zipPath, path.resolve('downloads/cache/latest-full.xml')),
-      sourceMethod: 'getProductCatalogueFullDownloadZIPv1',
-    };
+
+    const sources: ResolvedSource[] = [];
+    for (const commodityRoot of commodityRoots) {
+      const status = await client.getProductCatalogueFullDownloadZIPv1({
+        onStock: false,
+        commoditiesTree: commodityRoot,
+      });
+      if (!status.IsReady || !status.Url) {
+        const message = status.Status
+          ? `${status.Status.StatusCode}${status.Status.ErrorText ? `: ${status.Status.ErrorText}` : ''}`
+          : 'unknown status';
+        throw new Error(`eD full catalog for commodity tree ${commodityRoot} is not ready: ${message}`);
+      }
+      const safeRoot = commodityRoot.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const zipPath = path.resolve(`downloads/cache/full-${safeRoot}.zip`);
+      const xmlPath = path.resolve(`downloads/cache/full-${safeRoot}.xml`);
+      console.log(`[import] downloading commodityTree=${safeRoot}`);
+      await downloadToFile(status.Url, zipPath);
+      sources.push({
+        filePath: extractXml(zipPath, xmlPath),
+        sourceMethod: `getProductCatalogueFullDownloadZIPv1:${safeRoot}`,
+      });
+    }
+    return sources;
   }
 
   if (options.mode === 'full' && options.allowCachedFull) {
@@ -447,9 +470,9 @@ async function resolveSource(options: CliOptions): Promise<{ filePath: string; s
     const cached = candidates.find((candidate) => fs.existsSync(candidate));
     if (cached) {
       if (cached.toLowerCase().endsWith('.zip')) {
-        return { filePath: extractXml(cached, path.resolve('downloads/cache/catalog-source.xml')), sourceMethod: 'CACHED_FULL_ZIP' };
+        return [{ filePath: extractXml(cached, path.resolve('downloads/cache/catalog-source.xml')), sourceMethod: 'CACHED_FULL_ZIP' }];
       }
-      return { filePath: cached, sourceMethod: 'CACHED_FULL_XML' };
+      return [{ filePath: cached, sourceMethod: 'CACHED_FULL_XML' }];
     }
   }
 
@@ -584,15 +607,16 @@ function addResult(target: RpcBatchResult, update: Partial<RpcBatchResult>): voi
 export async function runCatalogSync(options = parseArgs(process.argv.slice(2))): Promise<RpcBatchResult> {
   const startedAt = Date.now();
   const rpc = options.dryRun ? undefined : createRpcClient(options.transport);
-  const source = await resolveSource(options);
-  const sourceStats = fs.statSync(source.filePath);
-  console.log(`[import] mode=${options.mode} source=${source.sourceMethod} bytes=${sourceStats.size}`);
+  const sources = await resolveSources(options);
+  const sourceBytes = sources.reduce((total, source) => total + fs.statSync(source.filePath).size, 0);
+  const sourceMethod = sources.map((source) => source.sourceMethod).join(',');
+  console.log(`[import] mode=${options.mode} sources=${sources.length} bytes=${sourceBytes}`);
 
   const batchId = rpc ? await rpc<string>('begin_ed_import', {
     p_batch_type: options.mode === 'full' ? 'FULL_CATALOG' : 'STOCK_PRICE',
-    p_source_method: source.sourceMethod,
+    p_source_method: sourceMethod,
     p_parameters: {
-      sourceFile: path.basename(source.filePath),
+      sourceFiles: sources.map((source) => path.basename(source.filePath)),
       limit: options.limit ?? null,
       batchSize: options.batchSize,
       scope: options.scope,
@@ -644,41 +668,49 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
   };
 
   try {
-    for await (const rawProduct of streamXmlElements(source.filePath, elementName)) {
-      parsed += 1;
-      if (options.mode === 'full' && options.scope === 'it-only') {
-        const scope = assessCatalogScope({
-          title: rawProduct.Name ?? rawProduct.ProductName,
-          description: rawProduct.Description,
-          descriptionShort: rawProduct.DescriptionShort,
-          commodityName: rawProduct.CommodityName,
-        });
-        if (!scope.included) {
-          filtered += 1;
-          const key = scope.matchedTerm ? `${scope.reason}:${scope.matchedTerm}` : scope.reason;
-          filteredByReason[key] = (filteredByReason[key] ?? 0) + 1;
-          continue;
+    let limitReached = false;
+    for (const source of sources) {
+      console.log(`[import] parsing source=${path.basename(source.filePath)}`);
+      for await (const rawProduct of streamXmlElements(source.filePath, elementName)) {
+        parsed += 1;
+        if (options.mode === 'full' && options.scope === 'it-only') {
+          const scope = assessCatalogScope({
+            title: rawProduct.Name ?? rawProduct.ProductName,
+            description: rawProduct.Description,
+            descriptionShort: rawProduct.DescriptionShort,
+            commodityName: rawProduct.CommodityName,
+          });
+          if (!scope.included) {
+            filtered += 1;
+            const key = scope.matchedTerm ? `${scope.reason}:${scope.matchedTerm}` : scope.reason;
+            filteredByReason[key] = (filteredByReason[key] ?? 0) + 1;
+            continue;
+          }
+        }
+        const transformed = options.mode === 'full' ? transformFullProduct(rawProduct) : transformStockProduct(rawProduct);
+        if (transformed && options.mode === 'full') {
+          const scope = assessCatalogScope({
+            title: rawProduct.Name ?? rawProduct.ProductName,
+            description: rawProduct.Description,
+            descriptionShort: rawProduct.DescriptionShort,
+            commodityName: rawProduct.CommodityName,
+          });
+          transformed.scope_reason = options.scope === 'all' ? 'SCOPE_ALL' : scope.reason;
+          transformed.scope_signal = scope.matchedTerm ?? null;
+        }
+        if (transformed) payload.push(transformed);
+        else skipped += 1;
+        if (payload.length >= options.batchSize) await flush();
+        if (options.limit && result.processed + payload.length >= options.limit) {
+          limitReached = true;
+          break;
         }
       }
-      const transformed = options.mode === 'full' ? transformFullProduct(rawProduct) : transformStockProduct(rawProduct);
-      if (transformed && options.mode === 'full') {
-        const scope = assessCatalogScope({
-          title: rawProduct.Name ?? rawProduct.ProductName,
-          description: rawProduct.Description,
-          descriptionShort: rawProduct.DescriptionShort,
-          commodityName: rawProduct.CommodityName,
-        });
-        transformed.scope_reason = options.scope === 'all' ? 'SCOPE_ALL' : scope.reason;
-        transformed.scope_signal = scope.matchedTerm ?? null;
-      }
-      if (transformed) payload.push(transformed);
-      else skipped += 1;
-      if (payload.length >= options.batchSize) await flush();
-      if (options.limit && result.processed + payload.length >= options.limit) break;
+      if (limitReached) break;
     }
     await flush();
     const durationMs = Date.now() - startedAt;
-    const metrics = { parsed, skipped, filtered, filteredByReason, scope: options.scope, durationMs, sourceBytes: sourceStats.size };
+    const metrics = { parsed, skipped, filtered, filteredByReason, scope: options.scope, durationMs, sourceBytes, sourceFiles: sources.length };
     const completion = rpc ? await rpc<RpcBatchResult>('complete_ed_import', {
       p_batch_id: batchId,
       p_metrics: metrics,

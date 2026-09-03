@@ -49,14 +49,10 @@ export class EDSystemClient {
     return 'http://www.elinkx.cz/';
   }
 
-  /**
-   * The catalogue download methods authenticate through URL query parameters.
-   * Never log the generated URL because it contains the supplier credentials.
-   */
-  private async getCatalogueDownloadStatus(
+  private async getXmlOverUrl(
     method: string,
     parameters: Record<string, string | boolean> = {},
-  ): Promise<EDProductListStatus> {
+  ): Promise<Record<string, unknown>> {
     const url = new URL(`${this.endpoint.replace(/\/$/, '')}/${method}`);
     url.searchParams.set('login', this.login);
     url.searchParams.set('password', this.pass);
@@ -71,16 +67,27 @@ export class EDSystemClient {
     });
     const responseText = await response.text();
     if (!response.ok) {
-      throw new Error(`eD catalogue request failed (${response.status} ${response.statusText})`);
+      throw new Error(`eD request failed (${response.status} ${response.statusText})`);
     }
 
-    const parsed = new XMLParser({
+    return new XMLParser({
       ignoreAttributes: false,
       attributeNamePrefix: '@_',
       textNodeName: '#text',
       parseTagValue: true,
       trimValues: true,
     }).parse(responseText) as Record<string, unknown>;
+  }
+
+  /**
+   * The catalogue download methods authenticate through URL query parameters.
+   * Never log the generated URL because it contains the supplier credentials.
+   */
+  private async getCatalogueDownloadStatus(
+    method: string,
+    parameters: Record<string, string | boolean> = {},
+  ): Promise<EDProductListStatus> {
+    const parsed = await this.getXmlOverUrl(method, parameters);
     const envelope = (parsed.ResponseProductListStatus ?? parsed) as Record<string, unknown>;
     const status = (envelope.Status ?? {}) as Record<string, unknown>;
     const productListStatus = (envelope.ProductListStatus ?? {}) as Record<string, unknown>;
@@ -214,22 +221,27 @@ export class EDSystemClient {
    * 3.7. getProductCommodityList
    */
   async getProductCommodityList(): Promise<EDCommodity[]> {
-    const action = `${this.getSoapNamespace()}getProductCommodityList`;
-    const bodyXml = `<getProductCommodityList xmlns="${this.getSoapNamespace()}">
-      <login>${escapeXml(this.login)}</login>
-      <password>${escapeXml(this.pass)}</password>
-    </getProductCommodityList>`;
-
-    const response = await executeSoapCall<{ getProductCommodityListResponse?: { getProductCommodityListResult?: any } }>({
-      endpoint: this.endpoint,
-      action,
-      bodyXml,
+    const parsed = await this.getXmlOverUrl('getProductCommodityList', {
+      onStock: false,
+      Comodities: '',
     });
-
-    const result = response?.getProductCommodityListResponse?.getProductCommodityListResult;
-    const items = result?.ProductCommodityList?.ProductCommodity;
-    if (!items) return [];
-    return Array.isArray(items) ? items : [items];
+    const envelope = (parsed.ResponseProductCommodityList ?? parsed) as Record<string, unknown>;
+    const status = (envelope.Status ?? {}) as Record<string, unknown>;
+    const statusCode = xmlString(status.StatusCode);
+    if (statusCode && statusCode !== 'DONE') {
+      throw new Error(`eD commodity list failed: ${xmlString(status.ErrorText) ?? statusCode}`);
+    }
+    const list = (envelope.ProductCommodityList ?? {}) as Record<string, unknown>;
+    const rawItems = list.ProductCommodity;
+    const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
+    return items.map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        CommodityCode: xmlString(row.CommodityCode) ?? '',
+        CommodityName: xmlString(row.CommodityName) ?? '',
+        CommodityParentCode: xmlString(row.CommodityParentCode),
+      };
+    });
   }
 
   /**
