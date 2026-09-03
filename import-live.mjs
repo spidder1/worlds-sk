@@ -6,8 +6,9 @@ async function runLiveImport() {
   console.log(' Worlds.sk - ŽIVÉ SŤAHOVANIE NOTEBOOKOV Z eD SYSTEM');
   console.log('===========================================================\n');
 
-  const login = process.env.ED_LOGIN || 'EthosAPI';
-  const password = process.env.ED_PASSWORD || 'Ed_2025';
+  const login = process.env.ED_LOGIN;
+  const password = process.env.ED_PASSWORD;
+  if (!login || !password) throw new Error('Missing ED_LOGIN or ED_PASSWORD.');
   const endpoint = 'https://private-ws-sk.elinkx.biz/service.asmx';
 
   console.log(`1. Prihlasujem sa do eD system API (${endpoint})...`);

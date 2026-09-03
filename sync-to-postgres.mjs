@@ -7,7 +7,8 @@ async function syncToSupabasePostgres() {
   console.log(' SYNCHRONIZÁCIA ŽIVÝCH NOTEBOOKOV DO SUPABASE POSTGRESQL');
   console.log('===========================================================\n');
 
-  const connectionString = 'postgresql://postgres:RonaldTimonMajkaMarse1ll3!@db.jhgyzgdiapiewpjgosxm.supabase.co:5432/postgres';
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) throw new Error('Missing required environment variable: DATABASE_URL');
   const repo = new PostgresProductRepository(connectionString);
 
   console.log(`Ukladám ${PRODUCTS.length} živých notebookov do Supabase...`);

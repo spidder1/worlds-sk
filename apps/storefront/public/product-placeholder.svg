@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-labelledby="title description">
+  <title id="title">Obrázok produktu nie je k dispozícii</title>
+  <desc id="description">Neutrálny zástupný obrázok Worlds.sk</desc>
+  <rect width="800" height="600" fill="#f8fafc"/>
+  <rect x="272" y="138" width="256" height="256" rx="40" fill="#e2e8f0"/>
+  <path d="M344 216h112a24 24 0 0 1 24 24v80a24 24 0 0 1-24 24H344a24 24 0 0 1-24-24v-80a24 24 0 0 1 24-24Zm-8 144h128l32 40H304l32-40Z" fill="#64748b"/>
+  <text x="400" y="470" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#0f172a">Worlds.sk</text>
+  <text x="400" y="510" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#64748b">Obrázok pripravujeme</text>
+</svg>

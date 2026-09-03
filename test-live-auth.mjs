@@ -1,11 +1,12 @@
 async function testAllMethods() {
-  const login = 'EthosAPI';
-  const pass = 'Ed_2025';
+  const login = process.env.ED_LOGIN;
+  const pass = process.env.ED_PASSWORD;
+  if (!login || !pass) throw new Error('Missing ED_LOGIN or ED_PASSWORD.');
   const endpoint = 'https://private-ws-sk.elinkx.biz/service.asmx';
 
   console.log('===========================================================');
   console.log(` Testovanie eD system API so zadanými údajmi:`);
-  console.log(` Login: "${login}", Heslo: "${pass}"`);
+  console.log(' Credentials: loaded from environment');
   console.log(` Endpoint: ${endpoint}`);
   console.log('===========================================================\n');
 

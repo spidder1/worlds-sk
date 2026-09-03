@@ -5,11 +5,11 @@ import { Footer } from '../components/Footer';
 
 export const metadata: Metadata = {
   title: 'Worlds.sk | Moderný IT & Tech E-Shop s AI Data Engine',
-  description: 'Oficiálna distribúcia IT techniky, notebookov, komponentov a periférií. Viac ako 70 000 produktov priamo zo skladu distribútora.',
+  description: 'IT technika, notebooky, komponenty a periférie s priebežne synchronizovanými cenami a dostupnosťou.',
   metadataBase: new URL('https://worlds.sk'),
   openGraph: {
     title: 'Worlds.sk - Špičková IT technika a komponenty',
-    description: 'Viac ako 70 000 overených produktov priamo z centrálneho skladu eD system.',
+    description: 'IT technika s priebežne synchronizovanými cenami a dostupnosťou z distribučného katalógu.',
     siteName: 'Worlds.sk',
     locale: 'sk_SK',
     type: 'website',

@@ -5,8 +5,9 @@ import { XMLParser } from 'fast-xml-parser';
 import { classifyProductIndependently } from './packages/importer/dist/taxonomy-definition.js';
 import { sanitizeAndFormatHtml } from './packages/importer/dist/html-sanitizer.js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jhgyzgdiapiewpjgosxm.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoZ3l6Z2RpYXBpZXdwamdvc3htIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwNzI2OTksImV4cCI6MjEwMzY0ODY5OX0.6SAAJarR0Er3LFFewmcJTN_oEE2OoEMLqUTQJRGA3hY';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
+if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) throw new Error('Missing SUPABASE_URL or SUPABASE_SECRET_KEY.');
 
 function extractBrand(title, rawBrand) {
   if (rawBrand && rawBrand !== 'Neznámy' && rawBrand.trim().length > 1) {
@@ -89,8 +90,7 @@ async function sendBatchWithRetry(batch, maxRetries = 3) {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/master_products`, {
         method: 'POST',
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': SUPABASE_SECRET_KEY,
           'Content-Type': 'application/json',
           'Prefer': 'resolution=merge-duplicates'
         },

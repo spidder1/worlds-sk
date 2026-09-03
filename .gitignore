@@ -13,3 +13,5 @@ tmp/
 downloads/
 
 .vercel
+.env*
+supabase/.temp/

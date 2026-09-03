@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { MasterProduct, QuarantineRecord, ImportRunSummary, TaxonomyCategory } from '@worlds/types';
+import { requiredEnv } from './runtime-config.js';
 
 const { Pool } = pg;
 
@@ -7,10 +8,7 @@ export class PostgresProductRepository {
   private pool: pg.Pool;
 
   constructor(connectionString?: string) {
-    const url =
-      connectionString ||
-      process.env.DATABASE_URL ||
-      'postgresql://postgres:RonaldTimonMajkaMarse1ll3!@db.jhgyzgdiapiewpjgosxm.supabase.co:5432/postgres';
+    const url = connectionString || requiredEnv('DATABASE_URL');
 
     this.pool = new Pool({
       connectionString: url,

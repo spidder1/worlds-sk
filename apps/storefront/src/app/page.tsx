@@ -1,14 +1,13 @@
 import React from 'react';
 import Link from 'next/link';
-import { getAllProducts, getCategories } from '../lib/catalog';
+import { getFeaturedProducts } from '../lib/catalog';
 import { ProductCard } from '../components/ProductCard';
-import { Sparkles, ArrowRight, Laptop, Cpu, Monitor, HardDrive, ShieldCheck, Zap, Server } from 'lucide-react';
+import { Sparkles, ArrowRight, Laptop, Gamepad2, BriefcaseBusiness, Cable, ShieldCheck, Zap, Server } from 'lucide-react';
 
 export const revalidate = 60; // ISR revalidate every 60 seconds
 
 export default async function HomePage() {
-  const products = await getAllProducts();
-  const categories = await getCategories();
+  const products = await getFeaturedProducts(8);
 
   return (
     <div className="space-y-12">
@@ -23,7 +22,7 @@ export default async function HomePage() {
             Nová generácia nákupu <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">IT techniky</span>
           </h1>
           <p className="text-slate-300 text-sm md:text-base leading-relaxed">
-            Priame napojenie na centrálne sklady distribútora eD system. Viac ako 70 000 produktov s overenými technickými parametrami a bleskovou logistikou.
+            Aktuálna ponuka IT techniky napojená na distribučný katalóg eD system, s priebežne synchronizovanými cenami a dostupnosťou.
           </p>
           <div className="flex flex-wrap gap-3 pt-2">
             <Link
@@ -32,12 +31,6 @@ export default async function HomePage() {
             >
               Preskúmať notebooky
               <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/admin"
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-sm font-semibold px-5 py-3 rounded-xl transition-colors"
-            >
-              Katalóg & Quality Admin
             </Link>
           </div>
         </div>
@@ -71,36 +64,36 @@ export default async function HomePage() {
           </Link>
 
           <Link
-            href="/kategoria/procesory"
+              href="/kategoria/herne-notebooky"
             className="bg-white p-5 rounded-xl border border-slate-200 hover:border-brand-500 hover:shadow-md transition-all group flex flex-col items-center text-center"
           >
             <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl mb-3 group-hover:scale-110 transition-transform">
-              <Cpu className="w-6 h-6" />
+              <Gamepad2 className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-600">Procesory</h3>
-            <p className="text-xs text-slate-500 mt-1">Intel Core & AMD Ryzen</p>
+            <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-600">Herné notebooky</h3>
+            <p className="text-xs text-slate-500 mt-1">Výkonné modely pre hranie</p>
           </Link>
 
           <Link
-            href="/kategoria/monitory"
+              href="/kategoria/firemne-notebooky"
             className="bg-white p-5 rounded-xl border border-slate-200 hover:border-brand-500 hover:shadow-md transition-all group flex flex-col items-center text-center"
           >
             <div className="bg-purple-50 text-purple-600 p-3 rounded-xl mb-3 group-hover:scale-110 transition-transform">
-              <Monitor className="w-6 h-6" />
+              <BriefcaseBusiness className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-sm text-slate-900 group-hover:text-purple-600">Monitory</h3>
-            <p className="text-xs text-slate-500 mt-1">4K UHD, IPS a herné 144Hz+</p>
+            <h3 className="font-bold text-sm text-slate-900 group-hover:text-purple-600">Firemné notebooky</h3>
+            <p className="text-xs text-slate-500 mt-1">Pracovné a profesionálne modely</p>
           </Link>
 
           <Link
-            href="/kategoria/ssd-disky"
+              href="/kategoria/prislusenstvo-a-periferie"
             className="bg-white p-5 rounded-xl border border-slate-200 hover:border-brand-500 hover:shadow-md transition-all group flex flex-col items-center text-center"
           >
             <div className="bg-amber-50 text-amber-600 p-3 rounded-xl mb-3 group-hover:scale-110 transition-transform">
-              <HardDrive className="w-6 h-6" />
+              <Cable className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-sm text-slate-900 group-hover:text-amber-600">SSD Disky</h3>
-            <p className="text-xs text-slate-500 mt-1">M.2 NVMe PCIe 4.0 / 5.0</p>
+            <h3 className="font-bold text-sm text-slate-900 group-hover:text-amber-600">Príslušenstvo</h3>
+            <p className="text-xs text-slate-500 mt-1">Periférie, adaptéry a doplnky</p>
           </Link>
         </div>
       </section>
@@ -109,11 +102,11 @@ export default async function HomePage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">Vybrané produkty z centrálneho skladu</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Produkty s overenou dostupnosťou a presnými špecifikáciami</p>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">Vybrané produkty z katalógu</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Produkty s dostupnosťou uvedenou v poslednej synchronizácii</p>
           </div>
           <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200">
-            Skladom & k odoslaniu
+            Evidované skladom
           </span>
         </div>
 
@@ -131,9 +124,9 @@ export default async function HomePage() {
             <Zap className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-900 text-sm">Real-time aktualizácia cien a skladu</h3>
+            <h3 className="font-bold text-slate-900 text-sm">Aktualizácia cien a skladu</h3>
             <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              Ceny a skladové zásoby sa priebežne synchronizujú s centrálou eD system každú hodinu.
+              Katalóg zobrazuje cenu a dostupnosť z poslednej úspešnej synchronizácie s distribučným feedom.
             </p>
           </div>
         </div>
@@ -143,9 +136,9 @@ export default async function HomePage() {
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-900 text-sm">Presné parametre bez halucinácií</h3>
+            <h3 className="font-bold text-slate-900 text-sm">Kontrolovaný produktový obsah</h3>
             <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              Všetky špecifikácie sú validované priamo z produktového navigátora výrobcu a distribútora.
+              Zobrazené parametre pochádzajú zo štruktúrovaných produktových dát a prechádzajú spracovaním importnej vrstvy.
             </p>
           </div>
         </div>
@@ -155,9 +148,9 @@ export default async function HomePage() {
             <Server className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-900 text-sm">B2B & B2C Dropshipping pripravenosť</h3>
+            <h3 className="font-bold text-slate-900 text-sm">Príprava objednávkového napojenia</h3>
             <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              Podpora priameho odosielania objednávok z veľkoskladu kuriérom PPL / DPD priamo k zákazníkovi.
+              Online objednávky a doprava budú sprístupnené až po dokončení a overení celého objednávkového toku.
             </p>
           </div>
         </div>

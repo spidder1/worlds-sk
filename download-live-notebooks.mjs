@@ -9,8 +9,9 @@ async function downloadAndInspectNotebooks() {
   console.log('===========================================================\n');
 
   // 1. Získanie čerstvej URL
-  const login = encodeURIComponent('EthosAPI');
-  const pass = encodeURIComponent('Ed_2025');
+  if (!process.env.ED_LOGIN || !process.env.ED_PASSWORD) throw new Error('Missing ED_LOGIN or ED_PASSWORD.');
+  const login = encodeURIComponent(process.env.ED_LOGIN);
+  const pass = encodeURIComponent(process.env.ED_PASSWORD);
   const reqUrl = `https://private-ws-sk.elinkx.biz/service.asmx/getProductCatalogueFullDownloadZIP?login=${login}&password=${pass}&onStock=false&Comodities=NB`;
 
   console.log('1. Žiadam eD systém o čerstvý balík notebookov (NB)...');

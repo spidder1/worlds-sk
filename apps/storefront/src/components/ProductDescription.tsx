@@ -1,6 +1,5 @@
-'use client';
-
 import React from 'react';
+import sanitizeHtml from 'sanitize-html';
 
 interface ProductDescriptionProps {
   content?: string;
@@ -59,7 +58,7 @@ export function ProductDescription({ content, fallbackText }: ProductDescription
     );
   }
 
-  // Ak je obsah escapovaný, dekódujeme ho
+  // Decode supplier markup, then sanitize it at the final rendering boundary.
   let processedContent = content;
   if (processedContent.includes('&lt;') || processedContent.includes('&gt;')) {
     processedContent = decodeHtmlEntities(processedContent);
@@ -68,10 +67,15 @@ export function ProductDescription({ content, fallbackText }: ProductDescription
   const isHtml = processedContent.includes('<') && processedContent.includes('>');
 
   if (isHtml) {
+    const safeHtml = sanitizeHtml(processedContent, {
+      allowedTags: ['p', 'br', 'strong', 'b', 'em', 'i', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'h2', 'h3', 'h4'],
+      allowedAttributes: {},
+    });
+
     return (
       <div
         className="text-sm text-slate-700 leading-relaxed overflow-x-auto space-y-3 prose prose-slate max-w-none prose-p:my-2 prose-headings:font-bold prose-headings:text-slate-900 prose-ul:list-disc prose-ul:pl-5 prose-ol:list-decimal prose-ol:pl-5 prose-li:my-1 prose-strong:text-slate-900 prose-strong:font-bold prose-table:w-full prose-table:border-collapse prose-table:text-xs prose-td:p-2 prose-td:border-b prose-td:border-slate-100 prose-th:p-2 prose-th:bg-slate-50 prose-th:text-left prose-th:font-bold prose-th:text-slate-900"
-        dangerouslySetInnerHTML={{ __html: processedContent }}
+        dangerouslySetInnerHTML={{ __html: safeHtml }}
       />
     );
   }

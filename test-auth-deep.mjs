@@ -1,6 +1,7 @@
 async function testAuthVariations() {
-  const login = 'EthosAPI';
-  const pass = 'Ed_2025';
+  const login = process.env.ED_LOGIN;
+  const pass = process.env.ED_PASSWORD;
+  if (!login || !pass) throw new Error('Missing ED_LOGIN or ED_PASSWORD.');
   const basicAuth = 'Basic ' + Buffer.from(`${login}:${pass}`).toString('base64');
 
   const endpoints = [

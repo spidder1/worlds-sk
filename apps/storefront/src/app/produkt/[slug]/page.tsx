@@ -1,6 +1,7 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import { getProductBySlug } from '../../../lib/catalog';
 import { ProductDescription } from '../../../components/ProductDescription';
@@ -18,7 +19,6 @@ import {
   Cpu,
   HardDrive,
   Monitor,
-  Box,
   Tag
 } from 'lucide-react';
 
@@ -56,7 +56,7 @@ export default async function ProductDetailPage({ params }: Props) {
     notFound();
   }
 
-  const primaryImage = product.images[0]?.url || 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80';
+  const primaryImage = product.images[0]?.url || '/product-placeholder.svg';
 
   // Group attributes into clean categories for presentation
   const allAttrs = Object.values(product.attributes || {});
@@ -92,20 +92,6 @@ export default async function ProductDetailPage({ params }: Props) {
       '@type': 'Brand',
       name: product.brand,
     },
-    offers: {
-      '@type': 'Offer',
-      url: `https://worlds.sk/produkt/${product.slug}`,
-      priceCurrency: product.pricing.currency,
-      price: product.pricing.finalPrice.toFixed(2),
-      itemCondition: 'https://schema.org/NewCondition',
-      availability: product.isInStock
-        ? 'https://schema.org/InStock'
-        : 'https://schema.org/PreOrder',
-      seller: {
-        '@type': 'Organization',
-        name: 'Worlds.sk',
-      },
-    },
   };
 
   return (
@@ -137,10 +123,13 @@ export default async function ProductDetailPage({ params }: Props) {
         {/* Gallery */}
         <div className="space-y-4">
           <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex items-center justify-center h-80 md:h-[400px] relative overflow-hidden group">
-            <img
+            <Image
               src={primaryImage}
               alt={product.title}
-              className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+              fill
+              priority
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="object-contain p-6 transition-transform duration-300 group-hover:scale-105"
             />
             <div className="absolute top-4 left-4 bg-slate-900 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-md">
               {product.brand}
@@ -159,7 +148,7 @@ export default async function ProductDetailPage({ params }: Props) {
                   key={idx}
                   className="w-20 h-20 bg-slate-50 border border-slate-200 rounded-xl p-2 flex-shrink-0 cursor-pointer hover:border-brand-500 transition-colors"
                 >
-                  <img src={img.url} alt={img.altText || ''} className="w-full h-full object-contain" />
+                  <Image src={img.url} alt={img.altText || ''} width={80} height={80} className="w-full h-full object-contain" />
                 </div>
               ))}
             </div>
@@ -189,9 +178,9 @@ export default async function ProductDetailPage({ params }: Props) {
             {/* Quality & Origin Badge */}
             <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-full text-xs font-semibold text-slate-700">
               <Award className="w-4 h-4 text-brand-600" />
-              <span>Oficiálna SK distribúcia</span>
+              <span>Distribučný katalóg eD system</span>
               <span className="text-slate-300">|</span>
-              <span className="text-emerald-700 font-bold">100% nový tovar v originálnom balení</span>
+              <span className="text-emerald-700 font-bold">Údaje z distribučného feedu</span>
             </div>
 
             {/* Stock Status Box */}
@@ -201,7 +190,7 @@ export default async function ProductDetailPage({ params }: Props) {
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                   <div>
                     <div>{product.stockText || `Skladom ${product.stockCount} ks`}</div>
-                    <div className="text-xs font-normal text-emerald-700">Expedujeme ihneď z centrálneho logistického skladu</div>
+                    <div className="text-xs font-normal text-emerald-700">Dostupnosť bola potvrdená poslednou synchronizáciou skladu</div>
                   </div>
                 </div>
               ) : (
@@ -240,7 +229,7 @@ export default async function ProductDetailPage({ params }: Props) {
                 className="w-full bg-brand-600 hover:bg-brand-700 active:scale-[0.99] text-white font-extrabold py-4 px-6 rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-brand-600/30 transition-all text-base"
               >
                 <ShoppingCart className="w-5 h-5" />
-                Vložiť do košíka
+                Informácie o objednaní
               </Link>
             </div>
           </div>
@@ -249,12 +238,14 @@ export default async function ProductDetailPage({ params }: Props) {
           <div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-5 text-xs text-slate-700 font-medium">
             <div className="flex items-center gap-2">
               <Truck className="w-4 h-4 text-brand-600 flex-shrink-0" />
-              <span>Doručenie do 24/48h</span>
+              <span>Dostupnosť podľa skladu</span>
             </div>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-              <span>Záruka {product.warrantyMonths} mesiacov</span>
-            </div>
+            {Boolean(product.warrantyMonths) && (
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <span>Záruka podľa feedu: {product.warrantyMonths} mesiacov</span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <RotateCcw className="w-4 h-4 text-purple-600 flex-shrink-0" />
               <span>14 dní na vrátenie</span>
@@ -300,10 +291,12 @@ export default async function ProductDetailPage({ params }: Props) {
                   <span className="text-slate-900 font-mono">{product.ean}</span>
                 </div>
               )}
-              <div className="py-2.5 flex justify-between items-center">
-                <span className="text-slate-500 font-medium">Záruka pre spotrebiteľa</span>
-                <span className="text-emerald-700 font-bold">{product.warrantyMonths} mesiacov</span>
-              </div>
+              {Boolean(product.warrantyMonths) && (
+                <div className="py-2.5 flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Záruka uvedená vo feede</span>
+                  <span className="text-emerald-700 font-bold">{product.warrantyMonths} mesiacov</span>
+                </div>
+              )}
             </div>
           </div>
 

@@ -1,10 +1,11 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { Lock, ArrowLeft, Shield } from 'lucide-react';
+import { Lock, ArrowLeft } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Ochrana osobných údajov (GDPR) | Worlds.sk',
   description: 'Zásady spracúvania a ochrany osobných údajov zákazníkov internetového obchodu Worlds.sk v zmysle GDPR.',
+  robots: { index: false, follow: true },
 };
 
 export default function OchranaOsobnychUdajovPage() {
@@ -17,6 +18,10 @@ export default function OchranaOsobnychUdajovPage() {
         <span>/</span>
         <span className="text-slate-900 font-medium">Ochrana osobných údajov</span>
       </nav>
+
+      <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+        Pracovný návrh: web zatiaľ neprijíma objednávky ani údaje cez kontaktný formulár. Pred spustením zberu údajov musí konečné znenie skontrolovať právnik.
+      </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-8 md:p-12 shadow-sm space-y-8 text-slate-700 leading-relaxed">
         <div className="border-b border-slate-200 pb-6">

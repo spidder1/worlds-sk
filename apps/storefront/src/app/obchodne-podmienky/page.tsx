@@ -9,23 +9,12 @@ import {
   Building2,
   ShieldCheck,
   RotateCcw,
-  CreditCard,
-  Truck,
-  HelpCircle,
   Scale,
   CheckCircle2,
-  AlertCircle,
-  Download
 } from 'lucide-react';
 
 export default function ObchodnePodmienkyPage() {
   const [activeTab, setActiveTab] = useState<'b2c' | 'b2b'>('b2c');
-  const [activeSection, setActiveSection] = useState<string | null>(null);
-
-  const toggleSection = (id: string) => {
-    setActiveSection(activeSection === id ? null : id);
-  };
-
   return (
     <div className="bg-slate-50 min-h-screen py-12">
       <div className="container mx-auto px-4 max-w-5xl">
@@ -37,6 +26,10 @@ export default function ObchodnePodmienkyPage() {
           <span>/</span>
           <span className="text-slate-900 font-semibold">Obchodné podmienky</span>
         </nav>
+
+        <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          Pracovný návrh: online objednávanie ešte nie je aktívne. Pred jeho spustením musí konečné znenie skontrolovať právnik.
+        </div>
 
         {/* Hero Header */}
         <div className="bg-white rounded-3xl border border-slate-200/80 p-8 md:p-12 shadow-sm mb-10 relative overflow-hidden">

@@ -4,8 +4,9 @@ import AdmZip from 'adm-zip';
 import { XMLParser } from 'fast-xml-parser';
 
 async function waitAndDownload() {
-  const login = encodeURIComponent('EthosAPI');
-  const pass = encodeURIComponent('Ed_2025');
+  if (!process.env.ED_LOGIN || !process.env.ED_PASSWORD) throw new Error('Missing ED_LOGIN or ED_PASSWORD.');
+  const login = encodeURIComponent(process.env.ED_LOGIN);
+  const pass = encodeURIComponent(process.env.ED_PASSWORD);
 
   console.log('1. Kontrolujem pripravené katalógy v eD systéme...');
 

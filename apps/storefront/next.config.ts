@@ -7,9 +7,9 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'private-ws-sk.elinkx.biz' },
       { protocol: 'https', hostname: 'edshop.edsystem.sk' },
-      { protocol: 'https', hostname: '**' },
     ],
   },
+  poweredByHeader: false,
 };
 
 export default nextConfig;

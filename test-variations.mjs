@@ -1,12 +1,8 @@
 async function testLoginVariations() {
-  const variations = [
-    { login: 'EthosAPI', pass: 'Ed_2025' },
-    { login: 'ethosapi', pass: 'Ed_2025' },
-    { login: 'ETHOSAPI', pass: 'Ed_2025' },
-    { login: 'EthosAPI', pass: 'ed_2025' },
-    { login: 'EthosAPI', pass: 'ED_2025' },
-    { login: 'EthosApi', pass: 'Ed_2025' },
-  ];
+  const login = process.env.ED_LOGIN;
+  const pass = process.env.ED_PASSWORD;
+  if (!login || !pass) throw new Error('Missing ED_LOGIN or ED_PASSWORD.');
+  const variations = [{ login, pass }];
 
   for (const v of variations) {
     const soap = `<?xml version="1.0" encoding="utf-8"?>

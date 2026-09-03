@@ -2,7 +2,7 @@ import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { getAllProducts, findCategoryBySlug, getCategories } from '../../../lib/catalog';
+import { getProductsByCategory, findCategoryBySlug } from '../../../lib/catalog';
 import { ProductCard } from '../../../components/ProductCard';
 import { ChevronRight, Home, LayoutGrid, SlidersHorizontal, Check, X, Filter } from 'lucide-react';
 
@@ -29,8 +29,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   return {
-    title: `${category.name} | Výhodný nákup na Worlds.sk`,
-    description: `Široká ponuka v kategórii ${category.name}. Skladová dostupnosť priamo z centrálneho skladu, rýchle doručenie a oficiálna záruka.`,
+    title: `${category.name} | Worlds.sk`,
+    description: `Produkty v kategórii ${category.name} s cenou a dostupnosťou z poslednej synchronizácie distribučného katalógu.`,
     alternates: {
       canonical: `https://worlds.sk/kategoria/${category.slug}`,
     },
@@ -56,15 +56,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     notFound();
   }
 
-  const allCategories = await getCategories();
-  const allProducts = await getAllProducts();
-  
-  // Filter products by category or parent category slug
-  const categoryProducts = allProducts.filter(
-    (p) =>
-      p.categorySlug === slug ||
-      p.categoryHierarchy.some((h) => h.toLowerCase().includes(category.name.toLowerCase()) || h.toLowerCase() === slug.toLowerCase())
-  );
+  const categoryProducts = await getProductsByCategory(slug);
 
   // Extract available facet attributes across products in this category
   const availableBrands = Array.from(new Set(categoryProducts.map((p) => p.brand).filter(Boolean))).sort();
@@ -84,7 +76,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const availableCpu = extractAttributeValues(['cpu_family', 'cpu_model', 'processor_model']);
   const availableSsd = extractAttributeValues(['ssd_gb', 'storage_capacity_gb', 'hdd_capacity_gb']);
   const availableScreens = extractAttributeValues(['screen_size_inch', 'display_diagonal_inch']);
-  const availableGpu = extractAttributeValues(['gpu_model', 'graphics_card']);
 
   // Apply filters to product listing
   let filtered = [...categoryProducts];
@@ -173,7 +164,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           <div>
             <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">{category.name}</h1>
             <p className="text-xs text-slate-500 mt-1">
-              Zobrazených <span className="font-bold text-slate-900">{filtered.length}</span> produktov s priamym napojením na centrálny sklad
+              Zobrazených <span className="font-bold text-slate-900">{filtered.length}</span> produktov z poslednej synchronizácie katalógu
             </p>
           </div>
 

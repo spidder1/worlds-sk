@@ -3,18 +3,15 @@ import Link from 'next/link';
 import {
   ShieldAlert,
   ArrowLeft,
-  CheckCircle2,
   Clock,
-  Truck,
   Wrench,
   FileCheck,
-  AlertTriangle,
-  HelpCircle
 } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Reklamačný poriadok a záručné podmienky | Worlds.sk',
   description: 'Podmienky uplatnenia záruky, postup reklamácie tovaru a zoznam autorizovaných servisov na Worlds.sk.',
+  robots: { index: false, follow: true },
 };
 
 export default function ReklamacnyPoriadokPage() {
@@ -29,6 +26,10 @@ export default function ReklamacnyPoriadokPage() {
           <span>/</span>
           <span className="text-slate-900 font-semibold">Reklamačný poriadok</span>
         </nav>
+
+        <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          Pracovný návrh: online objednávanie ešte nie je aktívne. Pred jeho spustením musí konečné znenie skontrolovať právnik.
+        </div>
 
         {/* Hero Header */}
         <div className="bg-white rounded-3xl border border-slate-200/80 p-8 md:p-12 shadow-sm mb-10 relative overflow-hidden">

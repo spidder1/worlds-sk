@@ -1,28 +1,13 @@
-'use client';
-
-import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   Mail,
   MapPin,
   Building2,
   Clock,
-  Send,
   ArrowLeft,
-  CheckCircle2,
-  Phone,
-  HelpCircle,
-  ShieldCheck
 } from 'lucide-react';
 
 export default function KontaktPage() {
-  const [submitted, setSubmitted] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitted(true);
-  };
-
   return (
     <div className="bg-slate-50 min-h-screen py-12">
       <div className="container mx-auto px-4 max-w-5xl">
@@ -108,84 +93,21 @@ export default function KontaktPage() {
             </div>
           </div>
 
-          {/* Pravý stĺpec: Kontaktný formulár */}
+          {/* Pravý stĺpec: bezpečný kontakt bez nefunkčného formulára */}
           <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
             <div>
               <h2 className="text-xl font-bold text-slate-900">Napíšte nám správu</h2>
-              <p className="text-xs text-slate-500 mt-1">Odpovedáme spravidla do niekoľkých hodín.</p>
+              <p className="text-xs text-slate-500 mt-1">Kontaktný formulár zatiaľ nie je pripojený k odosielaniu správ.</p>
             </div>
-
-            {submitted ? (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center space-y-3">
-                <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
-                <h3 className="font-bold text-emerald-900 text-lg">Ďakujeme za vašu správu!</h3>
-                <p className="text-xs text-emerald-700 leading-relaxed">
-                  Vaša správa bola úspešne odoslaná na naše zákaznícke oddelenie. Čoskoro sa vám ozveme.
-                </p>
-                <button
-                  onClick={() => setSubmitted(false)}
-                  className="text-xs text-emerald-800 font-bold underline hover:no-underline pt-2"
-                >
-                  Odoslať ďalšiu správu
-                </button>
-              </div>
-            ) : (
-              <form className="space-y-4 text-sm" onSubmit={handleSubmit}>
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1 text-xs uppercase tracking-wider">
-                    Meno a priezvisko *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ján Novák"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1 text-xs uppercase tracking-wider">
-                    E-mailová adresa *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="jan.novak@example.sk"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1 text-xs uppercase tracking-wider">
-                    Predmet
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Otázka k notebooku alebo objednávke"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1 text-xs uppercase tracking-wider">
-                    Vaša správa *
-                  </label>
-                  <textarea
-                    required
-                    rows={4}
-                    placeholder="Dobrý deň, chcel by som sa opýtať na..."
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white focus:outline-none transition-all resize-none"
-                  ></textarea>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 text-sm"
-                >
-                  <Send className="w-4 h-4" /> Odoslať správu
-                </button>
-              </form>
-            )}
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 space-y-3 text-sm text-blue-950">
+              <p>Pre otázky k sortimentu alebo dostupnosti použite e-mail. Správa sa otvorí vo vašej e-mailovej aplikácii.</p>
+              <a
+                href="mailto:info@worlds.sk?subject=Ot%C3%A1zka%20z%20Worlds.sk"
+                className="inline-flex rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700"
+              >
+                Napísať na info@worlds.sk
+              </a>
+            </div>
           </div>
         </div>
       </div>

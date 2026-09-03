@@ -2,11 +2,10 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { MasterProduct } from '@worlds/types';
-import { CheckCircle2, AlertCircle, ShoppingCart } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Eye } from 'lucide-react';
 
 export function ProductCard({ product }: { product: MasterProduct }) {
-  const primaryImg = product.images[0]?.url || 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&q=80';
-  const hasMultipleImages = product.images.length > 1;
+  const primaryImg = product.images[0]?.url || '/product-placeholder.svg';
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group relative">
@@ -19,11 +18,12 @@ export function ProductCard({ product }: { product: MasterProduct }) {
 
       {/* Product Image */}
       <Link href={`/produkt/${product.slug}`} className="block relative w-full h-48 bg-slate-50 overflow-hidden">
-        <img
+        <Image
           src={primaryImg}
           alt={product.title}
-          className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-300"
-          loading="lazy"
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 25vw"
+          className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
         />
       </Link>
 
@@ -86,7 +86,7 @@ export function ProductCard({ product }: { product: MasterProduct }) {
               className="bg-brand-600 hover:bg-brand-700 text-white p-2 rounded-lg transition-colors flex items-center justify-center shadow-sm"
               title="Zobraziť detail"
             >
-              <ShoppingCart className="w-4 h-4" />
+              <Eye className="w-4 h-4" />
             </Link>
           </div>
         </div>

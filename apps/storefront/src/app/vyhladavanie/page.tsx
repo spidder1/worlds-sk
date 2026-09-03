@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { getAllProducts } from '../../lib/catalog';
+import { searchProducts } from '../../lib/catalog';
 import { ProductCard } from '../../components/ProductCard';
 import { Search, Home, ChevronRight } from 'lucide-react';
 
@@ -19,22 +19,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
 export default async function SearchPage({ searchParams }: Props) {
   const { q } = await searchParams;
-  const query = (q || '').trim().toLowerCase();
-
-  const allProducts = await getAllProducts();
-
-  const results = query
-    ? allProducts.filter((p) => {
-        return (
-          p.title.toLowerCase().includes(query) ||
-          p.brand.toLowerCase().includes(query) ||
-          p.mpn.toLowerCase().includes(query) ||
-          p.ean?.includes(query) ||
-          p.categoryHierarchy.some((h) => h.toLowerCase().includes(query)) ||
-          p.searchKeywords.some((k) => k.includes(query))
-        );
-      })
-    : [];
+  const query = (q || '').trim();
+  const results = query ? await searchProducts(query) : [];
 
   return (
     <div className="space-y-6">

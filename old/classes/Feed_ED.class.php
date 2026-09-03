@@ -255,8 +255,8 @@
                 //			"options_container" 		=> array("INSERT" => true, "UPDATE" => false, "Default" => 1),
             );
 
-            $this->wsLogin = "EthosAPI";
-            $this->wsPass = "Ed_2025";
+            $this->wsLogin = getenv("ED_LOGIN") ?: "";
+            $this->wsPass = getenv("ED_PASSWORD") ?: "";
         }
 
         public function getCategories() {

@@ -1,4 +1,4 @@
-import { MasterProduct, TaxonomyCategory, QuarantineRecord, ImportRunSummary } from '@worlds/types';
+import { MasterProduct, TaxonomyCategory } from '@worlds/types';
 import { supabase } from './supabase-client';
 
 export const CATEGORIES: TaxonomyCategory[] = [
@@ -454,6 +454,8 @@ export const CATEGORIES: TaxonomyCategory[] = [
   },
 ];
 
+// Supabase row typing is generated at runtime for this legacy view boundary.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapDbRowToMasterProduct(row: any): MasterProduct {
   return {
     id: row.id,
@@ -496,14 +498,14 @@ function mapDbRowToMasterProduct(row: any): MasterProduct {
     stockText: row.stock_text,
     expectedRestockDate: row.expected_restock_date,
     minOrderQuantity: row.min_order_quantity || 1,
-    warrantyMonths: row.warranty_months || 24,
+    warrantyMonths: Number(row.warranty_months ?? 0),
     attributes: typeof row.attributes === 'object' && row.attributes !== null ? row.attributes : {},
     images: Array.isArray(row.images) ? row.images : [],
     dimensions: row.dimensions,
     status: row.status || 'ACTIVE',
     reviewStatus: row.review_status || 'AUTO_APPROVED',
     aiEnrichment: row.ai_enrichment,
-    qualityScore: typeof row.quality_score === 'object' && row.quality_score !== null ? row.quality_score : { total: 90, breakdown: {} },
+    qualityScore: typeof row.quality_score === 'object' && row.quality_score !== null ? row.quality_score : { total: 0, breakdown: {} },
     dataHash: row.data_hash || '',
     lastSyncedAt: row.last_synced_at || new Date().toISOString(),
     lastReprocessedAt: row.last_reprocessed_at || new Date().toISOString(),
@@ -512,14 +514,25 @@ function mapDbRowToMasterProduct(row: any): MasterProduct {
   };
 }
 
+const STOREFRONT_PRODUCT_COLUMNS = [
+  'id', 'supplier_code', 'supplier_pro_id', 'sku', 'mpn', 'ean', 'brand',
+  'category_slug', 'category_hierarchy', 'commodity_code', 'commodity_name',
+  'title', 'name_b2c', 'slug', 'short_description', 'supplier_description',
+  'enriched_description', 'seo_title', 'seo_description', 'search_keywords',
+  'vat_rate', 'base_price', 'final_price', 'currency', 'stock_count',
+  'is_in_stock', 'stock_text', 'min_order_quantity', 'warranty_months',
+  'warranty_unit', 'attributes', 'images', 'status', 'data_hash',
+  'last_synced_at', 'created_at', 'updated_at',
+].join(',');
+
 /**
  * Získanie všetkých produktov priamo z PostgreSQL databázy Supabase
  */
 export async function getAllProducts(): Promise<MasterProduct[]> {
   try {
     const { data, error } = await supabase
-      .from('master_products')
-      .select('*')
+      .from('storefront_products')
+      .select(STOREFRONT_PRODUCT_COLUMNS)
       .order('is_in_stock', { ascending: false })
       .order('final_price', { ascending: true })
       .limit(100);
@@ -542,11 +555,12 @@ export async function getAllProducts(): Promise<MasterProduct[]> {
 export async function getProductBySlug(slug: string): Promise<MasterProduct | null> {
   try {
     const cleanSlug = decodeURIComponent(slug).trim();
+    if (!/^[a-zA-Z0-9-]{1,200}$/.test(cleanSlug)) return null;
 
     // 1. Priama zhoda na slug
     const { data: directMatch } = await supabase
-      .from('master_products')
-      .select('*')
+      .from('storefront_products')
+      .select(STOREFRONT_PRODUCT_COLUMNS)
       .eq('slug', cleanSlug)
       .maybeSingle();
 
@@ -559,8 +573,8 @@ export async function getProductBySlug(slug: string): Promise<MasterProduct | nu
     if (trailingSkuMatch && trailingSkuMatch[1]) {
       const extractedSku = trailingSkuMatch[1];
       const { data: skuMatch } = await supabase
-        .from('master_products')
-        .select('*')
+        .from('storefront_products')
+        .select(STOREFRONT_PRODUCT_COLUMNS)
         .or(`sku.eq.${extractedSku},supplier_code.eq.${extractedSku}`)
         .maybeSingle();
 
@@ -571,8 +585,8 @@ export async function getProductBySlug(slug: string): Promise<MasterProduct | nu
 
     // 3. Priame SKU / ID / MPN
     const { data: idOrSkuMatch } = await supabase
-      .from('master_products')
-      .select('*')
+      .from('storefront_products')
+      .select(STOREFRONT_PRODUCT_COLUMNS)
       .or(`sku.eq.${cleanSlug},supplier_code.eq.${cleanSlug},mpn.eq.${cleanSlug},id.eq.${cleanSlug}`)
       .maybeSingle();
 
@@ -582,8 +596,8 @@ export async function getProductBySlug(slug: string): Promise<MasterProduct | nu
 
     // 4. Fuzzy slug match
     const { data: fuzzyMatches } = await supabase
-      .from('master_products')
-      .select('*')
+      .from('storefront_products')
+      .select(STOREFRONT_PRODUCT_COLUMNS)
       .ilike('slug', `%${cleanSlug}%`)
       .limit(1);
 
@@ -603,10 +617,18 @@ export async function getProductBySlug(slug: string): Promise<MasterProduct | nu
  */
 export async function getProductsByCategory(categorySlug: string): Promise<MasterProduct[]> {
   try {
+    const category = await getCategoryBySlug(categorySlug);
+    const categorySlugs: string[] = [];
+    const collectSlugs = (node: TaxonomyCategory) => {
+      categorySlugs.push(node.slug);
+      node.subcategories?.forEach(collectSlugs);
+    };
+    if (category) collectSlugs(category);
+
     const { data, error } = await supabase
-      .from('master_products')
-      .select('*')
-      .eq('category_slug', categorySlug)
+      .from('storefront_products')
+      .select(STOREFRONT_PRODUCT_COLUMNS)
+      .in('category_slug', categorySlugs.length > 0 ? categorySlugs : [categorySlug])
       .order('is_in_stock', { ascending: false })
       .order('final_price', { ascending: true })
       .limit(50);
@@ -628,8 +650,8 @@ export async function getProductsByCategory(categorySlug: string): Promise<Maste
 export async function getFeaturedProducts(limit = 8): Promise<MasterProduct[]> {
   try {
     const { data, error } = await supabase
-      .from('master_products')
-      .select('*')
+      .from('storefront_products')
+      .select(STOREFRONT_PRODUCT_COLUMNS)
       .eq('is_in_stock', true)
       .order('final_price', { ascending: true })
       .limit(limit);
@@ -648,7 +670,7 @@ export async function getFeaturedProducts(limit = 8): Promise<MasterProduct[]> {
 export async function getCategories(): Promise<TaxonomyCategory[]> {
   try {
     const { data: nodes, error } = await supabase
-      .from('taxonomy_nodes')
+      .from('storefront_taxonomy_nodes')
       .select('id, parent_id, name, slug, source_level, source_order, active')
       .eq('active', true)
       .order('source_order', { ascending: true });
@@ -694,26 +716,6 @@ export async function getCategories(): Promise<TaxonomyCategory[]> {
 }
 
 export async function getCategoryBySlug(slug: string): Promise<TaxonomyCategory | null> {
-  try {
-    const { data: node } = await supabase
-      .from('taxonomy_nodes')
-      .select('id, parent_id, name, slug, source_level, source_order, active')
-      .eq('slug', slug)
-      .single();
-
-    if (node) {
-      return {
-        id: node.id,
-        slug: node.slug,
-        name: node.name,
-        level: node.source_level || 1,
-        isSeoIndexed: true,
-        displayOrder: node.source_order || 1,
-        allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb', 'screen_size_inch', 'gpu_model'],
-      };
-    }
-  } catch {}
-
   function findCat(cats: TaxonomyCategory[]): TaxonomyCategory | null {
     for (const c of cats) {
       if (c.slug === slug) return c;
@@ -724,7 +726,8 @@ export async function getCategoryBySlug(slug: string): Promise<TaxonomyCategory 
     }
     return null;
   }
-  return findCat(CATEGORIES);
+
+  return findCat(await getCategories());
 }
 
 export const findCategoryBySlug = getCategoryBySlug;
@@ -733,13 +736,17 @@ export const findCategoryBySlug = getCategoryBySlug;
  * Fulltextové vyhľadávanie produktov v PostgreSQL databáze Supabase
  */
 export async function searchProducts(query: string): Promise<MasterProduct[]> {
-  const q = query.trim();
+  const q = query
+    .trim()
+    .replace(/[^\p{L}\p{N}\s._-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .slice(0, 80);
   if (!q) return [];
 
   try {
     const { data, error } = await supabase
-      .from('master_products')
-      .select('*')
+      .from('storefront_products')
+      .select(STOREFRONT_PRODUCT_COLUMNS)
       .or(`title.ilike.%${q}%,mpn.ilike.%${q}%,brand.ilike.%${q}%,ean.ilike.%${q}%`)
       .limit(20);
 
@@ -754,54 +761,34 @@ export async function searchProducts(query: string): Promise<MasterProduct[]> {
   }
 }
 
-export async function getImporter() {
-  return {
-    getRepository() {
-      return {
-        async getStats() {
-          const { count } = await supabase.from('master_products').select('*', { count: 'exact', head: true });
-          const { count: inStockCount } = await supabase.from('master_products').select('*', { count: 'exact', head: true }).eq('is_in_stock', true);
-          
-          return {
-            totalProducts: count || 0,
-            inStockProducts: inStockCount || 0,
-            totalMasterProducts: count || 0,
-            activeCount: count || 0,
-            needsReviewCount: 0,
-            autoApprovedCount: count || 0,
-            quarantinedCount: 0,
-            averageQualityScore: 94,
-            brandCount: 12,
-          };
-        },
-        async getAllProducts() {
-          return getAllProducts();
-        },
-        async getQuarantineRecords(): Promise<QuarantineRecord[]> {
-          return [];
-        },
-        async getImportRuns(): Promise<ImportRunSummary[]> {
-          return [
-            {
-              id: 'run-live-ed-1',
-              type: 'FULL_CATALOG',
-              startTime: new Date().toISOString(),
-              endTime: new Date().toISOString(),
-              durationMs: 4200,
-              totalFetched: 122145,
-              createdCount: 862,
-              updatedCount: 0,
-              unchangedCount: 0,
-              priceChangedCount: 0,
-              stockChangedCount: 0,
-              quarantinedCount: 0,
-              needsReviewCount: 0,
-              errorsCount: 0,
-              status: 'COMPLETED',
-            },
-          ];
-        },
-      };
-    },
-  };
+export interface ProductSitemapRecord {
+  slug: string;
+  status: string;
+  updatedAt: string;
+}
+
+export async function getProductCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from('storefront_products')
+    .select('id', { count: 'exact', head: true });
+
+  if (error) throw new Error(`Unable to count storefront products: ${error.message}`);
+  return count ?? 0;
+}
+
+export async function getProductSitemapBatch(offset: number, limit: number): Promise<ProductSitemapRecord[]> {
+  const safeOffset = Math.max(0, Math.floor(offset));
+  const safeLimit = Math.min(1000, Math.max(1, Math.floor(limit)));
+  const { data, error } = await supabase
+    .from('storefront_products')
+    .select('slug,status,updated_at')
+    .order('id', { ascending: true })
+    .range(safeOffset, safeOffset + safeLimit - 1);
+
+  if (error) throw new Error(`Unable to load product sitemap batch: ${error.message}`);
+  return (data ?? []).map((row) => ({
+    slug: row.slug,
+    status: row.status,
+    updatedAt: row.updated_at,
+  }));
 }

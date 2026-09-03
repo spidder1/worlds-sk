@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, ShoppingCart, ShieldCheck, Laptop, Cpu, Monitor, HardDrive, LayoutDashboard } from 'lucide-react';
+import { Search, ShoppingCart, ShieldCheck, Laptop, Gamepad2, BriefcaseBusiness, Cable } from 'lucide-react';
 
 export function Header() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -24,10 +24,10 @@ export function Header() {
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Oficiálna distribúcia eD system
+              Dáta z distribučného katalógu eD system
             </span>
             <span className="hidden sm:inline text-slate-500">•</span>
-            <span className="hidden sm:inline">Viac ako 70 000 produktov skladom</span>
+            <span className="hidden sm:inline">Aktuálna ponuka z distribučného katalógu</span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/o-nas" className="hover:text-white transition-colors">O nás</Link>
@@ -35,11 +35,6 @@ export function Header() {
             <Link href="/doprava-a-platba" className="hover:text-white transition-colors">Doprava a platba</Link>
             <span className="text-slate-600">•</span>
             <Link href="/kontakt" className="hover:text-white transition-colors">Kontakt</Link>
-            <span className="text-slate-600">•</span>
-            <Link href="/admin" className="text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium">
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              Katalóg & AI Admin
-            </Link>
           </div>
         </div>
       </div>
@@ -82,7 +77,7 @@ export function Header() {
           >
             <ShoppingCart className="w-4 h-4 text-brand-600" />
             <span>Košík</span>
-            <span className="bg-brand-600 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">1</span>
+            <span className="sr-only">Objednávanie sa pripravuje</span>
           </Link>
         </div>
       </div>
@@ -98,31 +93,31 @@ export function Header() {
             Notebooky
           </Link>
           <Link
-            href="/kategoria/procesory"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white hover:text-brand-600 hover:shadow-sm transition-all"
-          >
-            <Cpu className="w-4 h-4 text-slate-500" />
-            Procesory
-          </Link>
-          <Link
-            href="/kategoria/monitory"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white hover:text-brand-600 hover:shadow-sm transition-all"
-          >
-            <Monitor className="w-4 h-4 text-slate-500" />
-            Monitory
-          </Link>
-          <Link
-            href="/kategoria/ssd-disky"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white hover:text-brand-600 hover:shadow-sm transition-all"
-          >
-            <HardDrive className="w-4 h-4 text-slate-500" />
-            SSD disky
-          </Link>
-          <Link
             href="/kategoria/herne-notebooky"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white hover:text-brand-600 hover:shadow-sm transition-all"
+          >
+            <Gamepad2 className="w-4 h-4 text-slate-500" />
+            Herné notebooky
+          </Link>
+          <Link
+            href="/kategoria/firemne-notebooky"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white hover:text-brand-600 hover:shadow-sm transition-all"
+          >
+            <BriefcaseBusiness className="w-4 h-4 text-slate-500" />
+            Firemné notebooky
+          </Link>
+          <Link
+            href="/kategoria/prislusenstvo-a-periferie"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white hover:text-brand-600 hover:shadow-sm transition-all"
+          >
+            <Cable className="w-4 h-4 text-slate-500" />
+            Príslušenstvo
+          </Link>
+          <Link
+            href="/kategoria/ups-zalozne-zdroje"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-amber-700 bg-amber-50 hover:bg-amber-100 font-semibold transition-all"
           >
-            ⚡ Herné notebooky
+            ⚡ UPS a záložné zdroje
           </Link>
         </div>
       </nav>

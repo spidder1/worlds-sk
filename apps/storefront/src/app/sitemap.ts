@@ -1,11 +1,25 @@
 import type { MetadataRoute } from 'next';
-import { getAllProducts, getCategories } from '../lib/catalog';
+import { getCategories, getProductCount, getProductSitemapBatch } from '../lib/catalog';
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+const PRODUCT_SITEMAP_PAGE_SIZE = 1000;
+
+export async function generateSitemaps() {
+  let count = 0;
+  try {
+    count = await getProductCount();
+  } catch (error) {
+    console.warn('[sitemap] Product count unavailable; generating the base sitemap only.', error);
+  }
+  const pages = Math.max(1, Math.ceil(count / PRODUCT_SITEMAP_PAGE_SIZE));
+  return Array.from({ length: pages }, (_, id) => ({ id }));
+}
+
+export default async function sitemap({ id }: { id: number | string }): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://worlds.sk';
+  const pageId = Number(id);
 
   // 1. Static Pages
-  const staticRoutes: MetadataRoute.Sitemap = [
+  const staticRoutes: MetadataRoute.Sitemap = pageId === 0 ? [
     {
       url: `${baseUrl}`,
       lastModified: new Date(),
@@ -24,40 +38,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.7,
     },
-    {
-      url: `${baseUrl}/doprava-a-platba`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/obchodne-podmienky`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/reklamacny-poriadok`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/ochrana-osobnych-udajov`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.4,
-    },
-    {
-      url: `${baseUrl}/kosik`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.3,
-    },
-  ];
+  ] : [];
 
   // 2. Categories
-  const categories = await getCategories();
+  let categories: Awaited<ReturnType<typeof getCategories>> = [];
+  if (pageId === 0) {
+    try {
+      categories = await getCategories();
+    } catch (error) {
+      console.warn('[sitemap] Categories unavailable; omitting dynamic category URLs.', error);
+    }
+  }
   const categoryRoutes: MetadataRoute.Sitemap = [];
 
   function addCategoryRoutes(cats: typeof categories) {
@@ -79,12 +70,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   addCategoryRoutes(categories);
 
   // 3. Products (Active only)
-  const products = await getAllProducts();
+  let products: Awaited<ReturnType<typeof getProductSitemapBatch>> = [];
+  try {
+    products = await getProductSitemapBatch(pageId * PRODUCT_SITEMAP_PAGE_SIZE, PRODUCT_SITEMAP_PAGE_SIZE);
+  } catch (error) {
+    console.warn('[sitemap] Products unavailable; omitting dynamic product URLs.', error);
+  }
   const productRoutes: MetadataRoute.Sitemap = products
     .filter((p) => p.status === 'ACTIVE' || p.status === 'OUT_OF_STOCK')
     .map((product) => ({
       url: `${baseUrl}/produkt/${product.slug}`,
-      lastModified: new Date(product.updatedAt || new Date()),
+      lastModified: new Date(product.updatedAt),
       changeFrequency: 'daily',
       priority: 0.7,
     }));

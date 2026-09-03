@@ -13,7 +13,8 @@ async function findSupabasePooler() {
 
   for (const region of regions) {
     const host = `aws-0-${region}.pooler.supabase.com`;
-    const connectionString = `postgresql://postgres.jhgyzgdiapiewpjgosxm:RonaldTimonMajkaMarse1ll3!@${host}:6543/postgres`;
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) throw new Error('Missing required environment variable: DATABASE_URL');
     console.log(`Skúšam pooler v regióne ${region} (${host}:6543)...`);
     const client = new Client({
       connectionString,

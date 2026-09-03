@@ -1,0 +1,11 @@
+downloads/
+old/
+feed specs/
+docs/
+supabase/
+work/
+*.mjs
+**/.next/
+**/dist/
+**/node_modules/
+**/*.tsbuildinfo

@@ -2,15 +2,12 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import {
   Sparkles,
-  ShieldCheck,
-  Zap,
+  Clock3,
   Laptop,
   ArrowLeft,
   Building2,
-  CheckCircle,
   Calendar,
-  Users,
-  Award
+  Database
 } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -43,7 +40,7 @@ export default function ONasPage() {
             O spoločnosti Worlds.sk
           </h1>
           <p className="text-slate-600 text-base mt-3 max-w-3xl leading-relaxed">
-            Sme slovenská IT distribučná spoločnosť <strong>ETHOS Technology, s. r. o.</strong>, ktorá už od roku 2008 prináša špičkovú výpočtovú techniku, hardvér a riešenia pre koncových zákazníkov aj firemný sektor.
+            Worlds.sk prevádzkuje slovenská spoločnosť <strong>ETHOS Technology, s. r. o.</strong>. Nová verzia webu momentálne sprístupňuje produktový katalóg; online objednávanie sa pripravuje.
           </p>
         </div>
 
@@ -61,24 +58,24 @@ export default function ONasPage() {
             <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center font-bold mx-auto">
               <Laptop className="w-6 h-6" />
             </div>
-            <h3 className="font-extrabold text-slate-900 text-lg">70 000+ produktov</h3>
-            <p className="text-xs text-slate-500">Priame napojenie na centrálny distribučný sklad eD system a. s.</p>
+            <h3 className="font-extrabold text-slate-900 text-lg">Aktuálny katalóg</h3>
+            <p className="text-xs text-slate-500">Priebežne synchronizovaná ponuka z distribučného katalógu eD system a. s.</p>
           </div>
 
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2 text-center">
             <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center font-bold mx-auto">
-              <Award className="w-6 h-6" />
+              <Database className="w-6 h-6" />
             </div>
-            <h3 className="font-extrabold text-slate-900 text-lg">100% Originál</h3>
-            <p className="text-xs text-slate-500">Oficiálna slovenská a európska distribúcia s plnou zárukou.</p>
+            <h3 className="font-extrabold text-slate-900 text-lg">Zdrojové dáta</h3>
+            <p className="text-xs text-slate-500">Produktové údaje, ceny a dostupnosť pochádzajú z distribučného feedu.</p>
           </div>
 
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2 text-center">
             <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center font-bold mx-auto">
-              <Zap className="w-6 h-6" />
+              <Clock3 className="w-6 h-6" />
             </div>
-            <h3 className="font-extrabold text-slate-900 text-lg">Expresné dodanie</h3>
-            <p className="text-xs text-slate-500">Doručenie kuriérom DPD a PPL po celom Slovensku do 24–48 hodín.</p>
+            <h3 className="font-extrabold text-slate-900 text-lg">Postupné spustenie</h3>
+            <p className="text-xs text-slate-500">Objednávky, platby a dopravu sprístupníme až po ich úplnom overení.</p>
           </div>
         </div>
 
@@ -87,7 +84,7 @@ export default function ONasPage() {
           <section className="space-y-3">
             <h2 className="text-2xl font-bold text-slate-900">Naša filozofia a cieľ</h2>
             <p>
-              Spoločnosť <strong>ETHOS Technology, s. r. o.</strong> prevádzkuje elektronický obchod <strong>WORLD'S</strong> s cieľom poskytovať zákazníkom nielen najnovšie technologické novinky, ale predovšetkým maximálnu spoľahlivosť, overené technické parametre a individuálny prístup ku každému nákupu.
+              Spoločnosť <strong>ETHOS Technology, s. r. o.</strong> prevádzkuje <strong>Worlds.sk</strong> a buduje novú generáciu katalógu IT techniky. Aktuálna verzia slúži na prezeranie ponuky a kontaktovanie tímu.
             </p>
             <p>
               V našej ponuke nájdete kompletné portfólio spotrebnej elektroniky, kancelárskej techniky, firemných aj herných notebookov, procesorov, grafických kariet, monitorov, diskov a príslušenstva od renomovaných svetových výrobcov ako <strong>ASUS, Lenovo, HP, Dell, Apple, Samsung, Intel, AMD, Kingston, Logitech</strong> a mnohých ďalších.

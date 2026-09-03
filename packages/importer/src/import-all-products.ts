@@ -4,9 +4,9 @@ import AdmZip from 'adm-zip';
 import { XMLParser } from 'fast-xml-parser';
 import { classifyProductIndependently } from './taxonomy-definition.js';
 import { sanitizeAndFormatHtml } from './html-sanitizer.js';
+import { getEdCredentials, getSupabaseRestConfig } from './runtime-config.js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jhgyzgdiapiewpjgosxm.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoZ3l6Z2RpYXBpZXdwamdvc3htIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwNzI2OTksImV4cCI6MjEwMzY0ODY5OX0.6SAAJarR0Er3LFFewmcJTN_oEE2OoEMLqUTQJRGA3hY';
+const { url: SUPABASE_URL, secretKey: SUPABASE_SECRET_KEY } = getSupabaseRestConfig();
 
 /**
  * Odvodenie výrobcu / značky z názvu
@@ -99,8 +99,7 @@ async function sendBatchWithRetry(batch: any[], maxRetries = 3): Promise<boolean
       const res = await fetch(`${SUPABASE_URL}/rest/v1/master_products`, {
         method: 'POST',
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': SUPABASE_SECRET_KEY,
           'Content-Type': 'application/json',
           'Prefer': 'resolution=merge-duplicates'
         },
@@ -124,8 +123,9 @@ export async function runFullCatalogImport() {
   console.log(' eD SYSTEM API -> SUPABASE POSTGRESQL');
   console.log('===========================================================\n');
 
-  const login = encodeURIComponent(process.env.ED_LOGIN || 'EthosAPI');
-  const password = encodeURIComponent(process.env.ED_PASSWORD || 'Ed_2025');
+  const credentials = getEdCredentials();
+  const login = encodeURIComponent(credentials.login);
+  const password = encodeURIComponent(credentials.password);
 
   const downloadsDir = path.resolve(process.cwd(), 'downloads');
   if (!fs.existsSync(downloadsDir)) fs.mkdirSync(downloadsDir, { recursive: true });
