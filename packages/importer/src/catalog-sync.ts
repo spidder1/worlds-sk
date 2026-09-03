@@ -368,14 +368,24 @@ async function resolveSource(options: CliOptions): Promise<{ filePath: string; s
     const client = new EDSystemClient(credentials);
     if (options.mode === 'stock-price') {
       const status = await client.getProductCatalogueStockDownloadXML();
-      if (!status.IsReady || !status.Url) throw new Error(`eD stock feed is not ready: ${status.Status ?? 'unknown status'}`);
+      if (!status.IsReady || !status.Url) {
+        const message = status.Status
+          ? `${status.Status.StatusCode}${status.Status.ErrorText ? `: ${status.Status.ErrorText}` : ''}`
+          : 'unknown status';
+        throw new Error(`eD stock feed is not ready: ${message}`);
+      }
       const target = path.resolve('downloads/cache/latest-stock.xml');
       await downloadToFile(status.Url, target);
       return { filePath: target, sourceMethod: 'getProductCatalogueStockDownloadXML' };
     }
 
     const status = await client.getProductCatalogueFullDownloadZIPv1({ onStock: false });
-    if (!status.IsReady || !status.Url) throw new Error(`eD full catalog is not ready: ${status.Status ?? 'unknown status'}`);
+    if (!status.IsReady || !status.Url) {
+      const message = status.Status
+        ? `${status.Status.StatusCode}${status.Status.ErrorText ? `: ${status.Status.ErrorText}` : ''}`
+        : 'unknown status';
+      throw new Error(`eD full catalog is not ready: ${message}`);
+    }
     const zipPath = path.resolve('downloads/cache/latest-full.zip');
     await downloadToFile(status.Url, zipPath);
     return {

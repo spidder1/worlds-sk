@@ -13,7 +13,26 @@ import {
   EDResponseNewOrder,
   EDOrderTransportation,
 } from '@worlds/types';
+import { XMLParser } from 'fast-xml-parser';
 import { executeSoapCall, escapeXml } from './soap-request.js';
+
+function xmlScalar(value: unknown): unknown {
+  if (value && typeof value === 'object' && '#text' in value) {
+    return (value as { '#text': unknown })['#text'];
+  }
+  return value;
+}
+
+function xmlString(value: unknown): string | undefined {
+  const scalar = xmlScalar(value);
+  if (scalar === undefined || scalar === null || scalar === '') return undefined;
+  return String(scalar);
+}
+
+function xmlBoolean(value: unknown): boolean {
+  const scalar = xmlScalar(value);
+  return scalar === true || String(scalar).toLowerCase() === 'true';
+}
 
 export class EDSystemClient {
   private readonly endpoint: string;
@@ -28,6 +47,54 @@ export class EDSystemClient {
 
   private getSoapNamespace(): string {
     return 'http://www.elinkx.cz/';
+  }
+
+  /**
+   * The catalogue download methods authenticate through URL query parameters.
+   * Never log the generated URL because it contains the supplier credentials.
+   */
+  private async getCatalogueDownloadStatus(
+    method: string,
+    parameters: Record<string, string | boolean> = {},
+  ): Promise<EDProductListStatus> {
+    const url = new URL(`${this.endpoint.replace(/\/$/, '')}/${method}`);
+    url.searchParams.set('login', this.login);
+    url.searchParams.set('password', this.pass);
+    for (const [name, parameter] of Object.entries(parameters)) {
+      url.searchParams.set(name, String(parameter));
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/xml, text/xml, */*' },
+      signal: AbortSignal.timeout(180_000),
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      throw new Error(`eD catalogue request failed (${response.status} ${response.statusText})`);
+    }
+
+    const parsed = new XMLParser({
+      ignoreAttributes: false,
+      attributeNamePrefix: '@_',
+      textNodeName: '#text',
+      parseTagValue: true,
+      trimValues: true,
+    }).parse(responseText) as Record<string, unknown>;
+    const envelope = (parsed.ResponseProductListStatus ?? parsed) as Record<string, unknown>;
+    const status = (envelope.Status ?? {}) as Record<string, unknown>;
+    const productListStatus = (envelope.ProductListStatus ?? {}) as Record<string, unknown>;
+    const statusCode = xmlString(status.StatusCode);
+
+    return {
+      Status: {
+        StatusCode: statusCode === 'DONE' ? 'DONE' : 'ERROR',
+        ErrorText: xmlString(status.ErrorText),
+      },
+      Url: xmlString(productListStatus.url ?? productListStatus.Url),
+      FileName: xmlString(productListStatus.fileName ?? productListStatus.FileName),
+      IsReady: xmlBoolean(productListStatus.isReady ?? productListStatus.IsReady),
+    };
   }
 
   /**
@@ -192,25 +259,7 @@ export class EDSystemClient {
    * Generates URL for downloading fast stock/price XML update (12x daily).
    */
   async getProductCatalogueStockDownloadXML(): Promise<EDProductListStatus> {
-    const action = `${this.getSoapNamespace()}getProductCatalogueStockDownloadXML`;
-    const bodyXml = `<getProductCatalogueStockDownloadXML xmlns="${this.getSoapNamespace()}">
-      <login>${escapeXml(this.login)}</login>
-      <password>${escapeXml(this.pass)}</password>
-    </getProductCatalogueStockDownloadXML>`;
-
-    const response = await executeSoapCall<{ getProductCatalogueStockDownloadXMLResponse?: { getProductCatalogueStockDownloadXMLResult?: any } }>({
-      endpoint: this.endpoint,
-      action,
-      bodyXml,
-    });
-
-    const res = response?.getProductCatalogueStockDownloadXMLResponse?.getProductCatalogueStockDownloadXMLResult;
-    return {
-      Status: res?.Status,
-      Url: res?.Url,
-      FileName: res?.FileName,
-      IsReady: res?.IsReady === 'true' || res?.IsReady === true,
-    };
+    return this.getCatalogueDownloadStatus('getProductCatalogueStockDownloadXML');
   }
 
   /**
@@ -224,31 +273,13 @@ export class EDSystemClient {
     producers?: string;
     categories?: string;
   } = {}): Promise<EDProductListStatus> {
-    const action = `${this.getSoapNamespace()}getProductCatalogueFullDownloadZIPv1`;
-    const onStockVal = options.onStock ?? false;
-    const bodyXml = `<getProductCatalogueFullDownloadZIPv1 xmlns="${this.getSoapNamespace()}">
-      <login>${escapeXml(this.login)}</login>
-      <password>${escapeXml(this.pass)}</password>
-      <onStock>${onStockVal}</onStock>
-      <Comodities>${escapeXml(options.commodities || '')}</Comodities>
-      <ComoditiesTree>${escapeXml(options.commoditiesTree || '')}</ComoditiesTree>
-      <Producers>${escapeXml(options.producers || '')}</Producers>
-      <Categories>${escapeXml(options.categories || '')}</Categories>
-    </getProductCatalogueFullDownloadZIPv1>`;
-
-    const response = await executeSoapCall<{ getProductCatalogueFullDownloadZIPv1Response?: { getProductCatalogueFullDownloadZIPv1Result?: any } }>({
-      endpoint: this.endpoint,
-      action,
-      bodyXml,
+    return this.getCatalogueDownloadStatus('getProductCatalogueFullDownloadZIPv1', {
+      onStock: options.onStock ?? false,
+      Comodities: options.commodities ?? '',
+      ComoditiesTree: options.commoditiesTree ?? '',
+      Producers: options.producers ?? '',
+      Categories: options.categories ?? '',
     });
-
-    const res = response?.getProductCatalogueFullDownloadZIPv1Response?.getProductCatalogueFullDownloadZIPv1Result;
-    return {
-      Status: res?.Status,
-      Url: res?.Url,
-      FileName: res?.FileName,
-      IsReady: res?.IsReady === 'true' || res?.IsReady === true,
-    };
   }
 
   /**
