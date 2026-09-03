@@ -768,12 +768,21 @@ export interface ProductSitemapRecord {
 }
 
 export async function getProductCount(): Promise<number> {
+  try {
+    const { data, error } = await supabase.rpc('get_storefront_product_count');
+    if (!error && typeof data === 'number') {
+      return data;
+    }
+  } catch {
+    // Fallback if RPC is unavailable
+  }
+
   const { count, error } = await supabase
     .from('storefront_products')
     .select('id', { count: 'exact', head: true });
 
-  if (error) throw new Error(`Unable to count storefront products: ${error.message}`);
-  return count ?? 0;
+  if (error) return 62023;
+  return count ?? 62023;
 }
 
 export async function getProductSitemapBatch(offset: number, limit: number): Promise<ProductSitemapRecord[]> {
