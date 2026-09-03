@@ -781,8 +781,8 @@ export async function getProductCount(): Promise<number> {
     .from('storefront_products')
     .select('id', { count: 'exact', head: true });
 
-  if (error) return 62023;
-  return count ?? 62023;
+  if (error) return 0;
+  return count ?? 0;
 }
 
 export async function getProductSitemapBatch(offset: number, limit: number): Promise<ProductSitemapRecord[]> {
