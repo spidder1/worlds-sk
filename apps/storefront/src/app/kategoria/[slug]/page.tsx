@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { Check, ChevronRight, Home, LayoutGrid, Building2, X } from 'lucide-react';
 import { Pagination } from '../../../components/Pagination';
 import { ProductCard } from '../../../components/ProductCard';
+import { ProductFilterSidebar } from '../../../components/ProductFilterSidebar';
 import { findCategoryBySlug, getManufacturers, getProductsPage, type ProductSort } from '../../../lib/catalog';
 
 interface Props {
@@ -98,31 +99,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             ))}
           </div>
         ) : null}
-
-        {/* Brand / Manufacturer Filter Pills */}
-        <div className="border-t border-slate-100 pt-3">
-          <p className="text-xs font-bold text-slate-700 mb-2">Filtrovať podľa výrobcu:</p>
-          <div className="flex flex-wrap gap-2">
-            {manufacturers.slice(0, 10).map((b) => {
-              const isSelected = brandFilter.toLowerCase() === b.name.toLowerCase();
-              return (
-                <Link
-                  key={b.name}
-                  href={hrefWith('vyrobca', isSelected ? undefined : b.name)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                    isSelected
-                      ? 'bg-brand-600 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {b.name}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
       </section>
 
+      {/* Sorting bar */}
       <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
         <Link href={hrefWith('inStock', inStockOnly ? undefined : 'true')} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${inStockOnly ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
           {inStockOnly ? <Check className="h-4 w-4" /> : null} Iba produkty skladom
@@ -139,19 +118,37 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         </div>
       </div>
 
-      {result.products.length ? (
-        <>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {result.products.map((product) => <ProductCard key={product.id} product={product} />)}
-          </div>
-          <Pagination basePath={`/kategoria/${slug}`} currentPage={result.page} totalPages={result.pageCount} searchParams={{ inStock: filters.inStock, sort: filters.sort }} />
-        </>
-      ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">
-          <LayoutGrid className="mx-auto h-12 w-12 text-slate-300" />
-          <h2 className="mt-4 font-bold text-slate-800">V tejto kategórii momentálne nie sú produkty s platnou cenou.</h2>
+      {/* Main 2-Column Layout with Left Filter Sidebar */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* Left Sidebar Filter */}
+        <ProductFilterSidebar
+          products={result.products}
+          totalCount={result.total}
+          allManufacturers={manufacturers}
+        />
+
+        {/* Right Product Grid Column */}
+        <div className="flex-1 w-full space-y-6">
+          {result.products.length ? (
+            <>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {result.products.map((product) => <ProductCard key={product.id} product={product} />)}
+              </div>
+              <Pagination
+                basePath={`/kategoria/${slug}`}
+                currentPage={result.page}
+                totalPages={result.pageCount}
+                searchParams={{ inStock: filters.inStock, sort: filters.sort, vyrobca: filters.vyrobca }}
+              />
+            </>
+          ) : (
+            <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">
+              <LayoutGrid className="mx-auto h-12 w-12 text-slate-300" />
+              <h2 className="mt-4 font-bold text-slate-800">V tejto kategórii momentálne nie sú produkty zodpovedajúce vybraným filtrom.</h2>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

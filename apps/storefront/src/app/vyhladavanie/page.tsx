@@ -3,10 +3,11 @@ import type { Metadata } from 'next';
 import { ChevronRight, Home, Search, Building2, X } from 'lucide-react';
 import { Pagination } from '../../components/Pagination';
 import { ProductCard } from '../../components/ProductCard';
+import { ProductFilterSidebar } from '../../components/ProductFilterSidebar';
 import { getManufacturers, getProductsPage } from '../../lib/catalog';
 
 interface Props {
-  searchParams: Promise<{ q?: string; vyrobca?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; vyrobca?: string; inStock?: string; page?: string }>;
 }
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
@@ -23,14 +24,15 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function SearchPage({ searchParams }: Props) {
-  const { q = '', vyrobca = '', page: rawPage } = await searchParams;
+  const { q = '', vyrobca = '', inStock, page: rawPage } = await searchParams;
   const parsedPage = Number.parseInt(rawPage ?? '1', 10);
   const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const query = q.trim();
   const brandFilter = vyrobca.trim();
+  const inStockOnly = inStock === 'true';
 
   const [results, manufacturers] = await Promise.all([
-    getProductsPage({ query, brand: brandFilter, page }),
+    getProductsPage({ query, brand: brandFilter, inStockOnly, page }),
     getManufacturers(),
   ]);
 
@@ -71,54 +73,41 @@ export default async function SearchPage({ searchParams }: Props) {
             </Link>
           ) : null}
         </div>
-
-        {/* Quick Manufacturers Filter Pills */}
-        <div className="border-t border-slate-100 pt-3">
-          <p className="text-xs font-bold text-slate-700 mb-2">Filtrovať podľa výrobcu:</p>
-          <div className="flex flex-wrap gap-2">
-            {manufacturers.map((b) => {
-              const isSelected = brandFilter.toLowerCase() === b.name.toLowerCase();
-              const href = isSelected
-                ? `/vyhladavanie${query ? `?q=${encodeURIComponent(query)}` : ''}`
-                : `/vyhladavanie?vyrobca=${encodeURIComponent(b.name)}${query ? `&q=${encodeURIComponent(query)}` : ''}`;
-              return (
-                <Link
-                  key={b.name}
-                  href={href}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                    isSelected
-                      ? 'bg-brand-600 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {b.name}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
       </section>
 
-      {results.products.length === 0 ? (
-        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-12 text-center">
-          <Search className="mx-auto h-12 w-12 text-slate-300" />
-          <h2 className="font-bold text-slate-800">Pre zadané kritériá sme nenašli žiadne produkty</h2>
-          <p className="mx-auto max-w-md text-sm text-slate-500">Skúste zmeniť názov produktu, vybrať iného výrobcu alebo zadať číslo MPN/EAN.</p>
-          <Link href="/vyhladavanie" className="inline-block rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">Zobraziť celý katalóg</Link>
+      {/* Main 2-Column Layout with Left Filter Sidebar */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* Left Sidebar Filter */}
+        <ProductFilterSidebar
+          products={results.products}
+          totalCount={results.total}
+          allManufacturers={manufacturers}
+        />
+
+        {/* Right Product Grid Column */}
+        <div className="flex-1 w-full space-y-6">
+          {results.products.length === 0 ? (
+            <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-12 text-center">
+              <Search className="mx-auto h-12 w-12 text-slate-300" />
+              <h2 className="font-bold text-slate-800">Pre zadané kritériá sme nenašli žiadne produkty</h2>
+              <p className="mx-auto max-w-md text-sm text-slate-500">Skúste zmeniť názov produktu, vybrať iného výrobcu alebo zrušiť filtre.</p>
+              <Link href="/vyhladavanie" className="inline-block rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">Zobraziť celý katalóg</Link>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {results.products.map((product) => <ProductCard key={product.id} product={product} />)}
+              </div>
+              <Pagination
+                basePath="/vyhladavanie"
+                currentPage={results.page}
+                totalPages={results.pageCount}
+                searchParams={{ q: query, vyrobca: brandFilter, inStock }}
+              />
+            </>
+          )}
         </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {results.products.map((product) => <ProductCard key={product.id} product={product} />)}
-          </div>
-          <Pagination
-            basePath="/vyhladavanie"
-            currentPage={results.page}
-            totalPages={results.pageCount}
-            searchParams={{ q: query, vyrobca: brandFilter }}
-          />
-        </>
-      )}
+      </div>
     </div>
   );
 }
