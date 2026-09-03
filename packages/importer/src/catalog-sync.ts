@@ -368,6 +368,21 @@ async function* streamXmlElements(filePath: string, elementName: string): AsyncG
   }
 }
 
+export function detectFullProductElementName(filePath: string): 'Product' | 'ProductComplete' | null {
+  const descriptor = fs.openSync(filePath, 'r');
+  try {
+    const size = Math.min(fs.fstatSync(descriptor).size, 1024 * 1024);
+    const buffer = Buffer.alloc(size);
+    fs.readSync(descriptor, buffer, 0, size, 0);
+    const head = buffer.toString('utf8');
+    if (/<ProductComplete(?:\s|>)/.test(head)) return 'ProductComplete';
+    if (/<Product(?:\s|>)/.test(head)) return 'Product';
+    return null;
+  } finally {
+    fs.closeSync(descriptor);
+  }
+}
+
 async function downloadToFile(url: string, targetPath: string): Promise<void> {
   const response = await fetch(url, { signal: AbortSignal.timeout(120_000) });
   if (!response.ok || !response.body) {
@@ -630,7 +645,6 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
   const filteredByReason: Record<string, number> = {};
   let lastHeartbeatAt = Date.now();
   let payload: Record<string, unknown>[] = [];
-  const elementName = options.mode === 'full' ? 'Product' : 'ProductShort';
   const rpcName = options.mode === 'full' ? 'stage_ed_catalog_batch' : 'sync_ed_stock_price_batch';
 
   const sendItems = async (items: Record<string, unknown>[]): Promise<RpcBatchResult> => {
@@ -670,6 +684,13 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
   try {
     let limitReached = false;
     for (const source of sources) {
+      const elementName = options.mode === 'full'
+        ? detectFullProductElementName(source.filePath)
+        : 'ProductShort';
+      if (!elementName) {
+        console.log(`[import] skipping empty source=${path.basename(source.filePath)}`);
+        continue;
+      }
       console.log(`[import] parsing source=${path.basename(source.filePath)}`);
       for await (const rawProduct of streamXmlElements(source.filePath, elementName)) {
         parsed += 1;
@@ -709,6 +730,9 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
       if (limitReached) break;
     }
     await flush();
+    if (options.mode === 'full' && parsed === 0) {
+      throw new Error('Full catalogue contained no Product or ProductComplete records; refusing to mark existing products missing.');
+    }
     const durationMs = Date.now() - startedAt;
     const metrics = { parsed, skipped, filtered, filteredByReason, scope: options.scope, durationMs, sourceBytes, sourceFiles: sources.length };
     const completion = rpc ? await rpc<RpcBatchResult>('complete_ed_import', {
