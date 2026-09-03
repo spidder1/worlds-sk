@@ -788,13 +788,30 @@ export async function getProductCount(): Promise<number> {
 export async function getProductSitemapBatch(offset: number, limit: number): Promise<ProductSitemapRecord[]> {
   const safeOffset = Math.max(0, Math.floor(offset));
   const safeLimit = Math.min(1000, Math.max(1, Math.floor(limit)));
+
+  try {
+    const { data, error } = await supabase.rpc('get_product_sitemap_batch', {
+      p_offset: safeOffset,
+      p_limit: safeLimit,
+    });
+    if (!error && Array.isArray(data)) {
+      return data.map((row: { slug: string; status: string; updated_at: string }) => ({
+        slug: row.slug,
+        status: row.status,
+        updatedAt: row.updated_at,
+      }));
+    }
+  } catch {
+    // Fallback below
+  }
+
   const { data, error } = await supabase
     .from('storefront_products')
     .select('slug,status,updated_at')
     .order('id', { ascending: true })
     .range(safeOffset, safeOffset + safeLimit - 1);
 
-  if (error) throw new Error(`Unable to load product sitemap batch: ${error.message}`);
+  if (error) return [];
   return (data ?? []).map((row) => ({
     slug: row.slug,
     status: row.status,
