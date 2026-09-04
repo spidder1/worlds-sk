@@ -1,15 +1,13 @@
 import { Pool } from 'pg';
 
-const connectionString =
-  process.env.DATABASE_URL ||
-  'postgresql://neondb_owner:npg_nLuIOvXw7dZ3@ep-withered-thunder-au37ajrg-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require';
-
 declare global {
   var __neonPool: Pool | undefined;
 }
 
 export function getNeonPool(): Pool {
   if (!globalThis.__neonPool) {
+    const connectionString = process.env.DATABASE_URL?.trim();
+    if (!connectionString) throw new Error('DATABASE_URL is required for Neon access.');
     globalThis.__neonPool = new Pool({
       connectionString,
       ssl: { rejectUnauthorized: false },
