@@ -6,11 +6,10 @@ on:
       mode:
         description: Import mode
         required: true
-        default: stock-price
+        default: sample
         type: choice
         options:
-          - stock-price
-          - full
+          - sample
   schedule:
     - cron: '17 */2 * * *'
     - cron: '43 2 * * 0'
@@ -23,8 +22,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  stock-price:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'stock-price' || github.event.schedule == '17 */2 * * *'
+  sample-catalog:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'sample' || github.event.schedule == '17 */2 * * *'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -47,8 +46,8 @@ jobs:
           ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-  full-catalog:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'full' || github.event.schedule == '43 2 * * 0'
+  sample-catalog-weekly:
+    if: github.event.schedule == '43 2 * * 0'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
