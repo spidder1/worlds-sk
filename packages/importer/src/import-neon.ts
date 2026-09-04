@@ -12,7 +12,13 @@ import { TaxonomyCategory } from '@worlds/types';
 
 const { Pool } = pg;
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_nLuIOvXw7dZ3@ep-withered-thunder-au37ajrg-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require';
+function requiredEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+}
+
+const connectionString = requiredEnv('DATABASE_URL');
 
 function isTargetBrand(name: string, rawBrand?: string): { isMatch: boolean; brandName: 'ASUS' | 'Lenovo' | null } {
   const b = (rawBrand || '').toUpperCase().trim();
@@ -110,36 +116,6 @@ function extractImageUrls(p: any): string[] {
   return urls;
 }
 
-function estimatePriceByCategory(catSlug: string, name: string): { cost: number; basePrice: number; finalPrice: number } {
-  let cost = 45;
-  const t = name.toUpperCase();
-
-  if (catSlug.includes('notebook') || catSlug.includes('ultrabook')) {
-    cost = t.includes('ROG') || t.includes('LEGION') || t.includes('I7') || t.includes('RYZEN 7') ? 850 : 490;
-  } else if (catSlug.includes('pocitac') || catSlug.includes('server')) {
-    cost = 620;
-  } else if (catSlug.includes('monitor')) {
-    cost = 180;
-  } else if (catSlug.includes('grafick')) {
-    cost = 320;
-  } else if (catSlug.includes('procesor') || catSlug.includes('dosk')) {
-    cost = 160;
-  } else if (catSlug.includes('ram') || catSlug.includes('ssd')) {
-    cost = 65;
-  } else if (catSlug.includes('klavesnic') || catSlug.includes('mys') || catSlug.includes('sluchadl')) {
-    cost = 35;
-  }
-
-  let marginPct = 12;
-  if (cost < 50) marginPct = 18;
-  else if (cost > 1000) marginPct = 10;
-
-  const basePrice = Number((cost * (1 + marginPct / 100)).toFixed(2));
-  const finalPrice = Number((basePrice * 1.20).toFixed(2));
-
-  return { cost, basePrice, finalPrice };
-}
-
 async function syncCategoriesAndManufacturers(pool: pg.Pool) {
   console.log('📌 Synchronizujem kategórie a výrobcov do Neon PostgreSQL...');
 
@@ -185,9 +161,9 @@ async function syncCategoriesAndManufacturers(pool: pg.Pool) {
 async function fetchLiveStockMap(): Promise<Map<string, any>> {
   const stockMap = new Map<string, any>();
   const credentials = {
-    login: process.env.ED_LOGIN || 'EthosAPI',
-    password: process.env.ED_PASSWORD || 'Ed_2025',
-    endpointUrl: process.env.ED_ENDPOINT_URL || 'https://private-ws-sk.elinkx.biz/service.asmx',
+    login: requiredEnv('ED_LOGIN'),
+    password: requiredEnv('ED_PASSWORD'),
+    endpointUrl: process.env.ED_ENDPOINT_URL?.trim() || 'https://private-ws-sk.elinkx.biz/service.asmx',
   };
 
   try {
@@ -196,7 +172,7 @@ async function fetchLiveStockMap(): Promise<Map<string, any>> {
     const status = await client.getProductCatalogueStockDownloadXML();
 
     if (status.IsReady && status.Url) {
-      console.log(`  ✓ Sťahujem živý skladový XML feed: ${status.Url}`);
+      console.log(`  ✓ Sťahujem živý skladový XML feed z ${new URL(status.Url).origin}`);
       const res = await fetch(status.Url, { signal: AbortSignal.timeout(180_000) });
       const xmlText = await res.text();
 
@@ -342,12 +318,6 @@ export async function importAsusLenovoToNeon() {
 
       basePrice = Number((cost * (1 + marginPct / 100)).toFixed(2));
       finalPrice = Number((basePrice * (1 + vatRate / 100)).toFixed(2));
-    } else {
-      // Realistic category pricing fallback if price is missing in eD feed
-      const est = estimatePriceByCategory(catSlug, name);
-      cost = est.cost;
-      basePrice = est.basePrice;
-      finalPrice = est.finalPrice;
     }
 
     const stockCountRaw = stockInfo ? stockInfo.stockCount : Number(p.OnStockCount);
@@ -374,14 +344,6 @@ export async function importAsusLenovoToNeon() {
           isPrimary: idx === 0,
           altText: name,
         });
-      });
-    } else {
-      images.push({
-        id: `img-${code}-placeholder`,
-        url: getCategoryPlaceholderImage(catSlug),
-        position: 0,
-        isPrimary: true,
-        altText: name,
       });
     }
 
@@ -451,10 +413,7 @@ export async function importAsusLenovoToNeon() {
   console.log(` 📦 Celkovo s aktualizovanými cenami a fotkami: ${targetProducts.length}`);
   console.log(`===========================================================\n`);
 
-  console.log('🧹 Čistím databázu produktov v Neon PostgreSQL...');
-  await pool.query('TRUNCATE TABLE products CASCADE');
-
-  console.log('🚀 Zapisujem ASUS & Lenovo produkty s novými cenami a vysoko-rozlišovacími fotkami do Neon DB...');
+  console.log('🚀 Upsertujem ASUS & Lenovo produkty bez mazania existujúceho katalógu...');
   const batchSize = 100;
   let inserted = 0;
 
@@ -520,11 +479,15 @@ export async function importAsusLenovoToNeon() {
       ) VALUES ${valueRows.join(', ')}
       ON CONFLICT (id) DO UPDATE SET
         title = EXCLUDED.title,
+        category_slug = EXCLUDED.category_slug,
+        category_hierarchy = EXCLUDED.category_hierarchy,
         base_price = EXCLUDED.base_price,
         final_price = EXCLUDED.final_price,
         stock_count = EXCLUDED.stock_count,
         is_in_stock = EXCLUDED.is_in_stock,
         images = EXCLUDED.images,
+        attributes = EXCLUDED.attributes,
+        data_hash = EXCLUDED.data_hash,
         updated_at = NOW();
     `;
 
