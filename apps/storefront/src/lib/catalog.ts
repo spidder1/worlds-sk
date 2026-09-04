@@ -566,11 +566,28 @@ function normalizeSearchQuery(query: string): string {
 
 export async function getManufacturers(): Promise<ManufacturerItem[]> {
   try {
-    const { data } = await supabase
+    // Real catalogue-wide counts. The sampled fallback below only counts brands
+    // within the rows it happens to fetch, so its numbers are not catalogue totals.
+    const { data: grouped, error: groupedError } = await supabase.rpc('get_storefront_brand_counts', { p_limit: 16 });
+    if (!groupedError && Array.isArray(grouped) && grouped.length > 0) {
+      return grouped.map((row: { name: string; count: number }) => ({
+        name: row.name,
+        count: Number(row.count),
+      }));
+    }
+    if (groupedError) {
+      console.error('getManufacturers: brand count RPC failed, falling back to sampling:', groupedError.message);
+    }
+
+    const { data, error } = await supabase
       .from('storefront_products')
       .select('brand')
       .neq('brand', 'Unbranded')
       .limit(2000);
+
+    if (error) {
+      console.error('getManufacturers: Supabase query failed:', error.message);
+    }
 
     if (!data || data.length === 0) {
       return [

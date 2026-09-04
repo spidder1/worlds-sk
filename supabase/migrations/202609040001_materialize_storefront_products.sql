@@ -163,6 +163,23 @@ begin
 end;
 $$;
 
+-- The storefront otherwise counts brands within an arbitrary 2000-row sample and
+-- presents those as catalogue-wide totals. Grouping over the projection is cheap.
+create or replace function public.get_storefront_brand_counts(p_limit integer default 16)
+returns table (name text, count bigint)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select brand as name, count(*) as count
+  from catalog.storefront_products_mat
+  where brand is not null and brand <> 'Unbranded'
+  group by brand
+  order by count(*) desc, brand asc
+  limit greatest(1, least(coalesce(p_limit, 16), 100));
+$$;
+
 create or replace function public.get_storefront_product_count()
 returns integer
 language sql
@@ -176,6 +193,7 @@ $$;
 grant select on catalog.storefront_products_mat to anon, authenticated;
 grant select on public.storefront_products to anon, authenticated;
 grant execute on function public.get_storefront_product_count() to anon, authenticated;
+grant execute on function public.get_storefront_brand_counts(integer) to anon, authenticated;
 grant execute on function public.refresh_storefront_products() to service_role;
 
 commit;
