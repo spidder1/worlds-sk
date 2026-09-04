@@ -21,6 +21,7 @@
     "import:notebooks": "node dist/import-notebooks.js",
     "sync:catalog": "node dist/catalog-sync.js --mode=full",
     "sync:stock-price": "node dist/catalog-sync.js --mode=stock-price",
+    "import:sample-neon": "node dist/import-neon.js",
     "import:sample": "node dist/cli.js --sample",
     "test": "node --test dist/**/*.test.js"
   },

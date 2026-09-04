@@ -276,6 +276,9 @@ export async function importAsusLenovoToNeon() {
   console.log(`✓ Počet celkových položiek v XML: ${productBlocks.length}`);
 
   const targetProducts: any[] = [];
+  const sampleOnly = process.env.ED_SAMPLE_ONLY === 'true';
+  const sampleLimitRaw = Number.parseInt(process.env.ED_SAMPLE_LIMIT || '250', 10);
+  const sampleLimit = Number.isFinite(sampleLimitRaw) && sampleLimitRaw > 0 ? sampleLimitRaw : 250;
   let asusCount = 0;
   let lenovoCount = 0;
 
@@ -404,6 +407,11 @@ export async function importAsusLenovoToNeon() {
       status: 'ACTIVE',
       data_hash: `hash_${code}_${cost}_${stockCount}`,
     });
+
+    if (sampleOnly && targetProducts.length >= sampleLimit) {
+      console.log(`🧪 Sample režim: dosiahnutý limit ${sampleLimit} ASUS/Lenovo produktov.`);
+      break;
+    }
   }
 
   console.log(`\n===========================================================`);

@@ -17,6 +17,7 @@
     "import:notebooks": "pnpm --filter @worlds/importer run import:notebooks",
     "sync:catalog": "pnpm --filter @worlds/importer run sync:catalog --",
     "sync:stock-price": "pnpm --filter @worlds/importer run sync:stock-price --",
+    "import:sample-neon": "pnpm --filter @worlds/importer run import:sample-neon",
     "import:sample": "pnpm --filter @worlds/importer run import:sample"
   },
   "dependencies": {
