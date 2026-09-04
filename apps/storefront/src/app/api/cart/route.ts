@@ -63,7 +63,11 @@ export async function POST(request: Request) {
     if (!body.productId || !/^[a-zA-Z0-9_-]{1,120}$/.test(body.productId)) {
       return NextResponse.json({ error: 'Neplatný produkt.' }, { status: 400 });
     }
-    const quantity = Math.max(1, Math.min(99, Number(body.quantity || 1)));
+    const requestedQuantity = Number(body.quantity ?? 1);
+    if (!Number.isInteger(requestedQuantity) || requestedQuantity < 1 || requestedQuantity > 99) {
+      return NextResponse.json({ error: 'Neplatné množstvo.' }, { status: 400 });
+    }
+    const quantity = requestedQuantity;
     const cartId = await ensureCart(session);
     const product = await queryNeon<{ id: string }>(
       'SELECT id FROM storefront_products WHERE id = $1 LIMIT 1',
