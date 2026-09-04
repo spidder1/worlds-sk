@@ -16,6 +16,11 @@ export async function POST(request: Request) {
     if (!body.customerName?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.customerEmail || '')) return NextResponse.json({ error: 'Vyplňte meno a platný e-mail.' }, { status: 400 });
     const customerName = body.customerName.trim();
     const customerEmail = body.customerEmail!.trim().toLowerCase();
+    const shippingAddress = body.shippingAddress && typeof body.shippingAddress === 'object' ? body.shippingAddress : {};
+    const requiredAddressFields = ['street', 'city', 'postalCode', 'country'] as const;
+    if (requiredAddressFields.some((field) => !shippingAddress[field]?.trim() || shippingAddress[field].trim().length > 200)) {
+      return NextResponse.json({ error: 'Vyplňte úplnú dodaciu adresu.' }, { status: 400 });
+    }
     const paymentMethod = body.paymentMethod === 'COD' ? 'COD' : 'BANK_TRANSFER';
     const idempotencyKey = body.idempotencyKey?.trim() || randomUUID();
     if (!/^[a-zA-Z0-9-]{16,100}$/.test(idempotencyKey)) return NextResponse.json({ error: 'Neplatný idempotency kľúč.' }, { status: 400 });
@@ -47,7 +52,7 @@ export async function POST(request: Request) {
       await client.query(
         `INSERT INTO orders (id, order_number, idempotency_key, session_token, customer_name, customer_email, customer_phone, shipping_address, payment_method, subtotal, total)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $10)`,
-        [orderId, orderNumber, idempotencyKey, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, JSON.stringify(body.shippingAddress || {}), paymentMethod, subtotal.toFixed(2)],
+        [orderId, orderNumber, idempotencyKey, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, JSON.stringify(shippingAddress), paymentMethod, subtotal.toFixed(2)],
       );
       for (const item of items.rows) {
         await client.query(
