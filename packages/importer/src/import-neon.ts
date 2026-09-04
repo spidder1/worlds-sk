@@ -74,6 +74,78 @@ function safeSlug(title: string, code: string): string {
   return `${titleSlug || 'produkt'}-${code.toLowerCase()}`;
 }
 
+type StoredCategoryRule = { target_category_slug: string; match_expression: Record<string, unknown>; priority: number };
+type StoredCategoryMapping = { supplier_category_code: string | null; supplier_commodity_code: string | null; canonical_category_slug: string };
+
+function flattenTaxonomy(categories: TaxonomyCategory[], parentPath: string[] = []): Map<string, string[]> {
+  const result = new Map<string, string[]>();
+  for (const category of categories) {
+    const path = [...parentPath, category.name];
+    result.set(category.slug, path);
+    for (const [slug, hierarchy] of flattenTaxonomy(category.subcategories || [], path)) {
+      result.set(slug, hierarchy);
+    }
+  }
+  return result;
+}
+
+async function loadClassificationConfig(pool: pg.Pool): Promise<{ rules: StoredCategoryRule[]; mappings: StoredCategoryMapping[] }> {
+  try {
+    const [rules, mappings] = await Promise.all([
+      pool.query<StoredCategoryRule>(
+        `SELECT target_category_slug, match_expression, priority
+           FROM category_rules WHERE active = true ORDER BY priority ASC, id ASC`,
+      ),
+      pool.query<StoredCategoryMapping>(
+        `SELECT supplier_category_code, supplier_commodity_code, canonical_category_slug
+           FROM category_mappings WHERE active = true ORDER BY priority ASC, id ASC`,
+      ),
+    ]);
+    return { rules: rules.rows, mappings: mappings.rows };
+  } catch (error) {
+    console.warn('⚠️ Pravidlá kategorizácie nie sú dostupné; používam lokálny klasifikátor.', error instanceof Error ? error.message : error);
+    return { rules: [], mappings: [] };
+  }
+}
+
+function classifyWithStoredRules(
+  product: any,
+  config: { rules: StoredCategoryRule[]; mappings: StoredCategoryMapping[] },
+): { slug: string; hierarchy: string[] } {
+  const paths = flattenTaxonomy(WORLDS_IT_CATEGORIES);
+  const title = String(product.Name || product.ProductName || '').toLowerCase();
+  const description = String(product.Description || product.DescriptionShort || '').toLowerCase();
+  const fullText = `${title} ${description}`;
+
+  for (const rule of config.rules) {
+    const terms = Array.isArray(rule.match_expression?.title_any)
+      ? rule.match_expression.title_any.map((term) => String(term).toLowerCase())
+      : [];
+    if (terms.some((term) => term && fullText.includes(term))) {
+      return { slug: rule.target_category_slug, hierarchy: paths.get(rule.target_category_slug) || [rule.target_category_slug] };
+    }
+  }
+
+  const categoryCode = String(product.CategoryCode || '').trim();
+  const commodityCode = String(product.CommodityCode || '').trim().toUpperCase();
+  const mapping = config.mappings.find((item) =>
+    (categoryCode && item.supplier_category_code === categoryCode) ||
+    (commodityCode && item.supplier_commodity_code?.toUpperCase() === commodityCode),
+  );
+  if (mapping) {
+    return { slug: mapping.canonical_category_slug, hierarchy: paths.get(mapping.canonical_category_slug) || [mapping.canonical_category_slug] };
+  }
+
+  return classifyProductIndependently({
+    title: String(product.Name || product.ProductName || ''),
+    mpn: String(product.PartNumber || product.PartNumber2 || ''),
+    ean: String(product.EANCode || product.EAN || ''),
+    description: product.Description || '',
+    descriptionShort: product.DescriptionShort || '',
+    producerName: product.ProducerName || product.ProducerCode || '',
+  });
+}
+
 function extractImageUrls(p: any): string[] {
   const urls: string[] = [];
 
@@ -255,6 +327,7 @@ export async function importAsusLenovoToNeon() {
   });
 
   await syncCategoriesAndManufacturers(pool);
+  const classificationConfig = await loadClassificationConfig(pool);
 
   // 1. Fetch live stock prices
   const stockMap = await fetchLiveStockMap();
@@ -332,14 +405,7 @@ export async function importAsusLenovoToNeon() {
     const stockInfo = stockMap.get(code) || stockMap.get(String(p.ProId)) || stockMap.get(partNumber);
     let cost = stockInfo ? stockInfo.price : Number(p.YourPriceWithFees || p.YourPrice || p.DealerPrice || 0);
 
-    const { slug: catSlug, hierarchy: catPath } = classifyProductIndependently({
-      title: name,
-      mpn: partNumber,
-      ean: String(p.EANCode || p.EAN || ''),
-      description: p.Description || '',
-      descriptionShort: p.DescriptionShort || '',
-      producerName: brandName,
-    });
+    const { slug: catSlug, hierarchy: catPath } = classifyWithStoredRules(p, classificationConfig);
 
     let basePrice = 0;
     let finalPrice = 0;
