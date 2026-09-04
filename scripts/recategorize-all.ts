@@ -5,123 +5,140 @@ const sql = neon("postgresql://neondb_owner:npg_nLuIOvXw7dZ3@ep-withered-thunder
 interface CategoryRule {
   targetSlug: string;
   hierarchy: string[];
-  test: (title: string, brand: string, currentSlug: string) => boolean;
+  test: (title: string) => boolean;
 }
 
 const RULES: CategoryRule[] = [
-  // 1. Warranties & Services
-  {
-    targetSlug: 'zaruky-a-sluzby',
-    hierarchy: ['Príslušenstvo a periférie', 'Záruky, rozšírenia a služby'],
-    test: (t) => /\b(záruka|záruky|rozšírenie záruky|rozšíření záruky|carepack|onsite|premier support|warranty|ADP|accidental damage|servisný balík)\b/i.test(t)
-  },
-  // 2. Bags, Backpacks, Sleeves, Folio Cases
-  {
-    targetSlug: 'tasky-a-puzdra-na-notebooky',
-    hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Tašky, batohy a puzdrá na notebooky'],
-    test: (t) => /\b(brašna|batoh|puzdro|pouzdro|topload|backpack|sleeve|carry case|folio case|obazp|ruksak)\b/i.test(t)
-  },
-  // 3. Laptop Batteries, Chargers, Adapters, Power Banks
-  {
-    targetSlug: 'baterie-a-adaptery-k-notebookom',
-    hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Batérie a adaptéry k notebookom'],
-    test: (t) => /\b(bateria|batéria|baterie|adaptér|adapter|nabíjačka|charger|power bank|powerbank|síťový zdroj pro ntb|napájací adaptér)\b/i.test(t)
-  },
-  // 4. Screen Protectors & Protective Glass
-  {
-    targetSlug: 'ochranne-folie-a-skla',
-    hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Ochranné fólie a sklá'],
-    test: (t) => /\b(ochranná folie|ochranná fólia|ochranné sklo|paper feeling|tempered glass|screen protector|ochranná vrstva)\b/i.test(t)
-  },
-  // 5. Pens & Styluses
-  {
-    targetSlug: 'pera-a-stylusy',
-    hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Dotykové perá a stylusy'],
-    test: (t) => /\b(stylus|dotykové pero|digital pen|precision pen|active pen|pen pro)\b/i.test(t)
-  },
-  // 6. Docking Stations & USB Hubs
-  {
-    targetSlug: 'dokovacie-stanice',
-    hierarchy: ['Príslušenstvo a periférie', 'Dokovacie stanice a USB huby'],
-    test: (t) => /\b(dokovacia|dokovací|docking station|usb-c dock|thunderbolt dock|port replicator|dokovacia stanica)\b/i.test(t)
-  },
-  // 7. Laptop Cooling Pads & Stands
-  {
-    targetSlug: 'chladenie-a-stojany-na-notebooky',
-    hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Chladiace podložky a stojany'],
-    test: (t) => /\b(chladiaca podložka|stojan na ntb|laptop stand|cooling pad)\b/i.test(t)
-  },
-  // 8. Motherboards
+  // 1. Motherboards (Základné dosky)
   {
     targetSlug: 'zakladne-dosky',
     hierarchy: ['Počítačové komponenty', 'Základné dosky'],
-    test: (t) => /\b(základní deska|základná doska|motherboard)\b/i.test(t) ||
-      (/\b(ASUS MB|LENOVO MB|MB Sc|ROG STRIX B550|TUF GAMING B550|TUF GAMING B450|TUF GAMING B660|TUF GAMING A620|ROG STRIX Z790|TUF GAMING Z790|PRIME B550|PRIME B660|PRIME B760|PRIME Z790|PRIME A620)\b/i.test(t) && !/\b(NTB|Notebook|Laptop)\b/i.test(t))
+    test: (t) => /\b(mb|mb sc|motherboard|základná|základní|b550|b650|b660|b760|b850|b860|z690|z790|z890|x570|x670|x870|a620)\b/i.test(t) && !/\b(ntb|notebook|laptop)\b/i.test(t)
   },
-  // 9. PC Cases
+  // 2. SSD Disks, External Enclosures & Boxes (SSD a úložiská)
+  {
+    targetSlug: 'ssd-a-pevne-disky',
+    hierarchy: ['Počítačové komponenty', 'SSD disky a úložiská'],
+    test: (t) => /\b(ssd|nvme|m\.2 ssd|externí box pro ssd|ssd nvme case|ssd box)\b/i.test(t) && !/\b(ntb|notebook|laptop)\b/i.test(t)
+  },
+  // 3. PC Fans & Cooling (Chladenie PC)
+  {
+    targetSlug: 'chladenie-pc',
+    hierarchy: ['Počítačové komponenty', 'Chladenie a ventilátory'],
+    test: (t) => /\b(ventilátor|fan|chladenie|chladič|teplovodivá pasta|water cooling|aio cooler)\b/i.test(t) && !/\b(ntb|notebook|laptop|podložka)\b/i.test(t)
+  },
+  // 4. PC Cases (Počítačové skrinky)
   {
     targetSlug: 'pocitacove-skrinky',
     hierarchy: ['Počítačové komponenty', 'Počítačové skrinky (Case)'],
-    test: (t) => /\b(skriňa|skrinka|pc case|mini tower|mid-tower|full-tower|eatx case|tuf gaming gt501|prime case ap201)\b/i.test(t) && !/\b(ssd.*case|nvme.*case|box)\b/i.test(t)
+    test: (t) => /\b(skriňa|skrinka|pc case|mini tower|mid tower|big tower|eatx case|gt501|gt502|gt302|helios|hyperion|cronox|ap201)\b/i.test(t) && !/\b(ssd|nvme|box)\b/i.test(t)
   },
-  // 10. PC Power Supplies (PSU)
+  // 5. Power Supplies (Počítačové zdroje)
   {
     targetSlug: 'pocitacove-zdroje',
     hierarchy: ['Počítačové komponenty', 'Počítačové zdroje (PSU)'],
-    test: (t) => /\b(zdroj tuf gaming|zdroj rog|pc zdroj|napájací zdroj 80\+|psu 850w|psu 750w|psu 1000w|psu 1200w)\b/i.test(t) || (/\b(zdroj)\b/i.test(t) && /\b(80\+|gold|platinum|bronze|850w|750w|1000w|1200w|650w|550w)\b/i.test(t))
+    test: (t) => /\b(zdroj|psu|rog thor|rog loki|80\+|80plus|gold|platinum|titanium)\b/i.test(t) && !/\b(ntb|notebook|laptop|adaptér|adapter|charger)\b/i.test(t)
   },
-  // 11. RAM Memory
+  // 6. Routers & Wi-Fi Networking
   {
-    targetSlug: 'pamate-ram',
-    hierarchy: ['Počítačové komponenty', 'Operačné pamäte (RAM)'],
-    test: (t) => /\b(pamäť lenovo|paměť lenovo|pamäť kingston|ram module|ddr4 sodimm|ddr5 sodimm|so-dimm|8gb ddr4|16gb ddr4|32gb ddr4|8gb ddr5|16gb ddr5|32gb ddr5)\b/i.test(t) && !/\b(NTB|Notebook|Laptop)\b/i.test(t)
+    targetSlug: 'wifi-routere-a-mesh',
+    hierarchy: ['Sieťové prvky a Wi-Fi', 'Wi-Fi routere a Mesh systémy'],
+    test: (t) => /\b(router|aimesh|wifi7|wifi 7|be18000|be7200|gt-be19000|gt-be98|gs-be7200|gs-be18000)\b/i.test(t)
   },
-  // 12. Headphones & Headsets
+  // 7. Screen Protectors & Protective Glass
+  {
+    targetSlug: 'ochranne-folie-a-skla',
+    hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Ochranné fólie a sklá'],
+    test: (t) => /\b(folie|fólia|sklo|paper feeling|tempered glass|screen protector|protection|1up|arc\+|silky matt|silverprotection|lens protection)\b/i.test(t)
+  },
+  // 8. Headphones & Headsets
   {
     targetSlug: 'sluchadla-a-headsety',
     hierarchy: ['Príslušenstvo a periférie', 'Slúchadlá a headsety'],
-    test: (t) => /\b(headphones|headset|slúchadlá|sluchátka|in-ear|tws|earbuds)\b/i.test(t)
+    test: (t) => /\b(headphones|headset|slúchadlá|sluchátka|in-ear|tws|earbuds|rog delta|rog pelta|rog kithara|legion e510)\b/i.test(t)
   },
-  // 13. Keyboards & Mice
+  // 9. Webcams & Microphones
+  {
+    targetSlug: 'webkamery-a-mikrofony',
+    hierarchy: ['Príslušenstvo a periférie', 'Webkamery a mikrofóny'],
+    test: (t) => /\b(mikrofon|mikrofón|microphone|webkamera|webcam|carnyx)\b/i.test(t)
+  },
+  // 10. Warranties & Services
+  {
+    targetSlug: 'zaruky-a-sluzby',
+    hierarchy: ['Príslušenstvo a periférie', 'Záruky, rozšírenia a služby'],
+    test: (t) => /\b(záruka|záruky|rozšírenie záruky|rozšíření záruky|carepack|onsite|premier support|warranty|adp|accidental damage|servisný balík)\b/i.test(t)
+  },
+  // 11. Bags, Backpacks, Sleeves, Cases
+  {
+    targetSlug: 'tasky-a-puzdra-na-notebooky',
+    hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Tašky, batohy a puzdrá na notebooky'],
+    test: (t) => /\b(brašna|batoh|puzdro|pouzdro|topload|backpack|sleeve|carry case|folio case)\b/i.test(t)
+  },
+  // 12. Laptop Batteries & Chargers
+  {
+    targetSlug: 'baterie-a-adaptery-k-notebookom',
+    hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Batérie a adaptéry k notebookom'],
+    test: (t) => /\b(bateria|batéria|baterie|adaptér|adapter|nabíjačka|charger|power bank|powerbank)\b/i.test(t)
+  },
+  // 13. Docking Stations & USB Hubs
+  {
+    targetSlug: 'dokovacie-stanice',
+    hierarchy: ['Príslušenstvo a periférie', 'Dokovacie stanice a USB huby'],
+    test: (t) => /\b(dokovacia|dokovací|docking station|usb-c dock|thunderbolt dock|port replicator|fan hub)\b/i.test(t)
+  },
+  // 14. Pens & Styluses
+  {
+    targetSlug: 'pera-a-stylusy',
+    hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Dotykové perá a stylusy'],
+    test: (t) => /\b(stylus|dotykové pero|digital pen|precision pen|active pen)\b/i.test(t)
+  },
+  // 15. Keyboards, Mice, Gamepads, Accessories
   {
     targetSlug: 'klavesnice-a-mysi',
     hierarchy: ['Príslušenstvo a periférie', 'Klávesnice a myši'],
-    test: (t) => /\b(klávesnica|klávesnice|myš|mouse|keyboard|set klávesnica|combo klávesnica)\b/i.test(t)
+    test: (t) => /\b(klávesnica|klávesnice|myš|mouse|keyboard|gamepad|joystick|wrist rest|opěrka zápěstí)\b/i.test(t)
   },
-  // 14. Graphics Cards (Standalone GPUs)
+  // 16. Gaming Desktops (PC Legion, Gaming PC)
   {
-    targetSlug: 'graficke-karty',
-    hierarchy: ['Počítačové komponenty', 'Grafické karty (GPU)'],
-    test: (t) => /\b(grafická karta|vga card)\b/i.test(t) || (/\b(RTX [0-9]{4}|RX [0-9]{4})\b/i.test(t) && !/\b(NTB|Notebook|Laptop|MB|Základná|Základní)\b/i.test(t))
+    targetSlug: 'herne-pocitace',
+    hierarchy: ['Počítače a notebooky', 'Stolné počítače', 'Herné počítače'],
+    test: (t) => /\b(pc legion|legion t5|legion t7|herný pc|gaming pc|desktop legion)\b/i.test(t)
   },
-  // 15. Gaming Laptops (Genuine Laptops ONLY)
+  // 17. General Peripherals (Chairs, Pads, Cleaning, Soundtracks, Software keys)
+  {
+    targetSlug: 'prislusenstvo-a-periferie',
+    hierarchy: ['Príslušenstvo a periférie'],
+    test: (t) => /\b(křeslo|stolička|chair|podložka|sada osvětlení|skin|klíč steam|cleaning|tool kit|digital artbook|soundtrack|deluxe edition|digital)\b/i.test(t)
+  },
+  // 18. Genuine Gaming Laptops ONLY
   {
     targetSlug: 'herne-notebooky',
     hierarchy: ['Počítače a notebooky', 'Notebooky', 'Herné notebooky'],
-    test: (t) => /\b(NTB|Notebook|Laptop)\b/i.test(t) && /\b(Gaming|ROG|TUF|Legion|LOQ)\b/i.test(t)
+    test: (t) => /\b(ntb|notebook|laptop)\b/i.test(t) && /\b(gaming|rog|tuf|legion|loq)\b/i.test(t)
   },
-  // 16. Business Laptops (Genuine Laptops ONLY)
+  // 19. Genuine Business Laptops ONLY
   {
     targetSlug: 'firemne-notebooky',
     hierarchy: ['Počítače a notebooky', 'Notebooky', 'Firemné a pracovné notebooky'],
-    test: (t) => /\b(NTB|Notebook|Laptop)\b/i.test(t) && /\b(ThinkPad|ExpertBook|ProBook|Latitude|V15 G|V14 G)\b/i.test(t)
+    test: (t) => /\b(ntb|notebook|laptop)\b/i.test(t) && /\b(thinkpad|expertbook|probook|latitude|v15 g|v14 g)\b/i.test(t)
   },
-  // 17. Ultrabooks (Genuine Laptops ONLY)
+  // 20. Genuine Ultrabooky ONLY
   {
     targetSlug: 'ultrabooky',
     hierarchy: ['Počítače a notebooky', 'Notebooky', 'Ultrabooky a kompaktné'],
-    test: (t) => /\b(NTB|Notebook|Laptop)\b/i.test(t) && /\b(Zenbook|Yoga Slim|Swift)\b/i.test(t)
+    test: (t) => /\b(ntb|notebook|laptop)\b/i.test(t) && /\b(zenbook|yoga slim|swift)\b/i.test(t)
   },
-  // 18. General Laptops (Genuine Laptops ONLY)
+  // 21. Genuine General Laptops ONLY
   {
     targetSlug: 'notebooky',
     hierarchy: ['Počítače a notebooky', 'Notebooky'],
-    test: (t) => /\b(NTB|Notebook|Laptop|Vivobook|IdeaPad Slim)\b/i.test(t)
+    test: (t) => /\b(ntb|notebook|laptop|vivobook|ideapad slim|ideapad 3)\b/i.test(t)
   }
 ];
 
 async function main() {
-  const products = await sql`SELECT id, sku, title, brand, category_slug, category_hierarchy FROM products`;
+  const products = await sql`SELECT id, sku, title, category_slug, category_hierarchy FROM products`;
   console.log(`Total products in database: ${products.length}`);
 
   let changedCount = 0;
@@ -131,12 +148,11 @@ async function main() {
 
   for (const p of products) {
     const title = p.title || '';
-    const brand = p.brand || '';
     const currentSlug = p.category_slug || '';
 
     let matchedRule: CategoryRule | null = null;
     for (const rule of RULES) {
-      if (rule.test(title, brand, currentSlug)) {
+      if (rule.test(title)) {
         matchedRule = rule;
         break;
       }
@@ -160,24 +176,18 @@ async function main() {
   }
 
   if (updates.length > 0) {
-    console.log(`\nExecuting ${updates.length} updates in Neon DB...`);
-    const batchSize = 100;
+    console.log(`\nExecuting ${updates.length} updates in Neon DB using parameterized queries...`);
+    let done = 0;
+    const batchSize = 50;
     for (let i = 0; i < updates.length; i += batchSize) {
       const chunk = updates.slice(i, i + batchSize);
-      const valuesSql = chunk.map(u => `('${u.id}', '${u.targetSlug}', ARRAY[${u.hierarchy.map(h => `'${h.replace(/'/g, "''")}'`).join(',')}]::text[])`).join(',');
-      
-      await sql.unsafe(`
-        UPDATE products AS p
-        SET 
-          category_slug = v.target_slug,
-          category_hierarchy = v.hierarchy,
-          updated_at = NOW()
-        FROM (VALUES ${valuesSql}) AS v(id, target_slug, hierarchy)
-        WHERE p.id = v.id;
-      `);
-      console.log(`Updated batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(updates.length / batchSize)}`);
+      await Promise.all(chunk.map(u => 
+        sql`UPDATE products SET category_slug = ${u.targetSlug}, category_hierarchy = ${JSON.stringify(u.hierarchy)}::jsonb, updated_at = NOW() WHERE id = ${u.id}`
+      ));
+      done += chunk.length;
+      console.log(`Updated ${done}/${updates.length} items...`);
     }
-    console.log('\nRecategorization complete!');
+    console.log('\nRecategorization successfully applied and saved in Neon DB!');
   }
 }
 
