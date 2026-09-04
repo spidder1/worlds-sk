@@ -754,7 +754,7 @@ export async function getManufacturers(options: ManufacturerOptions = {}): Promi
 
     const rows = await queryNeon<{ brand: string; count: string }>(`
       SELECT brand, COUNT(*)::int as count
-      FROM products
+      FROM storefront_products
       ${whereClause}
       GROUP BY brand
       ORDER BY count DESC
@@ -831,11 +831,11 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
   }
 
   try {
-    const countSql = `SELECT COUNT(*)::int as total FROM products ${filteredWhereClause}`;
+    const countSql = `SELECT COUNT(*)::int as total FROM storefront_products ${filteredWhereClause}`;
     const countRows = await queryNeon<{ total: number }>(countSql, filteredParams);
     const total = countRows[0]?.total ?? 0;
 
-    const pageSql = `SELECT * FROM products ${filteredWhereClause} ORDER BY ${orderBy} LIMIT $${filteredParamIdx++} OFFSET $${filteredParamIdx++}`;
+    const pageSql = `SELECT * FROM storefront_products ${filteredWhereClause} ORDER BY ${orderBy} LIMIT $${filteredParamIdx++} OFFSET $${filteredParamIdx++}`;
     const pageRows = await queryNeon(pageSql, [...filteredParams, pageSize, offset]);
     const products = pageRows.map(mapDbRowToMasterProduct);
 
@@ -852,7 +852,7 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
         COUNT(*) FILTER (WHERE title ~* '1\\s*tb|1000gb|1tssd')::int AS ssd_1tb,
         COUNT(*) FILTER (WHERE title ~* '512\\s*gb|512ssd')::int AS ssd_512,
         COUNT(*) FILTER (WHERE title ~* '256\\s*gb|256ssd')::int AS ssd_256
-       FROM products ${baseWhereClause}`,
+       FROM storefront_products ${baseWhereClause}`,
       baseParams,
     );
     const facetRow = facetRows[0] || {};
@@ -894,23 +894,23 @@ export async function getProductBySlug(slug: string): Promise<MasterProduct | nu
     if (!/^[a-zA-Z0-9-]{1,200}$/.test(cleanSlug)) return null;
 
     // 1. Exact match on slug
-    const directRows = await queryNeon(`SELECT * FROM products WHERE slug = $1 AND status = 'ACTIVE' AND final_price > 0 LIMIT 1`, [cleanSlug]);
+    const directRows = await queryNeon(`SELECT * FROM storefront_products WHERE slug = $1 LIMIT 1`, [cleanSlug]);
     if (directRows.length > 0) return mapDbRowToMasterProduct(directRows[0]);
 
     // 2. Trailing SKU match
     const trailingMatch = cleanSlug.match(/-([0-9a-zA-Z]+)$/);
     if (trailingMatch && trailingMatch[1]) {
       const sku = trailingMatch[1];
-      const skuRows = await queryNeon(`SELECT * FROM products WHERE (sku = $1 OR supplier_code = $1) AND status = 'ACTIVE' AND final_price > 0 LIMIT 1`, [sku]);
+      const skuRows = await queryNeon(`SELECT * FROM storefront_products WHERE (sku = $1 OR supplier_code = $1) LIMIT 1`, [sku]);
       if (skuRows.length > 0) return mapDbRowToMasterProduct(skuRows[0]);
     }
 
     // 3. Direct SKU / MPN / ID
-    const idRows = await queryNeon(`SELECT * FROM products WHERE (sku = $1 OR supplier_code = $1 OR mpn = $1 OR id = $1) AND status = 'ACTIVE' AND final_price > 0 LIMIT 1`, [cleanSlug]);
+    const idRows = await queryNeon(`SELECT * FROM storefront_products WHERE (sku = $1 OR supplier_code = $1 OR mpn = $1 OR id = $1) LIMIT 1`, [cleanSlug]);
     if (idRows.length > 0) return mapDbRowToMasterProduct(idRows[0]);
 
     // 4. Fuzzy slug match
-    const fuzzyRows = await queryNeon(`SELECT * FROM products WHERE slug ILIKE $1 AND status = 'ACTIVE' AND final_price > 0 LIMIT 1`, [`%${cleanSlug}%`]);
+    const fuzzyRows = await queryNeon(`SELECT * FROM storefront_products WHERE slug ILIKE $1 LIMIT 1`, [`%${cleanSlug}%`]);
     if (fuzzyRows.length > 0) return mapDbRowToMasterProduct(fuzzyRows[0]);
 
     return null;
@@ -927,7 +927,7 @@ export async function getProductsByCategory(categorySlug: string): Promise<Maste
 export async function getFeaturedProducts(limit = 8): Promise<MasterProduct[]> {
   try {
     const rows = await queryNeon(
-      `SELECT * FROM products WHERE status = 'ACTIVE' AND final_price > 0 AND is_in_stock = true ORDER BY final_price ASC LIMIT $1`,
+      `SELECT * FROM storefront_products WHERE is_in_stock = true ORDER BY final_price ASC LIMIT $1`,
       [limit]
     );
     return rows.map(mapDbRowToMasterProduct);
@@ -1011,7 +1011,7 @@ export interface ProductSitemapRecord {
 
 export async function getProductCount(): Promise<number> {
   try {
-    const rows = await queryNeon<{ count: string }>(`SELECT COUNT(*)::int as count FROM products WHERE status = 'ACTIVE' AND final_price > 0`);
+    const rows = await queryNeon<{ count: string }>(`SELECT COUNT(*)::int as count FROM storefront_products`);
     return Number(rows[0]?.count ?? 0);
   } catch {
     return 0;
@@ -1021,7 +1021,7 @@ export async function getProductCount(): Promise<number> {
 export async function getProductSitemapBatch(offset: number, limit: number): Promise<ProductSitemapRecord[]> {
   try {
     const rows = await queryNeon<{ slug: string; status: string; updated_at: string }>(
-      `SELECT slug, status, updated_at FROM products WHERE status = 'ACTIVE' AND final_price > 0 ORDER BY id ASC LIMIT $1 OFFSET $2`,
+      `SELECT slug, status, updated_at FROM storefront_products ORDER BY id ASC LIMIT $1 OFFSET $2`,
       [limit, offset]
     );
     return rows.map((r) => ({
