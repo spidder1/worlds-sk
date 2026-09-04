@@ -740,6 +740,10 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
       p_metrics: metrics,
     }) : result;
     result.missing = completion.missing ?? result.missing;
+    if (rpc) {
+      await rpc<void>('refresh_storefront_products', {});
+      console.log('[import] refreshed storefront_products projection');
+    }
     console.log(`[import] completed batch=${batchId} parsed=${parsed} skipped=${skipped} filtered=${filtered} processed=${result.processed} durationMs=${durationMs}`);
     if (filtered > 0) console.log(`[import] filteredByReason=${JSON.stringify(filteredByReason)}`);
     return result;

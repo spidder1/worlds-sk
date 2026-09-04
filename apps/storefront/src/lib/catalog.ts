@@ -767,7 +767,11 @@ export async function getFeaturedProducts(limit = 8): Promise<MasterProduct[]> {
       .order('final_price', { ascending: true })
       .limit(limit);
 
-    if (error || !data || data.length === 0) {
+    if (error) {
+      console.error('getFeaturedProducts: Supabase query failed:', error.message);
+      return [];
+    }
+    if (!data || data.length === 0) {
       return [];
     }
 
@@ -786,7 +790,11 @@ export async function getCategories(): Promise<TaxonomyCategory[]> {
       .eq('active', true)
       .order('source_order', { ascending: true });
 
-    if (error || !nodes || nodes.length === 0) {
+    if (error) {
+      console.error('getCategories: Supabase query failed, using static taxonomy:', error.message);
+      return CATEGORIES;
+    }
+    if (!nodes || nodes.length === 0) {
       return CATEGORIES;
     }
 
