@@ -4,10 +4,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: 'images.unsplash.com' },
-      { protocol: 'https', hostname: 'private-ws-sk.elinkx.biz' },
-      { protocol: 'https', hostname: 'edshop.edsystem.sk' },
-      { protocol: 'https', hostname: 'img.elinkx.biz' },
+      { protocol: 'https', hostname: '**' },
+      { protocol: 'http', hostname: '**' },
     ],
   },
   poweredByHeader: false,

@@ -6,35 +6,48 @@ import { useRouter } from 'next/navigation';
 import { ChevronDown, Grid3X3, Menu, Search, ShieldCheck, ShoppingCart } from 'lucide-react';
 import type { TaxonomyCategory } from '@worlds/types';
 
-function DesktopCategory({ category }: { category: TaxonomyCategory }) {
+function MegaMenu({ categories }: { categories: TaxonomyCategory[] }) {
   return (
-    <div className="group static flex-shrink-0">
-      <Link href={`/kategoria/${category.slug}`} className="flex items-center gap-1 rounded-lg px-3 py-2 font-semibold text-slate-700 transition-colors hover:bg-white hover:text-brand-700 group-focus-within:bg-white">
-        {category.name}
-        {category.subcategories?.length ? <ChevronDown className="h-3.5 w-3.5 transition-transform group-hover:rotate-180" /> : null}
-      </Link>
-      {category.subcategories?.length ? (
-        <div className="invisible absolute left-1/2 top-full z-50 w-[min(80rem,calc(100vw-2rem))] -translate-x-1/2 translate-y-2 rounded-b-2xl border border-slate-200 bg-white p-5 opacity-0 shadow-2xl transition-all duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
-          <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
-            <Link href={`/kategoria/${category.slug}`} className="font-black text-slate-900 hover:text-brand-700">Všetko v kategórii {category.name}</Link>
-            <span className="text-xs text-slate-400">Prejdite myšou alebo kliknite</span>
-          </div>
-          <div className="grid grid-cols-2 gap-x-7 gap-y-5 md:grid-cols-3">
-            {category.subcategories.map((subcategory) => (
-              <div key={subcategory.id}>
-                <Link href={`/kategoria/${subcategory.slug}`} className="text-sm font-bold text-slate-800 hover:text-brand-700">{subcategory.name}</Link>
-                {subcategory.subcategories?.length ? (
-                  <ul className="mt-2 space-y-1.5">
-                    {subcategory.subcategories.map((child) => (
-                      <li key={child.id}><Link href={`/kategoria/${child.slug}`} className="text-xs text-slate-500 hover:text-brand-700">{child.name}</Link></li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            ))}
-          </div>
+    <div className="group relative">
+      <button className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-brand-700 focus:outline-none">
+        <Grid3X3 className="h-4 w-4" />
+        <span>Všetky kategórie</span>
+        <ChevronDown className="h-4 w-4 transition-transform group-hover:rotate-180" />
+      </button>
+
+      <div className="invisible absolute left-0 top-full z-50 w-[min(84rem,calc(100vw-2rem))] translate-y-2 rounded-b-2xl border border-slate-200 bg-white p-6 opacity-0 shadow-2xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+        <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 className="text-base font-black text-slate-900">Kompletný katalóg kategórií</h3>
+          <Link href="/produkty" className="text-xs font-semibold text-brand-600 hover:text-brand-800 hover:underline">Zobraziť všetky produkty &rarr;</Link>
         </div>
-      ) : null}
+        <div className="grid grid-cols-2 gap-x-8 gap-y-6 md:grid-cols-4">
+          {categories.map((cat) => (
+            <div key={cat.id} className="space-y-2">
+              <Link href={`/kategoria/${cat.slug}`} className="group/item flex items-center gap-1.5 font-bold text-slate-900 hover:text-brand-600">
+                <span>{cat.name}</span>
+              </Link>
+              {cat.subcategories?.length ? (
+                <ul className="space-y-1 pl-1">
+                  {cat.subcategories.slice(0, 6).map((sub) => (
+                    <li key={sub.id}>
+                      <Link href={`/kategoria/${sub.slug}`} className="text-xs text-slate-600 hover:text-brand-600">
+                        {sub.name}
+                      </Link>
+                    </li>
+                  ))}
+                  {cat.subcategories.length > 6 ? (
+                    <li>
+                      <Link href={`/kategoria/${cat.slug}`} className="text-xs font-semibold text-brand-600 hover:underline">
+                        + ďalších {cat.subcategories.length - 6} &rarr;
+                      </Link>
+                    </li>
+                  ) : null}
+                </ul>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -106,9 +119,20 @@ export function Header({ categories }: { categories: TaxonomyCategory[] }) {
       </div>
 
       <nav className="relative hidden border-t border-slate-200 bg-slate-50 lg:block" aria-label="Hlavné kategórie">
-        <div className="mx-auto flex max-w-7xl items-center px-4 text-sm">
-          <Link href="/produkty" className="mr-1 flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 font-bold text-white hover:bg-brand-700"><Grid3X3 className="h-4 w-4" /> Všetky produkty</Link>
-          {categories.map((category) => <DesktopCategory key={category.id} category={category} />)}
+        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2 text-sm">
+          <MegaMenu categories={categories} />
+          
+          <div className="flex flex-1 items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">
+            {categories.map((category) => (
+              <Link
+                key={category.id}
+                href={`/kategoria/${category.slug}`}
+                className="whitespace-nowrap rounded-lg px-3 py-1.5 font-semibold text-slate-700 transition-colors hover:bg-white hover:text-brand-700"
+              >
+                {category.name}
+              </Link>
+            ))}
+          </div>
         </div>
       </nav>
 
