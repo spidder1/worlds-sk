@@ -1,4 +1,5 @@
 import { TaxonomyCategory } from '@worlds/types';
+import { WORLDS_IT_CATEGORIES } from './taxonomy-definition.js';
 
 export const MANAGED_TAXONOMY: TaxonomyCategory[] = [
   {
@@ -189,9 +190,37 @@ export class TaxonomyEngine {
   private categoryMap = new Map<string, TaxonomyCategory>();
   private codeToCategory = new Map<string, TaxonomyCategory>();
   private commodityToCategory = new Map<string, TaxonomyCategory>();
+  private readonly taxonomy: TaxonomyCategory[];
 
-  constructor(taxonomy: TaxonomyCategory[] = MANAGED_TAXONOMY) {
+  constructor(taxonomy: TaxonomyCategory[] = WORLDS_IT_CATEGORIES) {
+    this.taxonomy = taxonomy;
     this.indexTaxonomy(taxonomy);
+    this.addCanonicalSupplierMappings();
+  }
+
+  /**
+   * Supplier codes are deliberately mapped into the Worlds taxonomy here.
+   * Supplier labels remain raw data and never become storefront categories.
+   */
+  private addCanonicalSupplierMappings() {
+    const mappings: Record<string, string> = {
+      '101': 'notebooky',
+      '83': 'notebooky',
+      '84': 'notebooky',
+      '102': 'stolne-pocitace',
+      '103': 'tablety',
+      '201': 'procesory',
+      '202': 'graficke-karty',
+      '203': 'pamate-ram',
+      '204': 'ssd-a-pevne-disky',
+      '301': 'monitory-a-displeje',
+      '401': 'klavesnice-a-mysi',
+      '402': 'pamatove-karty-sd',
+    };
+    for (const [supplierCode, slug] of Object.entries(mappings)) {
+      const category = this.categoryMap.get(slug);
+      if (category) this.codeToCategory.set(supplierCode, category);
+    }
   }
 
   private indexTaxonomy(categories: TaxonomyCategory[]) {
@@ -306,7 +335,7 @@ export class TaxonomyEngine {
   }
 
   getAllCategories(): TaxonomyCategory[] {
-    return MANAGED_TAXONOMY;
+    return this.taxonomy;
   }
 
   getCategoryBySlug(slug: string): TaxonomyCategory | undefined {
