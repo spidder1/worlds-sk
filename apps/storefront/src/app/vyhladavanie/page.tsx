@@ -7,7 +7,7 @@ import { ProductFilterSidebar } from '../../components/ProductFilterSidebar';
 import { getManufacturers, getProductsPage } from '../../lib/catalog';
 
 interface Props {
-  searchParams: Promise<{ q?: string; vyrobca?: string; inStock?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; vyrobca?: string; inStock?: string; page?: string; cpu?: string; ram?: string; ssd?: string }>;
 }
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
@@ -24,16 +24,19 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function SearchPage({ searchParams }: Props) {
-  const { q = '', vyrobca = '', inStock, page: rawPage } = await searchParams;
+  const { q = '', vyrobca = '', inStock, page: rawPage, cpu = '', ram = '', ssd = '' } = await searchParams;
   const parsedPage = Number.parseInt(rawPage ?? '1', 10);
   const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const query = q.trim();
   const brandFilter = vyrobca.trim();
   const inStockOnly = inStock === 'true';
+  const cpuFilter = cpu.trim();
+  const ramFilter = ram.trim();
+  const ssdFilter = ssd.trim();
 
   const [results, manufacturers] = await Promise.all([
-    getProductsPage({ query, brand: brandFilter, inStockOnly, page }),
-    getManufacturers({ query, inStockOnly }),
+    getProductsPage({ query, brand: brandFilter, inStockOnly, page, cpu: cpuFilter, ram: ramFilter, ssd: ssdFilter }),
+    getManufacturers({ query, inStockOnly, cpu: cpuFilter, ram: ramFilter, ssd: ssdFilter }),
   ]);
 
   return (
@@ -103,7 +106,7 @@ export default async function SearchPage({ searchParams }: Props) {
                 basePath="/vyhladavanie"
                 currentPage={results.page}
                 totalPages={results.pageCount}
-                searchParams={{ q: query, vyrobca: brandFilter, inStock }}
+                searchParams={{ q: query, vyrobca: brandFilter, inStock, cpu: cpuFilter, ram: ramFilter, ssd: ssdFilter }}
               />
             </>
           )}

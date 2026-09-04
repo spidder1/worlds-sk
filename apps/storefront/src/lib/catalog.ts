@@ -611,6 +611,9 @@ export interface ProductPageOptions {
   brand?: string;
   inStockOnly?: boolean;
   sort?: ProductSort;
+  cpu?: string;
+  ram?: string;
+  ssd?: string;
 }
 
 export interface ManufacturerItem {
@@ -639,10 +642,76 @@ function normalizeSearchQuery(query: string): string {
     .slice(0, 80);
 }
 
+function appendSpecConditions(
+  cpu: string | undefined,
+  ram: string | undefined,
+  ssd: string | undefined,
+  whereConditions: string[],
+  params: unknown[],
+  getNextIdx: () => number
+) {
+  if (cpu) {
+    if (/i7|ryzen 7|ultra 7/i.test(cpu)) {
+      whereConditions.push(`title ~* $${getNextIdx()}`);
+      params.push('ryzen 7|core i7|ultra 7');
+    } else if (/i5|ryzen 5|ultra 5/i.test(cpu)) {
+      whereConditions.push(`title ~* $${getNextIdx()}`);
+      params.push('ryzen 5|core i5|ultra 5');
+    } else if (/i3|ryzen 3/i.test(cpu)) {
+      whereConditions.push(`title ~* $${getNextIdx()}`);
+      params.push('ryzen 3|core i3');
+    } else {
+      whereConditions.push(`title ILIKE $${getNextIdx()}`);
+      params.push(`%${cpu}%`);
+    }
+  }
+
+  if (ram) {
+    if (/64\s*gb/i.test(ram)) {
+      whereConditions.push(`title ~* $${getNextIdx()}`);
+      params.push('64\\s*gb|64g');
+    } else if (/32\s*gb/i.test(ram)) {
+      whereConditions.push(`title ~* $${getNextIdx()}`);
+      params.push('32\\s*gb|32g');
+    } else if (/16\s*gb/i.test(ram)) {
+      whereConditions.push(`title ~* $${getNextIdx()}`);
+      params.push('16\\s*gb|16g');
+    } else if (/8\s*gb/i.test(ram)) {
+      whereConditions.push(`title ~* $${getNextIdx()}`);
+      params.push('8\\s*gb|8g');
+    } else {
+      whereConditions.push(`title ILIKE $${getNextIdx()}`);
+      params.push(`%${ram}%`);
+    }
+  }
+
+  if (ssd) {
+    if (/2\s*tb/i.test(ssd)) {
+      whereConditions.push(`title ~* $${getNextIdx()}`);
+      params.push('2\\s*tb|2000gb');
+    } else if (/1\s*tb/i.test(ssd)) {
+      whereConditions.push(`title ~* $${getNextIdx()}`);
+      params.push('1\\s*tb|1000gb|1tssd');
+    } else if (/512\s*gb/i.test(ssd)) {
+      whereConditions.push(`title ~* $${getNextIdx()}`);
+      params.push('512\\s*gb|512ssd');
+    } else if (/256\s*gb/i.test(ssd)) {
+      whereConditions.push(`title ~* $${getNextIdx()}`);
+      params.push('256\\s*gb|256ssd');
+    } else {
+      whereConditions.push(`title ILIKE $${getNextIdx()}`);
+      params.push(`%${ssd}%`);
+    }
+  }
+}
+
 export interface ManufacturerOptions {
   categorySlug?: string;
   query?: string;
   inStockOnly?: boolean;
+  cpu?: string;
+  ram?: string;
+  ssd?: string;
 }
 
 export async function getManufacturers(options: ManufacturerOptions = {}): Promise<ManufacturerItem[]> {
@@ -673,6 +742,8 @@ export async function getManufacturers(options: ManufacturerOptions = {}): Promi
         paramIdx++;
       }
     }
+
+    appendSpecConditions(options.cpu, options.ram, options.ssd, whereConditions, params, () => paramIdx++);
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
@@ -729,6 +800,8 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
     params.push(`%${qClean}%`);
     paramIdx++;
   }
+
+  appendSpecConditions(options.cpu, options.ram, options.ssd, whereConditions, params, () => paramIdx++);
 
   const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 

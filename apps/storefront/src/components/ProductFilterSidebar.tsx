@@ -300,12 +300,19 @@ export function ProductFilterSidebar({ products, allCategoryProducts, totalCount
                       <div
                         key={cpu.name}
                         onClick={() => updateFilter('cpu', isSelected ? undefined : cpu.name)}
-                        className={`flex items-center justify-between px-2 py-1 rounded text-xs cursor-pointer ${
-                          isSelected ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-600 hover:bg-slate-50'
+                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
+                          isSelected ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-700 hover:bg-slate-100'
                         }`}
                       >
-                        <span>{cpu.name}</span>
-                        <span className="text-[10px] text-slate-400">({cpu.count})</span>
+                        <span className="flex items-center gap-2 line-clamp-1">
+                          <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300 bg-white'}`}>
+                            {isSelected ? <Check className="w-2.5 h-2.5" /> : null}
+                          </span>
+                          {cpu.name}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium ml-1">
+                          ({cpu.count})
+                        </span>
                       </div>
                     );
                   })}
@@ -331,12 +338,19 @@ export function ProductFilterSidebar({ products, allCategoryProducts, totalCount
                       <div
                         key={ram.name}
                         onClick={() => updateFilter('ram', isSelected ? undefined : ram.name)}
-                        className={`flex items-center justify-between px-2 py-1 rounded text-xs cursor-pointer ${
-                          isSelected ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-600 hover:bg-slate-50'
+                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
+                          isSelected ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-700 hover:bg-slate-100'
                         }`}
                       >
-                        <span>{ram.name}</span>
-                        <span className="text-[10px] text-slate-400">({ram.count})</span>
+                        <span className="flex items-center gap-2 line-clamp-1">
+                          <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300 bg-white'}`}>
+                            {isSelected ? <Check className="w-2.5 h-2.5" /> : null}
+                          </span>
+                          {ram.name}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium ml-1">
+                          ({ram.count})
+                        </span>
                       </div>
                     );
                   })}
@@ -362,12 +376,19 @@ export function ProductFilterSidebar({ products, allCategoryProducts, totalCount
                       <div
                         key={ssd.name}
                         onClick={() => updateFilter('ssd', isSelected ? undefined : ssd.name)}
-                        className={`flex items-center justify-between px-2 py-1 rounded text-xs cursor-pointer ${
-                          isSelected ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-600 hover:bg-slate-50'
+                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
+                          isSelected ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-700 hover:bg-slate-100'
                         }`}
                       >
-                        <span>{ssd.name}</span>
-                        <span className="text-[10px] text-slate-400">({ssd.count})</span>
+                        <span className="flex items-center gap-2 line-clamp-1">
+                          <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300 bg-white'}`}>
+                            {isSelected ? <Check className="w-2.5 h-2.5" /> : null}
+                          </span>
+                          {ssd.name}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium ml-1">
+                          ({ssd.count})
+                        </span>
                       </div>
                     );
                   })}

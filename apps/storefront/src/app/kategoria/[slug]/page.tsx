@@ -9,7 +9,7 @@ import { findCategoryBySlug, getManufacturers, getProductsPage, type ProductSort
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string; inStock?: string; sort?: string; vyrobca?: string }>;
+  searchParams: Promise<{ page?: string; inStock?: string; sort?: string; vyrobca?: string; cpu?: string; ram?: string; ssd?: string }>;
 }
 
 function parsePage(value?: string): number {
@@ -41,10 +41,13 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const sort = parseSort(filters.sort);
   const inStockOnly = filters.inStock === 'true';
   const brandFilter = filters.vyrobca?.trim() ?? '';
+  const cpuFilter = filters.cpu?.trim() ?? '';
+  const ramFilter = filters.ram?.trim() ?? '';
+  const ssdFilter = filters.ssd?.trim() ?? '';
 
   const [result, manufacturers] = await Promise.all([
-    getProductsPage({ categorySlug: slug, page, sort, inStockOnly, brand: brandFilter }),
-    getManufacturers({ categorySlug: slug, inStockOnly }),
+    getProductsPage({ categorySlug: slug, page, sort, inStockOnly, brand: brandFilter, cpu: cpuFilter, ram: ramFilter, ssd: ssdFilter }),
+    getManufacturers({ categorySlug: slug, inStockOnly, cpu: cpuFilter, ram: ramFilter, ssd: ssdFilter }),
   ]);
 
   const hrefWith = (key: string, value?: string) => {
@@ -52,6 +55,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     if (filters.inStock === 'true' && key !== 'inStock') query.set('inStock', 'true');
     if (filters.sort && key !== 'sort') query.set('sort', filters.sort);
     if (filters.vyrobca && key !== 'vyrobca') query.set('vyrobca', filters.vyrobca);
+    if (filters.cpu && key !== 'cpu') query.set('cpu', filters.cpu);
+    if (filters.ram && key !== 'ram') query.set('ram', filters.ram);
+    if (filters.ssd && key !== 'ssd') query.set('ssd', filters.ssd);
     if (value) query.set(key, value);
     const serialized = query.toString();
     return `/kategoria/${slug}${serialized ? `?${serialized}` : ''}`;
@@ -76,16 +82,45 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             <p className="mt-1 text-sm text-slate-500">{result.total.toLocaleString('sk-SK')} produktov s platnou cenou</p>
           </div>
 
-          {brandFilter ? (
-            <Link
-              href={hrefWith('vyrobca', undefined)}
-              className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              Výrobca: {brandFilter}
-              <X className="w-3.5 h-3.5" />
-            </Link>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {brandFilter ? (
+              <Link
+                href={hrefWith('vyrobca', undefined)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                Výrobca: {brandFilter}
+                <X className="w-3.5 h-3.5" />
+              </Link>
+            ) : null}
+            {cpuFilter ? (
+              <Link
+                href={hrefWith('cpu', undefined)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+              >
+                CPU: {cpuFilter}
+                <X className="w-3.5 h-3.5" />
+              </Link>
+            ) : null}
+            {ramFilter ? (
+              <Link
+                href={hrefWith('ram', undefined)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+              >
+                RAM: {ramFilter}
+                <X className="w-3.5 h-3.5" />
+              </Link>
+            ) : null}
+            {ssdFilter ? (
+              <Link
+                href={hrefWith('ssd', undefined)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+              >
+                SSD: {ssdFilter}
+                <X className="w-3.5 h-3.5" />
+              </Link>
+            ) : null}
+          </div>
         </div>
 
         {/* Subcategories */}
@@ -139,7 +174,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                 basePath={`/kategoria/${slug}`}
                 currentPage={result.page}
                 totalPages={result.pageCount}
-                searchParams={{ inStock: filters.inStock, sort: filters.sort, vyrobca: filters.vyrobca }}
+                searchParams={{ inStock: filters.inStock, sort: filters.sort, vyrobca: filters.vyrobca, cpu: filters.cpu, ram: filters.ram, ssd: filters.ssd }}
               />
             </>
           ) : (
