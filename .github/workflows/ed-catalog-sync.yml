@@ -38,14 +38,14 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
-      - run: pnpm sync:stock-price
+      - run: pnpm import:sample-neon
         env:
-          IMPORT_BATCH_SIZE: 200
+          ED_SAMPLE_ONLY: true
+          ED_SAMPLE_LIMIT: 250
           ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
           ED_LOGIN: ${{ secrets.ED_LOGIN }}
           ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   full-catalog:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'full' || github.event.schedule == '43 2 * * 0'
@@ -62,12 +62,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
-      - run: pnpm sync:catalog
+      - run: pnpm import:sample-neon
         env:
-          IMPORT_BATCH_SIZE: 200
-          ED_CATALOG_SCOPE: it-only
+          ED_SAMPLE_ONLY: true
+          ED_SAMPLE_LIMIT: 250
           ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
           ED_LOGIN: ${{ secrets.ED_LOGIN }}
           ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
