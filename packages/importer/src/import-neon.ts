@@ -111,7 +111,7 @@ async function loadClassificationConfig(pool: pg.Pool): Promise<{ rules: StoredC
 function classifyWithStoredRules(
   product: any,
   config: { rules: StoredCategoryRule[]; mappings: StoredCategoryMapping[] },
-): { slug: string; hierarchy: string[] } {
+): { slug: string; hierarchy: string[]; source: string; confidence: number; reasoning: string } {
   const paths = flattenTaxonomy(WORLDS_IT_CATEGORIES);
   const title = String(product.Name || product.ProductName || '').toLowerCase();
   const description = String(product.Description || product.DescriptionShort || '').toLowerCase();
@@ -122,7 +122,12 @@ function classifyWithStoredRules(
       ? rule.match_expression.title_any.map((term) => String(term).toLowerCase())
       : [];
     if (terms.some((term) => term && fullText.includes(term))) {
-      return { slug: rule.target_category_slug, hierarchy: paths.get(rule.target_category_slug) || [rule.target_category_slug] };
+      return {
+        slug: rule.target_category_slug,
+        hierarchy: paths.get(rule.target_category_slug) || [rule.target_category_slug],
+        source: 'CATEGORY_RULE', confidence: 0.97,
+        reasoning: `Stored rule matched one of: ${terms.join(', ')}`,
+      };
     }
   }
 
@@ -133,10 +138,15 @@ function classifyWithStoredRules(
     (commodityCode && item.supplier_commodity_code?.toUpperCase() === commodityCode),
   );
   if (mapping) {
-    return { slug: mapping.canonical_category_slug, hierarchy: paths.get(mapping.canonical_category_slug) || [mapping.canonical_category_slug] };
+    return {
+      slug: mapping.canonical_category_slug,
+      hierarchy: paths.get(mapping.canonical_category_slug) || [mapping.canonical_category_slug],
+      source: 'SUPPLIER_MAPPING', confidence: 0.9,
+      reasoning: `Supplier category ${categoryCode || 'n/a'} / commodity ${commodityCode || 'n/a'}`,
+    };
   }
 
-  return classifyProductIndependently({
+  const fallback = classifyProductIndependently({
     title: String(product.Name || product.ProductName || ''),
     mpn: String(product.PartNumber || product.PartNumber2 || ''),
     ean: String(product.EANCode || product.EAN || ''),
@@ -144,6 +154,7 @@ function classifyWithStoredRules(
     descriptionShort: product.DescriptionShort || '',
     producerName: product.ProducerName || product.ProducerCode || '',
   });
+  return { ...fallback, source: 'HEURISTIC', confidence: 0.75, reasoning: 'Local product title and description heuristic' };
 }
 
 function extractImageUrls(p: any): string[] {
@@ -405,7 +416,8 @@ export async function importAsusLenovoToNeon() {
     const stockInfo = stockMap.get(code) || stockMap.get(String(p.ProId)) || stockMap.get(partNumber);
     let cost = stockInfo ? stockInfo.price : Number(p.YourPriceWithFees || p.YourPrice || p.DealerPrice || 0);
 
-    const { slug: catSlug, hierarchy: catPath } = classifyWithStoredRules(p, classificationConfig);
+    const classification = classifyWithStoredRules(p, classificationConfig);
+    const { slug: catSlug, hierarchy: catPath } = classification;
 
     let basePrice = 0;
     let finalPrice = 0;
@@ -478,6 +490,9 @@ export async function importAsusLenovoToNeon() {
       brand: brandName,
       category_slug: catSlug,
       category_hierarchy: catPath,
+      category_source: classification.source,
+      category_confidence: classification.confidence,
+      category_reasoning: classification.reasoning,
       commodity_code: String(p.CommodityCode || 'IT'),
       commodity_name: String(p.CommodityName || 'Hardvér'),
       title: name,
@@ -531,7 +546,7 @@ export async function importAsusLenovoToNeon() {
 
     for (const p of batch) {
       valueRows.push(
-        `($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`
+        `(${Array.from({ length: 37 }, () => `$${paramIndex++}`).join(', ')})`
       );
 
       params.push(
@@ -544,6 +559,9 @@ export async function importAsusLenovoToNeon() {
         p.brand,
         p.category_slug,
         JSON.stringify(p.category_hierarchy),
+        p.category_source,
+        p.category_confidence,
+        p.category_reasoning,
         p.commodity_code,
         p.commodity_name,
         p.title,
@@ -575,7 +593,8 @@ export async function importAsusLenovoToNeon() {
     const insertSql = `
       INSERT INTO products (
         id, sku, supplier_code, supplier_pro_id, mpn, ean, brand,
-        category_slug, category_hierarchy, commodity_code, commodity_name,
+        category_slug, category_hierarchy, category_source, category_confidence, category_reasoning,
+        commodity_code, commodity_name,
         title, name_b2c, slug, short_description, supplier_description,
         enriched_description, seo_title, seo_description, search_keywords,
         vat_rate, base_price, final_price, currency, stock_count,
@@ -593,6 +612,9 @@ export async function importAsusLenovoToNeon() {
         images = EXCLUDED.images,
         attributes = EXCLUDED.attributes,
         data_hash = EXCLUDED.data_hash,
+        category_source = EXCLUDED.category_source,
+        category_confidence = EXCLUDED.category_confidence,
+        category_reasoning = EXCLUDED.category_reasoning,
         updated_at = NOW();
     `;
 
