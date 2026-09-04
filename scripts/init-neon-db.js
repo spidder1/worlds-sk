@@ -1,6 +1,7 @@
 const { Client } = require('pg');
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_nLuIOvXw7dZ3@ep-withered-thunder-au37ajrg-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const connectionString = process.env.DATABASE_URL?.trim();
+if (!connectionString) throw new Error('DATABASE_URL is required');
 
 async function initSchema() {
   const client = new Client({ connectionString });
