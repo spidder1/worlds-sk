@@ -7,6 +7,7 @@ import type { MasterProduct } from '@worlds/types';
 
 interface ProductFilterSidebarProps {
   products: MasterProduct[];
+  allCategoryProducts?: MasterProduct[];
   totalCount: number;
   allManufacturers?: Array<{ name: string; count: number }>;
 }
@@ -22,7 +23,7 @@ interface FilterSectionState {
   gpu: boolean;
 }
 
-export function ProductFilterSidebar({ products, totalCount, allManufacturers = [] }: ProductFilterSidebarProps) {
+export function ProductFilterSidebar({ products, allCategoryProducts, totalCount, allManufacturers = [] }: ProductFilterSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -60,21 +61,18 @@ export function ProductFilterSidebar({ products, totalCount, allManufacturers = 
   const availableBrands = useMemo(() => {
     const brandMap = new Map<string, number>();
 
-    // First collect from all manufacturers passed or products
     if (allManufacturers.length > 0) {
       for (const m of allManufacturers) {
         if (m.name && m.name !== 'Unbranded') {
           brandMap.set(m.name, m.count);
         }
       }
-    }
-
-    // Add/merge count from current page products
-    for (const p of products) {
-      const b = p.brand?.trim();
-      if (b && b !== 'Unbranded') {
-        if (!brandMap.has(b)) {
-          brandMap.set(b, 1);
+    } else {
+      const sourceList = allCategoryProducts && allCategoryProducts.length > 0 ? allCategoryProducts : products;
+      for (const p of sourceList) {
+        const b = p.brand?.trim();
+        if (b && b !== 'Unbranded') {
+          brandMap.set(b, (brandMap.get(b) || 0) + 1);
         }
       }
     }
@@ -82,7 +80,7 @@ export function ProductFilterSidebar({ products, totalCount, allManufacturers = 
     return Array.from(brandMap.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
-  }, [products, allManufacturers]);
+  }, [products, allCategoryProducts, allManufacturers]);
 
   // Filtered brands by local search input
   const filteredBrands = useMemo(() => {
@@ -96,8 +94,9 @@ export function ProductFilterSidebar({ products, totalCount, allManufacturers = 
     const cpus = new Map<string, number>();
     const rams = new Map<string, number>();
     const ssds = new Map<string, number>();
+    const sourceList = allCategoryProducts && allCategoryProducts.length > 0 ? allCategoryProducts : products;
 
-    for (const p of products) {
+    for (const p of sourceList) {
       const title = p.title || '';
 
       // Extract CPU
@@ -123,7 +122,7 @@ export function ProductFilterSidebar({ products, totalCount, allManufacturers = 
       rams: Array.from(rams.entries()).map(([name, count]) => ({ name, count })),
       ssds: Array.from(ssds.entries()).map(([name, count]) => ({ name, count })),
     };
-  }, [products]);
+  }, [products, allCategoryProducts]);
 
   // Helper to update URL query params
   const updateFilter = (key: string, value?: string) => {

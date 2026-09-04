@@ -33,7 +33,7 @@ export default async function SearchPage({ searchParams }: Props) {
 
   const [results, manufacturers] = await Promise.all([
     getProductsPage({ query, brand: brandFilter, inStockOnly, page }),
-    getManufacturers(),
+    getManufacturers({ query, inStockOnly }),
   ]);
 
   return (
@@ -80,6 +80,7 @@ export default async function SearchPage({ searchParams }: Props) {
         {/* Left Sidebar Filter */}
         <ProductFilterSidebar
           products={results.products}
+          allCategoryProducts={results.allCategoryProducts}
           totalCount={results.total}
           allManufacturers={manufacturers}
         />

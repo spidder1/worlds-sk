@@ -620,6 +620,7 @@ export interface ManufacturerItem {
 
 export interface ProductPageResult {
   products: MasterProduct[];
+  allCategoryProducts: MasterProduct[];
   page: number;
   pageSize: number;
   total: number;
@@ -638,15 +639,51 @@ function normalizeSearchQuery(query: string): string {
     .slice(0, 80);
 }
 
-export async function getManufacturers(): Promise<ManufacturerItem[]> {
+export interface ManufacturerOptions {
+  categorySlug?: string;
+  query?: string;
+  inStockOnly?: boolean;
+}
+
+export async function getManufacturers(options: ManufacturerOptions = {}): Promise<ManufacturerItem[]> {
   try {
+    const whereConditions: string[] = ["status = 'ACTIVE'", "brand IS NOT NULL", "brand != 'Unbranded'"];
+    const params: unknown[] = [];
+    let paramIdx = 1;
+
+    if (options.categorySlug) {
+      const category = await getCategoryBySlug(options.categorySlug);
+      const slugs = category ? collectCategorySlugs(category) : [options.categorySlug];
+      whereConditions.push(`category_slug = ANY($${paramIdx++})`);
+      params.push(slugs);
+    }
+
+    if (options.inStockOnly) {
+      whereConditions.push(`is_in_stock = true AND stock_count > 0`);
+    }
+
+    if (options.query) {
+      const query = normalizeSearchQuery(options.query);
+      if (query) {
+        const qClean = query.replace(/[%_]/g, '');
+        whereConditions.push(
+          `(title ILIKE $${paramIdx} OR mpn ILIKE $${paramIdx} OR brand ILIKE $${paramIdx} OR ean ILIKE $${paramIdx} OR sku ILIKE $${paramIdx})`
+        );
+        params.push(`%${qClean}%`);
+        paramIdx++;
+      }
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
     const rows = await queryNeon<{ brand: string; count: string }>(`
       SELECT brand, COUNT(*)::int as count
       FROM products
-      WHERE brand IS NOT NULL AND brand != 'Unbranded'
+      ${whereClause}
       GROUP BY brand
       ORDER BY count DESC
-    `);
+    `, params);
+
     return rows.map((r) => ({ name: r.brand, count: Number(r.count) }));
   } catch (err) {
     console.error('Chyba pri načítaní výrobcov z Neon DB:', err);
@@ -713,17 +750,14 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
     const countRows = await queryNeon<{ total: number }>(countSql, params);
     const total = countRows[0]?.total ?? 0;
 
-    const dataSql = `
-      SELECT * FROM products
-      ${whereClause}
-      ORDER BY ${orderBy}
-      LIMIT $${paramIdx++} OFFSET $${paramIdx++}
-    `;
-    const dataParams = [...params, pageSize, offset];
-    const rows = await queryNeon(dataSql, dataParams);
+    const allDataSql = `SELECT * FROM products ${whereClause} ORDER BY ${orderBy}`;
+    const allRows = await queryNeon(allDataSql, params);
+    const allCategoryProducts = allRows.map(mapDbRowToMasterProduct);
+    const products = allCategoryProducts.slice(offset, offset + pageSize);
 
     return {
-      products: rows.map(mapDbRowToMasterProduct),
+      products,
+      allCategoryProducts,
       page,
       pageSize,
       total,
@@ -731,7 +765,7 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
     };
   } catch (err) {
     console.error('Chyba pri stránkovanom čítaní katalógu z Neon DB:', err);
-    return { products: [], page, pageSize, total: 0, pageCount: 0 };
+    return { products: [], allCategoryProducts: [], page, pageSize, total: 0, pageCount: 0 };
   }
 }
 

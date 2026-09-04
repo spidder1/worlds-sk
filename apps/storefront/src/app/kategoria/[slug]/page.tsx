@@ -44,7 +44,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   const [result, manufacturers] = await Promise.all([
     getProductsPage({ categorySlug: slug, page, sort, inStockOnly, brand: brandFilter }),
-    getManufacturers(),
+    getManufacturers({ categorySlug: slug, inStockOnly }),
   ]);
 
   const hrefWith = (key: string, value?: string) => {
@@ -123,6 +123,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         {/* Left Sidebar Filter */}
         <ProductFilterSidebar
           products={result.products}
+          allCategoryProducts={result.allCategoryProducts}
           totalCount={result.total}
           allManufacturers={manufacturers}
         />
