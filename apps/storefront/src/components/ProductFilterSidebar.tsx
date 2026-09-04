@@ -4,10 +4,12 @@ import React, { useState, useMemo } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Check, X, ChevronDown, ChevronUp, RotateCcw, Building2, SlidersHorizontal, Search } from 'lucide-react';
 import type { MasterProduct } from '@worlds/types';
+import type { ProductFacetCounts } from '../lib/catalog';
 
 interface ProductFilterSidebarProps {
   products: MasterProduct[];
   allCategoryProducts?: MasterProduct[];
+  facets?: ProductFacetCounts;
   totalCount: number;
   allManufacturers?: Array<{ name: string; count: number }>;
 }
@@ -23,7 +25,7 @@ interface FilterSectionState {
   gpu: boolean;
 }
 
-export function ProductFilterSidebar({ products, allCategoryProducts, totalCount, allManufacturers = [] }: ProductFilterSidebarProps) {
+export function ProductFilterSidebar({ products, allCategoryProducts, facets, totalCount, allManufacturers = [] }: ProductFilterSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -97,6 +99,7 @@ export function ProductFilterSidebar({ products, allCategoryProducts, totalCount
 
   // 2. Extract Extracted Specs from Product Titles & Attributes
   const extractedSpecs = useMemo(() => {
+    if (facets) return facets;
     const cpus = new Map<string, number>();
     const rams = new Map<string, number>();
     const ssds = new Map<string, number>();
@@ -128,7 +131,7 @@ export function ProductFilterSidebar({ products, allCategoryProducts, totalCount
       rams: Array.from(rams.entries()).map(([name, count]) => ({ name, count })),
       ssds: Array.from(ssds.entries()).map(([name, count]) => ({ name, count })),
     };
-  }, [products, allCategoryProducts]);
+  }, [products, allCategoryProducts, facets]);
 
   // Helper to toggle multi-select filter item
   const toggleMultiFilter = (key: string, value: string) => {

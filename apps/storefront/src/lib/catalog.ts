@@ -624,10 +624,17 @@ export interface ManufacturerItem {
 export interface ProductPageResult {
   products: MasterProduct[];
   allCategoryProducts: MasterProduct[];
+  facets?: ProductFacetCounts;
   page: number;
   pageSize: number;
   total: number;
   pageCount: number;
+}
+
+export interface ProductFacetCounts {
+  cpus: Array<{ name: string; count: number }>;
+  rams: Array<{ name: string; count: number }>;
+  ssds: Array<{ name: string; count: number }>;
 }
 
 function collectCategorySlugs(category: TaxonomyCategory): string[] {
@@ -832,13 +839,40 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
     const pageRows = await queryNeon(pageSql, [...filteredParams, pageSize, offset]);
     const products = pageRows.map(mapDbRowToMasterProduct);
 
-    const allDataSql = `SELECT * FROM products ${baseWhereClause} ORDER BY ${orderBy}`;
-    const allRows = await queryNeon(allDataSql, baseParams);
-    const allCategoryProducts = allRows.map(mapDbRowToMasterProduct);
+    const facetRows = await queryNeon<Record<string, string>>(
+      `SELECT
+        COUNT(*) FILTER (WHERE title ~* 'ryzen 7|core i7|ultra 7')::int AS cpu_high,
+        COUNT(*) FILTER (WHERE title ~* 'ryzen 5|core i5|ultra 5')::int AS cpu_mid,
+        COUNT(*) FILTER (WHERE title ~* 'ryzen 3|core i3')::int AS cpu_basic,
+        COUNT(*) FILTER (WHERE title ~* '64\\s*gb|64g')::int AS ram_64,
+        COUNT(*) FILTER (WHERE title ~* '32\\s*gb|32g')::int AS ram_32,
+        COUNT(*) FILTER (WHERE title ~* '16\\s*gb|16g')::int AS ram_16,
+        COUNT(*) FILTER (WHERE title ~* '8\\s*gb|8g')::int AS ram_8,
+        COUNT(*) FILTER (WHERE title ~* '2\\s*tb|2000gb')::int AS ssd_2tb,
+        COUNT(*) FILTER (WHERE title ~* '1\\s*tb|1000gb|1tssd')::int AS ssd_1tb,
+        COUNT(*) FILTER (WHERE title ~* '512\\s*gb|512ssd')::int AS ssd_512,
+        COUNT(*) FILTER (WHERE title ~* '256\\s*gb|256ssd')::int AS ssd_256
+       FROM products ${baseWhereClause}`,
+      baseParams,
+    );
+    const facetRow = facetRows[0] || {};
+    const facet = (entries: Array<[string, string]>) => entries
+      .map(([name, key]) => ({ name, count: Number(facetRow[key] || 0) }))
+      .filter((item) => item.count > 0);
+    const facets: ProductFacetCounts = {
+      cpus: facet([
+        ['High-End (Intel i7 / Ryzen 7)', 'cpu_high'],
+        ['Mainstream (Intel i5 / Ryzen 5)', 'cpu_mid'],
+        ['Basic (Intel i3 / Ryzen 3)', 'cpu_basic'],
+      ]),
+      rams: facet([['64 GB RAM', 'ram_64'], ['32 GB RAM', 'ram_32'], ['16 GB RAM', 'ram_16'], ['8 GB RAM', 'ram_8']]),
+      ssds: facet([['2 TB SSD', 'ssd_2tb'], ['1 TB SSD', 'ssd_1tb'], ['512 GB SSD', 'ssd_512'], ['256 GB SSD', 'ssd_256']]),
+    };
 
     return {
       products,
-      allCategoryProducts,
+      allCategoryProducts: [],
+      facets,
       page,
       pageSize,
       total,
@@ -846,7 +880,7 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
     };
   } catch (err) {
     console.error('Chyba pri stránkovanom čítaní katalógu z Neon DB:', err);
-    return { products: [], allCategoryProducts: [], page, pageSize, total: 0, pageCount: 0 };
+    return { products: [], allCategoryProducts: [], facets: { cpus: [], rams: [], ssds: [] }, page, pageSize, total: 0, pageCount: 0 };
   }
 }
 

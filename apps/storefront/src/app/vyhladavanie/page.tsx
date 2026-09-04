@@ -139,7 +139,7 @@ export default async function SearchPage({ searchParams }: Props) {
         {/* Left Sidebar Filter */}
         <ProductFilterSidebar
           products={results.products}
-          allCategoryProducts={results.allCategoryProducts}
+          facets={results.facets}
           totalCount={results.total}
           allManufacturers={manufacturers}
         />

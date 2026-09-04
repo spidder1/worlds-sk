@@ -191,7 +191,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         {/* Left Sidebar Filter */}
         <ProductFilterSidebar
           products={result.products}
-          allCategoryProducts={result.allCategoryProducts}
+          facets={result.facets}
           totalCount={result.total}
           allManufacturers={manufacturers}
         />
