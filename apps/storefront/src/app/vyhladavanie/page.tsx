@@ -162,7 +162,7 @@ export default async function SearchPage({ searchParams }: Props) {
                 basePath="/vyhladavanie"
                 currentPage={results.page}
                 totalPages={results.pageCount}
-                searchParams={{ q: query, vyrobca: brandFilter, inStock, cpu: cpuFilter, ram: ramFilter, ssd: ssdFilter }}
+                searchParams={{ q: query, vyrobca, inStock, cpu, ram, ssd }}
               />
             </>
           )}

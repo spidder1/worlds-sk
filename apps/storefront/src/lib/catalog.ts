@@ -634,6 +634,14 @@ function collectCategorySlugs(category: TaxonomyCategory): string[] {
   return [category.slug, ...(category.subcategories?.flatMap(collectCategorySlugs) ?? [])];
 }
 
+function normalizeSearchQuery(query: string): string {
+  return query
+    .trim()
+    .replace(/[^\p{L}\p{N}\s._-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .slice(0, 80);
+}
+
 function appendMultiFilterConditions(
   brand: string | undefined,
   cpu: string | undefined,
