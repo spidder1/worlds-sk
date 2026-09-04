@@ -350,7 +350,8 @@ export async function importAsusLenovoToNeon() {
   );
   const batchId = batchResult.rows[0]?.id;
 
-  await syncCategoriesAndManufacturers(pool);
+  try {
+    await syncCategoriesAndManufacturers(pool);
   const classificationConfig = await loadClassificationConfig(pool);
 
   // 1. Fetch live stock prices
@@ -367,7 +368,6 @@ export async function importAsusLenovoToNeon() {
   const existingXml = xmlCandidates.find((c) => fs.existsSync(c));
   if (!existingXml) {
     console.error('❌ Nenašiel sa žiadny XML súbor v složke downloads!');
-    await pool.end();
     return;
   }
 
@@ -378,7 +378,6 @@ export async function importAsusLenovoToNeon() {
     const xmlEntry = zip.getEntries().find((e) => e.entryName.endsWith('.xml'));
     if (!xmlEntry) {
       console.error('❌ ZIP súbor neobsahuje XML!');
-      await pool.end();
       return;
     }
     xmlContent = xmlEntry.getData().toString('utf8');
@@ -651,7 +650,21 @@ export async function importAsusLenovoToNeon() {
     );
   }
 
-  await pool.end();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (batchId) {
+      await pool.query(
+        `UPDATE sync_batches
+            SET status = 'FAILED', error_message = $1, completed_at = NOW()
+          WHERE id = $2`,
+        [message.slice(0, 4000), batchId],
+      );
+    }
+    console.error(`❌ Import dávka ${batchNumber} zlyhala: ${message}`);
+    throw error;
+  } finally {
+    await pool.end();
+  }
 }
 
 function sampleOnlyLabel(): string {
