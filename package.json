@@ -18,6 +18,7 @@
     "sync:catalog": "pnpm --filter @worlds/importer run sync:catalog --",
     "sync:stock-price": "pnpm --filter @worlds/importer run sync:stock-price --",
     "import:sample-neon": "pnpm --filter @worlds/importer run import:sample-neon",
+    "db:migrate": "node scripts/migrate-neon.mjs",
     "import:sample": "pnpm --filter @worlds/importer run import:sample"
   },
   "dependencies": {
