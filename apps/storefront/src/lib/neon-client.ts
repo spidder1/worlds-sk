@@ -6,10 +6,12 @@ declare global {
 
 export function getNeonPool(): Pool {
   if (!globalThis.__neonPool) {
-    const connectionString = process.env.DATABASE_URL?.trim();
-    if (!connectionString) throw new Error('DATABASE_URL is required for Neon access.');
+    const rawConnectionString = process.env.DATABASE_URL?.trim();
+    if (!rawConnectionString) throw new Error('DATABASE_URL is required for Neon access.');
+    const connectionUrl = new URL(rawConnectionString);
+    connectionUrl.searchParams.delete('sslmode');
     globalThis.__neonPool = new Pool({
-      connectionString,
+      connectionString: connectionUrl.toString(),
       ssl: { rejectUnauthorized: false },
       max: 10,
       idleTimeoutMillis: 30000,

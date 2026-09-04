@@ -18,7 +18,10 @@ function requiredEnv(name: string): string {
   return value;
 }
 
-const connectionString = requiredEnv('DATABASE_URL');
+const rawConnectionString = requiredEnv('DATABASE_URL');
+const connectionUrl = new URL(rawConnectionString);
+connectionUrl.searchParams.delete('sslmode');
+const connectionString = connectionUrl.toString();
 
 function isTargetBrand(name: string, rawBrand?: string): { isMatch: boolean; brandName: 'ASUS' | 'Lenovo' | null } {
   const b = (rawBrand || '').toUpperCase().trim();

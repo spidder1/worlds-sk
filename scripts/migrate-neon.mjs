@@ -2,11 +2,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import pg from 'pg';
 
-const databaseUrl = process.env.DATABASE_URL?.trim();
-if (!databaseUrl) throw new Error('DATABASE_URL is required');
+const rawDatabaseUrl = process.env.DATABASE_URL?.trim();
+if (!rawDatabaseUrl) throw new Error('DATABASE_URL is required');
+const databaseUrl = new URL(rawDatabaseUrl);
+databaseUrl.searchParams.delete('sslmode');
 
 const { Client } = pg;
-const client = new Client({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } });
+const client = new Client({ connectionString: databaseUrl.toString(), ssl: { rejectUnauthorized: false } });
 const migrationsDir = path.resolve('db/migrations');
 
 await client.connect();
