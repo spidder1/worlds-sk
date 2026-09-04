@@ -5,13 +5,13 @@ import Image from 'next/image';
 import type { Metadata } from 'next';
 import { getProductBySlug } from '../../../lib/catalog';
 import { ProductDescription } from '../../../components/ProductDescription';
+import { AddToCartButton } from '../../../components/AddToCartButton';
 import {
   ShieldCheck,
   Truck,
   RotateCcw,
   CheckCircle2,
   AlertCircle,
-  ShoppingCart,
   ChevronRight,
   Home,
   Layers,
@@ -224,13 +224,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
             {/* Purchase CTA */}
             <div className="pt-2">
-              <Link
-                href="/kosik"
-                className="w-full bg-brand-600 hover:bg-brand-700 active:scale-[0.99] text-white font-extrabold py-4 px-6 rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-brand-600/30 transition-all text-base"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                Informácie o objednaní
-              </Link>
+              <AddToCartButton productId={product.id} />
             </div>
           </div>
 

@@ -83,3 +83,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Košík sa nepodarilo aktualizovať.' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const url = new URL(request.url);
+    const session = sessionFrom(request);
+    const productId = url.searchParams.get('productId');
+    const cart = await queryNeon<{ id: string }>('SELECT id FROM carts WHERE session_token = $1 LIMIT 1', [session]);
+    if (cart.length && productId) await queryNeon('DELETE FROM cart_items WHERE cart_id = $1 AND product_id = $2', [cart[0].id, productId]);
+    return NextResponse.json({ sessionToken: session, items: await readCart(session) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message === 'Invalid cart session') return NextResponse.json({ error: 'Neplatná relácia košíka.' }, { status: 400 });
+    return NextResponse.json({ error: 'Košík sa nepodarilo aktualizovať.' }, { status: 500 });
+  }
+}
