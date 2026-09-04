@@ -1,55 +1,53 @@
 # Import a automatizácia eD katalógu
 
-Produkčný import beží ako samostatný worker. Storefront na Verceli neobsahuje eD ani Supabase serverové tajomstvá a nie je blokovaný spracovaním veľkého XML katalógu.
+Aktívna importná cesta používa Neon PostgreSQL. Storefront aj importer vyžadujú serverové premenné prostredia a do verejného klienta sa nikdy neposielajú.
 
-## Režimy
+## Aktívny vývojový režim
 
-- `pnpm sync:catalog` stiahne a spracuje kompletný katalóg. Predvolený scope `it-only` odmietne bielu techniku, záhradu, domácnosť a všetko bez preukázateľného IT signálu ešte pred zápisom.
-- Všetky prijaté IT položky sa uložia úsporne do `integration.ed_catalog_compact`. Plne normalizované katalógové, atribútové, mediálne, cenové a search záznamy sa vytvoria iba pre existujúce alebo obchodne aktívne produkty. Tým sa celý zdrojový katalóg zmestí aj do limitov malého databázového plánu.
-- `pnpm sync:stock-price` stiahne rýchly eD stock/price feed a zapisuje iba cenové a skladové delty.
-- Ak stock/price feed prinesie cenu pre nový produkt, worker ho smie povýšiť do normalizovaného katalógu iba vtedy, ak produkt predtým prešiel IT filtrom a existuje v compact stagingu.
-- Lokálny kontrolovaný import je možné spustiť s `--source-file=C:\...\feed.xml`. Použitie starej cache vyžaduje explicitný prepínač `--allow-cached-full`.
-- `--dry-run` vykoná kompletné čítanie a filtrovanie bez pripojenia k Supabase. `--scope=all` je výnimočný diagnostický režim; produkčný workflow ho nepoužíva.
-- Pre kontrolovaný prvý import na už prepojenom vývojárskom počítači je dostupný `--transport=supabase-cli`. Používa krátkodobé prihlásenie Supabase CLI a nevyžaduje lokálne uloženie `SUPABASE_SECRET_KEY`. Produkčná automatizácia musí naďalej používať predvolený REST transport so serverovým kľúčom.
+Počas vývoja sa importujú iba produkty značiek ASUS a Lenovo. Produkty bez ceny sa do verejného storefrontu nezaradia; dostupné obrázky sa ukladajú do produktovej galérie.
 
-Každý beh má záznam v `integration.import_batches`, vrátane počtu filtrovaných produktov a dôvodov vyradenia. Databázový lease zabráni súbehu dvoch importov. Zlyhanie sa zapíše do batchu a uvoľní lease; úspešný plný import označí chýbajúce IT ponuky najprv ako `MISSING` a po druhom po sebe idúcom výpadku ako `DISCONTINUED`.
+Lokálne spustenie:
 
-## Produkčná automatizácia
+```powershell
+$env:DATABASE_URL = '<Neon connection string>'
+$env:ED_LOGIN = '<eD login>'
+$env:ED_PASSWORD = '<eD password>'
+$env:ED_SAMPLE_ONLY = 'true'
+$env:ED_SAMPLE_LIMIT = '250'
+pnpm build
+pnpm import:sample-neon
+```
 
-Workflow `.github/workflows/ed-catalog-sync.yml` spúšťa:
+Import vytvorí záznam v `sync_batches` a pri úspechu ho označí ako `COMPLETED`. Pri chybe zapíše `FAILED` s chybovou správou. Opakovaný beh je nedestruktívny a existujúce produkty nemaže.
 
-- stock/price synchronizáciu každé dve hodiny,
-- kompletný katalóg každú nedeľu o 02:43 UTC,
-- oba režimy aj manuálne.
+## Automatizácia
 
-V GitHub repository secrets musia byť nastavené iba tieto hodnoty:
+Workflow `.github/workflows/ed-catalog-sync.yml` spúšťa sample import:
 
+- každé dve hodiny,
+- raz týždenne,
+- alebo manuálne cez `workflow_dispatch`.
+
+GitHub Actions secrets:
+
+- `DATABASE_URL`
 - `ED_LOGIN`
 - `ED_PASSWORD`
-- `SUPABASE_URL`
-- `SUPABASE_SECRET_KEY`
 
-Hodnoty sa nesmú uložiť do Git repozitára ani do premenných s prefixom `NEXT_PUBLIC_`.
+Všetky tri hodnoty musia zostať iba v secrets alebo lokálnom `.env` súbore mimo commitu.
 
-## Bezpečný lokálny prvý import
+## Overenie po importe
 
 ```powershell
-$env:SUPABASE_URL = 'https://PROJECT.supabase.co'
-$env:SUPABASE_SECRET_KEY = '<server secret>'
-pnpm build
-pnpm sync:catalog -- --source-file=C:\Web\Ethos\downloads\productCatalogue_....xml --scope=it-only
+$env:DATABASE_URL = '<Neon connection string>'
+pnpm db:migrate
+pnpm report:classification
 ```
 
-Alternatíva pre prepojený Supabase CLI bez lokálneho serverového kľúča:
+Storefront health endpoint `/api/health` musí vrátiť `ok: true`, databázu `neon` a počet predajných produktov.
 
-```powershell
-pnpm sync:catalog -- --source-file=C:\Web\Ethos\downloads\productCatalogue_....xml --scope=it-only --transport=supabase-cli --batch-size=500
-```
+## Budúci full import
 
-Pred ostrým importom je možné overiť filter bez zápisu:
+Full-feed import všetkých IT značiek a delta synchronizácia cien/skladu ešte nie sú zapnuté. Pred ich aktiváciou treba doplniť dedikovaný full-feed režim, kontrolu chýbajúcich produktov, inventárnu rezerváciu a produkčné pravidlá pre ceny, dopravu a platobnú bránu.
 
-```powershell
-pnpm sync:catalog -- --source-file=C:\Web\Ethos\downloads\productCatalogue_....xml --scope=it-only --dry-run
-```
-
-Po importe treba skontrolovať posledný batch, počet compact IT položiek, počty normalizovaných produktov, aktuálne ceny/sklad, počet search dokumentov a načítanie storefrontu. Stock feed sa nepovažuje za aktívny, kým nie je úspešný aspoň jeden čerstvý beh s rotovanými eD prihlasovacími údajmi.
+Staršie Supabase importéry v repozitári sú historický kód a nie sú súčasťou aktívneho workflow.
