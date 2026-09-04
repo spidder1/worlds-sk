@@ -1,6 +1,6 @@
 # Import a automatizácia eD katalógu
 
-Produkčný import beží ako samostatný worker. Storefront na Verceli neobsahuje eD ani Supabase serverové tajomstvá a nie je blokovaný spracovaním veľkého XML katalógu.
+Produkčný import beží ako samostatný worker. Storefront na Verceli neobsahuje eD serverové tajomstvá a nie je blokovaný spracovaním veľkého XML katalógu.
 
 ## Režimy
 
@@ -9,8 +9,8 @@ Produkčný import beží ako samostatný worker. Storefront na Verceli neobsahu
 - `pnpm sync:stock-price` stiahne rýchly eD stock/price feed a zapisuje iba cenové a skladové delty.
 - Ak stock/price feed prinesie cenu pre nový produkt, worker ho smie povýšiť do normalizovaného katalógu iba vtedy, ak produkt predtým prešiel IT filtrom a existuje v compact stagingu.
 - Lokálny kontrolovaný import je možné spustiť s `--source-file=C:\...\feed.xml`. Použitie starej cache vyžaduje explicitný prepínač `--allow-cached-full`.
-- `--dry-run` vykoná kompletné čítanie a filtrovanie bez pripojenia k Supabase. `--scope=all` je výnimočný diagnostický režim; produkčný workflow ho nepoužíva.
-- Pre kontrolovaný prvý import na už prepojenom vývojárskom počítači je dostupný `--transport=supabase-cli`. Používa krátkodobé prihlásenie Supabase CLI a nevyžaduje lokálne uloženie `SUPABASE_SECRET_KEY`. Produkčná automatizácia musí naďalej používať predvolený REST transport so serverovým kľúčom.
+- `--dry-run` vykoná kompletné čítanie a filtrovanie bez pripojenia k databáze. `--scope=all` je výnimočný diagnostický režim; produkčný workflow ho nepoužíva.
+- Import zapisuje výhradne do Neonu cez `DATABASE_URL`. Iný transport už neexistuje.
 
 Každý beh má záznam v `integration.import_batches`, vrátane počtu filtrovaných produktov a dôvodov vyradenia. Databázový lease zabráni súbehu dvoch importov. Zlyhanie sa zapíše do batchu a uvoľní lease; úspešný plný import označí chýbajúce IT ponuky najprv ako `MISSING` a po druhom po sebe idúcom výpadku ako `DISCONTINUED`.
 
@@ -26,24 +26,16 @@ V GitHub repository secrets musia byť nastavené iba tieto hodnoty:
 
 - `ED_LOGIN`
 - `ED_PASSWORD`
-- `SUPABASE_URL`
-- `SUPABASE_SECRET_KEY`
+- `DATABASE_URL`
 
 Hodnoty sa nesmú uložiť do Git repozitára ani do premenných s prefixom `NEXT_PUBLIC_`.
 
 ## Bezpečný lokálny prvý import
 
 ```powershell
-$env:SUPABASE_URL = 'https://PROJECT.supabase.co'
-$env:SUPABASE_SECRET_KEY = '<server secret>'
+$env:DATABASE_URL = 'postgresql://user:password@host/neondb?sslmode=require'
 pnpm build
 pnpm sync:catalog -- --source-file=C:\Web\Ethos\downloads\productCatalogue_....xml --scope=it-only
-```
-
-Alternatíva pre prepojený Supabase CLI bez lokálneho serverového kľúča:
-
-```powershell
-pnpm sync:catalog -- --source-file=C:\Web\Ethos\downloads\productCatalogue_....xml --scope=it-only --transport=supabase-cli --batch-size=500
 ```
 
 Pred ostrým importom je možné overiť filter bez zápisu:

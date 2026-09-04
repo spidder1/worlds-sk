@@ -14,11 +14,6 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "import:enterprise": "node dist/enterprise-pipeline.js",
-    "process:deltas": "node dist/process-deltas-to-master.js",
-    "import:staging": "node dist/import-staging.js",
-    "import:all": "node dist/import-all-products.js",
-    "import:notebooks": "node dist/import-notebooks.js",
     "sync:catalog": "node dist/catalog-sync.js --mode=full",
     "sync:stock-price": "node dist/catalog-sync.js --mode=stock-price",
     "import:sample": "node dist/cli.js --sample",
