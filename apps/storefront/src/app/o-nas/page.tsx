@@ -40,7 +40,7 @@ export default function ONasPage() {
             O spoločnosti Worlds.sk
           </h1>
           <p className="text-slate-600 text-base mt-3 max-w-3xl leading-relaxed">
-            Worlds.sk prevádzkuje slovenská spoločnosť <strong>ETHOS Technology, s. r. o.</strong>. Nová verzia webu momentálne sprístupňuje produktový katalóg; online objednávanie sa pripravuje.
+            Worlds.sk prevádzkuje slovenská spoločnosť <strong>ETHOS Technology, s. r. o.</strong>. Nová verzia webu sprístupňuje produktový katalóg aj odoslanie objednávky z košíka.
           </p>
         </div>
 
@@ -75,7 +75,7 @@ export default function ONasPage() {
               <Clock3 className="w-6 h-6" />
             </div>
             <h3 className="font-extrabold text-slate-900 text-lg">Postupné spustenie</h3>
-            <p className="text-xs text-slate-500">Objednávky, platby a dopravu sprístupníme až po ich úplnom overení.</p>
+            <p className="text-xs text-slate-500">Objednávky prijímame cez košík; platbu a doručenie potvrdzujeme podľa konkrétnej objednávky.</p>
           </div>
         </div>
 

@@ -4,7 +4,7 @@ import { ArrowLeft, Clock3, Mail, Truck } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Doprava a platba | Worlds.sk',
-  description: 'Aktuálne informácie o pripravovaných možnostiach dopravy a platby na Worlds.sk.',
+  description: 'Aktuálne informácie o možnostiach platby a doručenia na Worlds.sk.',
   robots: { index: false, follow: true },
 };
 
@@ -26,9 +26,9 @@ export default function DopravaAPlatbaPage() {
         <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
           <Truck className="w-4 h-4" /> Doprava a platba
         </div>
-        <h1 className="text-3xl font-extrabold text-slate-900">Možnosti doručenia a platby pripravujeme</h1>
+        <h1 className="text-3xl font-extrabold text-slate-900">Platba a doručenie</h1>
         <p className="text-sm text-slate-600 leading-relaxed max-w-xl mx-auto">
-          Online pokladňa zatiaľ nie je aktívna. Konkrétnych dopravcov, ceny dopravy ani platobné metódy preto ešte nezverejňujeme ako dostupnú službu.
+          Objednávku môžete odoslať priamo z košíka. Aktuálne podporujeme bankový prevod a dobierku; spôsob a cena doručenia sa potvrdia individuálne podľa objednávky.
         </p>
         <a
           href="mailto:info@worlds.sk?subject=Ot%C3%A1zka%20k%20doprave%20a%20platbe"

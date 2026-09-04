@@ -43,8 +43,8 @@ export function Footer() {
               <RotateCcw className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-semibold text-white">Objednávanie sa pripravuje</h4>
-              <p className="text-xs text-slate-400">Pokladňa zatiaľ neprijíma osobné ani platobné údaje</p>
+              <h4 className="font-semibold text-white">Objednávka online</h4>
+              <p className="text-xs text-slate-400">Objednávku odošlete z košíka; platbu a dopravu potvrdíme</p>
             </div>
           </div>
         </div>
