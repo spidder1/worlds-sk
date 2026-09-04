@@ -9,12 +9,17 @@ export async function POST(request: Request) {
   try {
     const body = await request.json() as {
       sessionToken?: string; customerName?: string; customerEmail?: string;
-      customerPhone?: string; shippingAddress?: Record<string, string>;
+      customerPhone?: string; shippingAddress?: Record<string, string>; idempotencyKey?: string;
     };
     if (!body.sessionToken || !/^[a-zA-Z0-9-]{16,100}$/.test(body.sessionToken)) return NextResponse.json({ error: 'Neplatná relácia košíka.' }, { status: 400 });
     if (!body.customerName?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.customerEmail || '')) return NextResponse.json({ error: 'Vyplňte meno a platný e-mail.' }, { status: 400 });
     const customerName = body.customerName.trim();
     const customerEmail = body.customerEmail!.trim().toLowerCase();
+    const idempotencyKey = body.idempotencyKey?.trim() || randomUUID();
+    if (!/^[a-zA-Z0-9-]{16,100}$/.test(idempotencyKey)) return NextResponse.json({ error: 'Neplatný idempotency kľúč.' }, { status: 400 });
+    const existing = await queryNeon<{ id: string; order_number: string; total: string; payment_status: string }>(
+      'SELECT id, order_number, total, payment_status FROM orders WHERE idempotency_key = $1 LIMIT 1', [idempotencyKey]);
+    if (existing.length) return NextResponse.json({ orderId: existing[0].id, orderNumber: existing[0].order_number, status: 'NEW', paymentStatus: existing[0].payment_status, total: existing[0].total, currency: 'EUR' }, { status: 200 });
     const cart = await queryNeon<{ id: string }>('SELECT id FROM carts WHERE session_token = $1 LIMIT 1', [body.sessionToken]);
     if (!cart.length) return NextResponse.json({ error: 'Košík je prázdny.' }, { status: 400 });
     const items = await queryNeon<{ product_id: string; quantity: number; sku: string; title: string; final_price: string; currency: string }>(
@@ -26,9 +31,9 @@ export async function POST(request: Request) {
     const orderId = randomUUID();
     const orderNumber = `W-${new Date().getFullYear()}-${orderId.slice(0, 8).toUpperCase()}`;
     await queryNeon(
-      `INSERT INTO orders (id, order_number, session_token, customer_name, customer_email, customer_phone, shipping_address, subtotal, total)
-       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $8)`,
-      [orderId, orderNumber, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, JSON.stringify(body.shippingAddress || {}), subtotal.toFixed(2)],
+      `INSERT INTO orders (id, order_number, idempotency_key, session_token, customer_name, customer_email, customer_phone, shipping_address, subtotal, total)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $9)`,
+      [orderId, orderNumber, idempotencyKey, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, JSON.stringify(body.shippingAddress || {}), subtotal.toFixed(2)],
     );
     for (const item of items) {
       await queryNeon(
