@@ -1,11 +1,11 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import type { Metadata } from 'next';
 import { getProductBySlug } from '../../../lib/catalog';
 import { ProductDescription } from '../../../components/ProductDescription';
 import { AddToCartButton } from '../../../components/AddToCartButton';
+import { ProductGallery } from '../../../components/ProductGallery';
 import {
   ShieldCheck,
   Truck,
@@ -55,8 +55,6 @@ export default async function ProductDetailPage({ params }: Props) {
   if (!product) {
     notFound();
   }
-
-  const primaryImage = product.images[0]?.url || '/product-placeholder.svg';
 
   // Group attributes into clean categories for presentation
   const allAttrs = Object.values(product.attributes || {});
@@ -121,39 +119,7 @@ export default async function ProductDetailPage({ params }: Props) {
       {/* Product Hero Section (Gallery + Purchase Box) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm">
         {/* Gallery */}
-        <div className="space-y-4">
-          <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex items-center justify-center h-80 md:h-[400px] relative overflow-hidden group">
-            <Image
-              src={primaryImage}
-              alt={product.title}
-              fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-contain p-6 transition-transform duration-300 group-hover:scale-105"
-            />
-            <div className="absolute top-4 left-4 bg-slate-900 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-md">
-              {product.brand}
-            </div>
-            {product.isInStock && (
-              <div className="absolute top-4 right-4 bg-emerald-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-md shadow-sm">
-                Skladom
-              </div>
-            )}
-          </div>
-
-          {product.images.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {product.images.map((img, idx) => (
-                <div
-                  key={idx}
-                  className="w-20 h-20 bg-slate-50 border border-slate-200 rounded-xl p-2 flex-shrink-0 cursor-pointer hover:border-brand-500 transition-colors"
-                >
-                  <Image src={img.url} alt={img.altText || ''} width={80} height={80} className="w-full h-full object-contain" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <ProductGallery images={product.images} title={product.title} brand={product.brand} isInStock={product.isInStock} />
 
         {/* Purchase & Details Box */}
         <div className="flex flex-col justify-between space-y-6">
