@@ -342,6 +342,14 @@ export async function importAsusLenovoToNeon() {
     max: 10,
   });
 
+  const batchNumber = `asus-lenovo-${Date.now()}`;
+  const batchResult = await pool.query<{ id: string }>(
+    `INSERT INTO sync_batches (batch_number, mode, status)
+     VALUES ($1, $2, 'RUNNING') RETURNING id`,
+    [batchNumber, sampleOnlyLabel()],
+  );
+  const batchId = batchResult.rows[0]?.id;
+
   await syncCategoriesAndManufacturers(pool);
   const classificationConfig = await loadClassificationConfig(pool);
 
@@ -633,7 +641,21 @@ export async function importAsusLenovoToNeon() {
   console.log(` 🎉 ÚSPECH! CELKOVO ULOŽENÝCH ${inserted} PRODUKTOV S AKTUALIZOVANÝMI CENAMI A FOTKAMI!`);
   console.log('===========================================================\n');
 
+  if (batchId) {
+    await pool.query(
+      `UPDATE sync_batches
+          SET total_read = $1, imported_count = $2, filtered_count = $3,
+              status = 'COMPLETED', completed_at = NOW()
+        WHERE id = $4`,
+      [productBlocks.length, inserted, Math.max(0, productBlocks.length - targetProducts.length), batchId],
+    );
+  }
+
   await pool.end();
+}
+
+function sampleOnlyLabel(): string {
+  return process.env.ED_SAMPLE_ONLY === 'true' ? 'SAMPLE_ASUS_LENOVO' : 'FULL_ASUS_LENOVO';
 }
 
 if (process.argv[1]?.endsWith('import-neon.ts') || process.argv[1]?.endsWith('import-neon.js')) {
