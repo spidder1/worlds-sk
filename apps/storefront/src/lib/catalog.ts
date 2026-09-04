@@ -634,15 +634,8 @@ function collectCategorySlugs(category: TaxonomyCategory): string[] {
   return [category.slug, ...(category.subcategories?.flatMap(collectCategorySlugs) ?? [])];
 }
 
-function normalizeSearchQuery(query: string): string {
-  return query
-    .trim()
-    .replace(/[^\p{L}\p{N}\s._-]/gu, ' ')
-    .replace(/\s+/g, ' ')
-    .slice(0, 80);
-}
-
-function appendSpecConditions(
+function appendMultiFilterConditions(
+  brand: string | undefined,
   cpu: string | undefined,
   ram: string | undefined,
   ssd: string | undefined,
@@ -650,57 +643,59 @@ function appendSpecConditions(
   params: unknown[],
   getNextIdx: () => number
 ) {
+  if (brand) {
+    const brands = brand.split(',').map((s) => s.trim()).filter(Boolean);
+    if (brands.length > 0) {
+      const escaped = brands.map((b) => b.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
+      whereConditions.push(`brand ~* $${getNextIdx()}`);
+      params.push(`^(${escaped.join('|')})$`);
+    }
+  }
+
   if (cpu) {
-    if (/i7|ryzen 7|ultra 7/i.test(cpu)) {
+    const cpus = cpu.split(',').map((s) => s.trim()).filter(Boolean);
+    const cpuPatterns: string[] = [];
+    for (const c of cpus) {
+      if (/i7|ryzen 7|ultra 7/i.test(c)) cpuPatterns.push('ryzen 7|core i7|ultra 7');
+      else if (/i5|ryzen 5|ultra 5/i.test(c)) cpuPatterns.push('ryzen 5|core i5|ultra 5');
+      else if (/i3|ryzen 3/i.test(c)) cpuPatterns.push('ryzen 3|core i3');
+      else cpuPatterns.push(c.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
+    }
+    if (cpuPatterns.length > 0) {
       whereConditions.push(`title ~* $${getNextIdx()}`);
-      params.push('ryzen 7|core i7|ultra 7');
-    } else if (/i5|ryzen 5|ultra 5/i.test(cpu)) {
-      whereConditions.push(`title ~* $${getNextIdx()}`);
-      params.push('ryzen 5|core i5|ultra 5');
-    } else if (/i3|ryzen 3/i.test(cpu)) {
-      whereConditions.push(`title ~* $${getNextIdx()}`);
-      params.push('ryzen 3|core i3');
-    } else {
-      whereConditions.push(`title ILIKE $${getNextIdx()}`);
-      params.push(`%${cpu}%`);
+      params.push(cpuPatterns.join('|'));
     }
   }
 
   if (ram) {
-    if (/64\s*gb/i.test(ram)) {
+    const rams = ram.split(',').map((s) => s.trim()).filter(Boolean);
+    const ramPatterns: string[] = [];
+    for (const r of rams) {
+      if (/64\s*gb/i.test(r)) ramPatterns.push('64\\s*gb|64g');
+      else if (/32\s*gb/i.test(r)) ramPatterns.push('32\\s*gb|32g');
+      else if (/16\s*gb/i.test(r)) ramPatterns.push('16\\s*gb|16g');
+      else if (/8\s*gb/i.test(r)) ramPatterns.push('8\\s*gb|8g');
+      else ramPatterns.push(r.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
+    }
+    if (ramPatterns.length > 0) {
       whereConditions.push(`title ~* $${getNextIdx()}`);
-      params.push('64\\s*gb|64g');
-    } else if (/32\s*gb/i.test(ram)) {
-      whereConditions.push(`title ~* $${getNextIdx()}`);
-      params.push('32\\s*gb|32g');
-    } else if (/16\s*gb/i.test(ram)) {
-      whereConditions.push(`title ~* $${getNextIdx()}`);
-      params.push('16\\s*gb|16g');
-    } else if (/8\s*gb/i.test(ram)) {
-      whereConditions.push(`title ~* $${getNextIdx()}`);
-      params.push('8\\s*gb|8g');
-    } else {
-      whereConditions.push(`title ILIKE $${getNextIdx()}`);
-      params.push(`%${ram}%`);
+      params.push(ramPatterns.join('|'));
     }
   }
 
   if (ssd) {
-    if (/2\s*tb/i.test(ssd)) {
+    const ssds = ssd.split(',').map((s) => s.trim()).filter(Boolean);
+    const ssdPatterns: string[] = [];
+    for (const s of ssds) {
+      if (/2\s*tb/i.test(s)) ssdPatterns.push('2\\s*tb|2000gb');
+      else if (/1\s*tb/i.test(s)) ssdPatterns.push('1\\s*tb|1000gb|1tssd');
+      else if (/512\s*gb/i.test(s)) ssdPatterns.push('512\\s*gb|512ssd');
+      else if (/256\s*gb/i.test(s)) ssdPatterns.push('256\\s*gb|256ssd');
+      else ssdPatterns.push(s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
+    }
+    if (ssdPatterns.length > 0) {
       whereConditions.push(`title ~* $${getNextIdx()}`);
-      params.push('2\\s*tb|2000gb');
-    } else if (/1\s*tb/i.test(ssd)) {
-      whereConditions.push(`title ~* $${getNextIdx()}`);
-      params.push('1\\s*tb|1000gb|1tssd');
-    } else if (/512\s*gb/i.test(ssd)) {
-      whereConditions.push(`title ~* $${getNextIdx()}`);
-      params.push('512\\s*gb|512ssd');
-    } else if (/256\s*gb/i.test(ssd)) {
-      whereConditions.push(`title ~* $${getNextIdx()}`);
-      params.push('256\\s*gb|256ssd');
-    } else {
-      whereConditions.push(`title ILIKE $${getNextIdx()}`);
-      params.push(`%${ssd}%`);
+      params.push(ssdPatterns.join('|'));
     }
   }
 }
@@ -709,9 +704,6 @@ export interface ManufacturerOptions {
   categorySlug?: string;
   query?: string;
   inStockOnly?: boolean;
-  cpu?: string;
-  ram?: string;
-  ssd?: string;
 }
 
 export async function getManufacturers(options: ManufacturerOptions = {}): Promise<ManufacturerItem[]> {
@@ -743,8 +735,6 @@ export async function getManufacturers(options: ManufacturerOptions = {}): Promi
       }
     }
 
-    appendSpecConditions(options.cpu, options.ram, options.ssd, whereConditions, params, () => paramIdx++);
-
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
     const rows = await queryNeon<{ brand: string; count: string }>(`
@@ -771,39 +761,46 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
   const offset = (page - 1) * pageSize;
   const query = normalizeSearchQuery(options.query ?? '');
 
-  const whereConditions: string[] = ["status = 'ACTIVE'"];
-  const params: unknown[] = [];
-  let paramIdx = 1;
+  const baseConditions: string[] = ["status = 'ACTIVE'"];
+  const baseParams: unknown[] = [];
+  let baseParamIdx = 1;
 
   if (options.categorySlug) {
     const category = await getCategoryBySlug(options.categorySlug);
     const slugs = category ? collectCategorySlugs(category) : [options.categorySlug];
-    whereConditions.push(`category_slug = ANY($${paramIdx++})`);
-    params.push(slugs);
-  }
-
-  if (options.brand) {
-    const cleanBrand = options.brand.trim();
-    whereConditions.push(`brand ILIKE $${paramIdx++}`);
-    params.push(`%${cleanBrand}%`);
+    baseConditions.push(`category_slug = ANY($${baseParamIdx++})`);
+    baseParams.push(slugs);
   }
 
   if (options.inStockOnly) {
-    whereConditions.push(`is_in_stock = true AND stock_count > 0`);
+    baseConditions.push(`is_in_stock = true AND stock_count > 0`);
   }
 
   if (query) {
     const qClean = query.replace(/[%_]/g, '');
-    whereConditions.push(
-      `(title ILIKE $${paramIdx} OR mpn ILIKE $${paramIdx} OR brand ILIKE $${paramIdx} OR ean ILIKE $${paramIdx} OR sku ILIKE $${paramIdx})`
+    baseConditions.push(
+      `(title ILIKE $${baseParamIdx} OR mpn ILIKE $${baseParamIdx} OR brand ILIKE $${baseParamIdx} OR ean ILIKE $${baseParamIdx} OR sku ILIKE $${baseParamIdx})`
     );
-    params.push(`%${qClean}%`);
-    paramIdx++;
+    baseParams.push(`%${qClean}%`);
+    baseParamIdx++;
   }
 
-  appendSpecConditions(options.cpu, options.ram, options.ssd, whereConditions, params, () => paramIdx++);
+  const filteredConditions = [...baseConditions];
+  const filteredParams = [...baseParams];
+  let filteredParamIdx = baseParamIdx;
 
-  const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+  appendMultiFilterConditions(
+    options.brand,
+    options.cpu,
+    options.ram,
+    options.ssd,
+    filteredConditions,
+    filteredParams,
+    () => filteredParamIdx++
+  );
+
+  const baseWhereClause = baseConditions.length > 0 ? `WHERE ${baseConditions.join(' AND ')}` : '';
+  const filteredWhereClause = filteredConditions.length > 0 ? `WHERE ${filteredConditions.join(' AND ')}` : '';
 
   let orderBy = 'is_in_stock DESC, final_price ASC, id ASC';
   switch (options.sort) {
@@ -819,14 +816,17 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
   }
 
   try {
-    const countSql = `SELECT COUNT(*)::int as total FROM products ${whereClause}`;
-    const countRows = await queryNeon<{ total: number }>(countSql, params);
+    const countSql = `SELECT COUNT(*)::int as total FROM products ${filteredWhereClause}`;
+    const countRows = await queryNeon<{ total: number }>(countSql, filteredParams);
     const total = countRows[0]?.total ?? 0;
 
-    const allDataSql = `SELECT * FROM products ${whereClause} ORDER BY ${orderBy}`;
-    const allRows = await queryNeon(allDataSql, params);
+    const pageSql = `SELECT * FROM products ${filteredWhereClause} ORDER BY ${orderBy} LIMIT $${filteredParamIdx++} OFFSET $${filteredParamIdx++}`;
+    const pageRows = await queryNeon(pageSql, [...filteredParams, pageSize, offset]);
+    const products = pageRows.map(mapDbRowToMasterProduct);
+
+    const allDataSql = `SELECT * FROM products ${baseWhereClause} ORDER BY ${orderBy}`;
+    const allRows = await queryNeon(allDataSql, baseParams);
     const allCategoryProducts = allRows.map(mapDbRowToMasterProduct);
-    const products = allCategoryProducts.slice(offset, offset + pageSize);
 
     return {
       products,

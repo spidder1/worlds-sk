@@ -28,16 +28,39 @@ export default async function SearchPage({ searchParams }: Props) {
   const parsedPage = Number.parseInt(rawPage ?? '1', 10);
   const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const query = q.trim();
-  const brandFilter = vyrobca.trim();
   const inStockOnly = inStock === 'true';
-  const cpuFilter = cpu.trim();
-  const ramFilter = ram.trim();
-  const ssdFilter = ssd.trim();
+
+  const brandFilters = vyrobca.split(',').map((s) => s.trim()).filter(Boolean);
+  const cpuFilters = cpu.split(',').map((s) => s.trim()).filter(Boolean);
+  const ramFilters = ram.split(',').map((s) => s.trim()).filter(Boolean);
+  const ssdFilters = ssd.split(',').map((s) => s.trim()).filter(Boolean);
 
   const [results, manufacturers] = await Promise.all([
-    getProductsPage({ query, brand: brandFilter, inStockOnly, page, cpu: cpuFilter, ram: ramFilter, ssd: ssdFilter }),
-    getManufacturers({ query, inStockOnly, cpu: cpuFilter, ram: ramFilter, ssd: ssdFilter }),
+    getProductsPage({ query, brand: vyrobca, inStockOnly, page, cpu, ram, ssd }),
+    getManufacturers({ query, inStockOnly }),
   ]);
+
+  const removeSearchParamValue = (key: string, valueToRemove: string) => {
+    const currentMap: Record<string, string> = { q, vyrobca, cpu, ram, ssd };
+    if (inStock) currentMap.inStock = inStock;
+
+    const currentList = (currentMap[key] || '').split(',').map((s) => s.trim()).filter(Boolean);
+    const updatedList = currentList.filter((v) => v.toLowerCase() !== valueToRemove.toLowerCase());
+
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (inStock === 'true') params.set('inStock', 'true');
+    if (key !== 'vyrobca' && vyrobca) params.set('vyrobca', vyrobca);
+    if (key !== 'cpu' && cpu) params.set('cpu', cpu);
+    if (key !== 'ram' && ram) params.set('ram', ram);
+    if (key !== 'ssd' && ssd) params.set('ssd', ssd);
+
+    if (updatedList.length > 0) {
+      params.set(key, updatedList.join(','));
+    }
+    const qs = params.toString();
+    return `/vyhladavanie${qs ? `?${qs}` : ''}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -52,8 +75,8 @@ export default async function SearchPage({ searchParams }: Props) {
           <div>
             <h1 className="flex items-center gap-2 text-xl font-black text-slate-900">
               <Search className="h-5 w-5 text-brand-600" />
-              {brandFilter ? (
-                <>Produkty značky: <span className="text-brand-600">{brandFilter}</span></>
+              {brandFilters.length > 0 ? (
+                <>Produkty značky: <span className="text-brand-600">{brandFilters.join(', ')}</span></>
               ) : query ? (
                 <>Výsledky pre: <span className="text-brand-600">&ldquo;{query}&rdquo;</span></>
               ) : (
@@ -65,16 +88,49 @@ export default async function SearchPage({ searchParams }: Props) {
             </p>
           </div>
 
-          {brandFilter ? (
-            <Link
-              href={`/vyhladavanie${query ? `?q=${encodeURIComponent(query)}` : ''}`}
-              className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              Výrobca: {brandFilter}
-              <X className="w-3.5 h-3.5" />
-            </Link>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {brandFilters.map((b) => (
+              <Link
+                key={b}
+                href={removeSearchParamValue('vyrobca', b)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                Výrobca: {b}
+                <X className="w-3.5 h-3.5" />
+              </Link>
+            ))}
+            {cpuFilters.map((c) => (
+              <Link
+                key={c}
+                href={removeSearchParamValue('cpu', c)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+              >
+                CPU: {c}
+                <X className="w-3.5 h-3.5" />
+              </Link>
+            ))}
+            {ramFilters.map((r) => (
+              <Link
+                key={r}
+                href={removeSearchParamValue('ram', r)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+              >
+                RAM: {r}
+                <X className="w-3.5 h-3.5" />
+              </Link>
+            ))}
+            {ssdFilters.map((s) => (
+              <Link
+                key={s}
+                href={removeSearchParamValue('ssd', s)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+              >
+                SSD: {s}
+                <X className="w-3.5 h-3.5" />
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 

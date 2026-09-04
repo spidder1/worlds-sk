@@ -28,14 +28,20 @@ export function ProductFilterSidebar({ products, allCategoryProducts, totalCount
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Active filter state from URL params
-  const activeBrand = searchParams.get('vyrobca') || '';
+  // Active multi-select filter state from URL params
+  const getFilterArray = (key: string): string[] => {
+    const val = searchParams.get(key) || '';
+    if (!val) return [];
+    return val.split(',').map((s) => s.trim()).filter(Boolean);
+  };
+
+  const activeBrands = getFilterArray('vyrobca');
   const activeInStock = searchParams.get('inStock') === 'true';
   const activeMinPrice = searchParams.get('minPrice') || '';
   const activeMaxPrice = searchParams.get('maxPrice') || '';
-  const activeCpu = searchParams.get('cpu') || '';
-  const activeRam = searchParams.get('ram') || '';
-  const activeSsd = searchParams.get('ssd') || '';
+  const activeCpus = getFilterArray('cpu');
+  const activeRams = getFilterArray('ram');
+  const activeSsds = getFilterArray('ssd');
 
   // Local brand search filter inside sidebar
   const [brandSearch, setBrandSearch] = useState('');
@@ -124,15 +130,40 @@ export function ProductFilterSidebar({ products, allCategoryProducts, totalCount
     };
   }, [products, allCategoryProducts]);
 
-  // Helper to update URL query params
-  const updateFilter = (key: string, value?: string) => {
+  // Helper to toggle multi-select filter item
+  const toggleMultiFilter = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const currentVal = params.get(key) || '';
+    const currentList = currentVal.split(',').map((s) => s.trim()).filter(Boolean);
+
+    const exists = currentList.some((v) => v.toLowerCase() === value.toLowerCase());
+    let newList: string[];
+
+    if (exists) {
+      newList = currentList.filter((v) => v.toLowerCase() !== value.toLowerCase());
+    } else {
+      newList = [...currentList, value];
+    }
+
+    if (newList.length > 0) {
+      params.set(key, newList.join(','));
+    } else {
+      params.delete(key);
+    }
+
+    params.set('page', '1'); // Reset to first page
+    const qs = params.toString();
+    router.push(`${pathname}${qs ? `?${qs}` : ''}`);
+  };
+
+  const updateSingleFilter = (key: string, value?: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value) {
       params.set(key, value);
     } else {
       params.delete(key);
     }
-    params.set('page', '1'); // Reset to first page
+    params.set('page', '1');
     const qs = params.toString();
     router.push(`${pathname}${qs ? `?${qs}` : ''}`);
   };
@@ -141,7 +172,15 @@ export function ProductFilterSidebar({ products, allCategoryProducts, totalCount
     router.push(pathname);
   };
 
-  const hasActiveFilters = Boolean(activeBrand || activeInStock || activeMinPrice || activeMaxPrice || activeCpu || activeRam || activeSsd);
+  const hasActiveFilters = Boolean(
+    activeBrands.length > 0 ||
+      activeInStock ||
+      activeMinPrice ||
+      activeMaxPrice ||
+      activeCpus.length > 0 ||
+      activeRams.length > 0 ||
+      activeSsds.length > 0
+  );
 
   return (
     <>
@@ -206,7 +245,7 @@ export function ProductFilterSidebar({ products, allCategoryProducts, totalCount
             </button>
             {sections.stock ? (
               <label
-                onClick={() => updateFilter('inStock', activeInStock ? undefined : 'true')}
+                onClick={() => updateSingleFilter('inStock', activeInStock ? undefined : 'true')}
                 className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
                   activeInStock
                     ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
@@ -256,11 +295,11 @@ export function ProductFilterSidebar({ products, allCategoryProducts, totalCount
 
                 <div className="max-h-52 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
                   {filteredBrands.map((b) => {
-                    const isSelected = activeBrand.toLowerCase() === b.name.toLowerCase();
+                    const isSelected = activeBrands.some((v) => v.toLowerCase() === b.name.toLowerCase());
                     return (
                       <div
                         key={b.name}
-                        onClick={() => updateFilter('vyrobca', isSelected ? undefined : b.name)}
+                        onClick={() => toggleMultiFilter('vyrobca', b.name)}
                         className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
                           isSelected ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-700 hover:bg-slate-100'
                         }`}
@@ -295,11 +334,11 @@ export function ProductFilterSidebar({ products, allCategoryProducts, totalCount
               {sections.cpu ? (
                 <div className="space-y-1">
                   {extractedSpecs.cpus.map((cpu) => {
-                    const isSelected = activeCpu === cpu.name;
+                    const isSelected = activeCpus.some((v) => v.toLowerCase() === cpu.name.toLowerCase());
                     return (
                       <div
                         key={cpu.name}
-                        onClick={() => updateFilter('cpu', isSelected ? undefined : cpu.name)}
+                        onClick={() => toggleMultiFilter('cpu', cpu.name)}
                         className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
                           isSelected ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-700 hover:bg-slate-100'
                         }`}
@@ -333,11 +372,11 @@ export function ProductFilterSidebar({ products, allCategoryProducts, totalCount
               {sections.ram ? (
                 <div className="space-y-1">
                   {extractedSpecs.rams.map((ram) => {
-                    const isSelected = activeRam === ram.name;
+                    const isSelected = activeRams.some((v) => v.toLowerCase() === ram.name.toLowerCase());
                     return (
                       <div
                         key={ram.name}
-                        onClick={() => updateFilter('ram', isSelected ? undefined : ram.name)}
+                        onClick={() => toggleMultiFilter('ram', ram.name)}
                         className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
                           isSelected ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-700 hover:bg-slate-100'
                         }`}
@@ -371,11 +410,11 @@ export function ProductFilterSidebar({ products, allCategoryProducts, totalCount
               {sections.ssd ? (
                 <div className="space-y-1">
                   {extractedSpecs.ssds.map((ssd) => {
-                    const isSelected = activeSsd === ssd.name;
+                    const isSelected = activeSsds.some((v) => v.toLowerCase() === ssd.name.toLowerCase());
                     return (
                       <div
                         key={ssd.name}
-                        onClick={() => updateFilter('ssd', isSelected ? undefined : ssd.name)}
+                        onClick={() => toggleMultiFilter('ssd', ssd.name)}
                         className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
                           isSelected ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-700 hover:bg-slate-100'
                         }`}
