@@ -158,6 +158,37 @@ async function syncCategoriesAndManufacturers(pool: pg.Pool) {
   console.log('✅ Kategórie a výrobcovia úspešne zapísaní.');
 }
 
+async function syncProductMedia(pool: pg.Pool, products: any[]): Promise<void> {
+  for (const product of products) {
+    const images = Array.isArray(product.images) ? product.images : [];
+    await pool.query('DELETE FROM product_media WHERE product_id = $1', [product.id]);
+    for (const image of images) {
+      const url = String(image.url || '').trim();
+      if (!url) continue;
+      await pool.query(
+        `INSERT INTO product_media (
+           id, product_id, url, normalized_url, position, is_primary, alt_text, source
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'eD_SYSTEM')
+         ON CONFLICT (product_id, normalized_url) DO UPDATE SET
+           url = EXCLUDED.url,
+           position = EXCLUDED.position,
+           is_primary = EXCLUDED.is_primary,
+           alt_text = EXCLUDED.alt_text,
+           updated_at = NOW()`,
+        [
+          String(image.id || `${product.id}-image-${image.position || 0}`),
+          product.id,
+          url,
+          url,
+          Number(image.position || 0),
+          Boolean(image.isPrimary),
+          String(image.altText || product.title),
+        ],
+      );
+    }
+  }
+}
+
 async function fetchLiveStockMap(): Promise<Map<string, any>> {
   const stockMap = new Map<string, any>();
   const credentials = {
@@ -500,6 +531,7 @@ export async function importAsusLenovoToNeon() {
     `;
 
     await pool.query(insertSql, params);
+    await syncProductMedia(pool, batch);
     inserted += batch.length;
     console.log(`  ✓ Uložených ${inserted}/${targetProducts.length} produktov...`);
   }
