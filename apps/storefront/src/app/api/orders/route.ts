@@ -61,6 +61,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ orderId, orderNumber, status: 'NEW', paymentStatus: 'PENDING', total: subtotal.toFixed(2), currency: 'EUR' }, { status: 201 });
     } catch (transactionError) {
       await client.query('ROLLBACK').catch(() => undefined);
+      if (transactionError && typeof transactionError === 'object' && 'code' in transactionError && transactionError.code === '23505') {
+        const existingAfterRace = await client.query<{ id: string; order_number: string; total: string; payment_status: string }>(
+          'SELECT id, order_number, total, payment_status FROM orders WHERE idempotency_key = $1 LIMIT 1', [idempotencyKey]);
+        if (existingAfterRace.rows.length) {
+          return NextResponse.json({
+            orderId: existingAfterRace.rows[0].id,
+            orderNumber: existingAfterRace.rows[0].order_number,
+            status: 'NEW',
+            paymentStatus: existingAfterRace.rows[0].payment_status,
+            total: existingAfterRace.rows[0].total,
+            currency: 'EUR',
+          }, { status: 200 });
+        }
+      }
       throw transactionError;
     } finally {
       client.release();
