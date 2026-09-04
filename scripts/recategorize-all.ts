@@ -1,6 +1,8 @@
 import { neon } from '@neondatabase/serverless';
 
-const sql = neon("postgresql://neondb_owner:npg_nLuIOvXw7dZ3@ep-withered-thunder-au37ajrg-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+const databaseUrl = process.env.DATABASE_URL?.trim();
+if (!databaseUrl) throw new Error('DATABASE_URL is required');
+const sql = neon(databaseUrl);
 
 const ACCESSORY_OR_COMPONENT_RE = /\b(baterie|bateria|batéria|baterka|li-pol|li-ion|mah|wh|adaptér|adapter|nabíjačka|charger|power bank|powerbank|pamäť|paměť|ram|sodimm|dimm|ddr4|ddr5|lte modul|4g modul|wwan|brašna|brašny|batoh|batohy|puzdro|pouzdro|puzdrá|pouzdra|topload|toploader|toploaders|backpack|backpacks|sleeve|sleeves|carry case|folio case|tote|taška|tašky|ruksak|ruksaky|obazp|bag|bags|folie|fólia|sklo|paper feeling|tempered glass|screen protector|protection|1up|arc\+|silky matt|silverprotection|lens protection|filtr|filtrů|privacy|stylus|dotykové pero|digital pen|precision pen|active pen|dokovacia|dokovací|docking station|usb-c dock|thunderbolt dock|port replicator|fan hub|headphones|headset|slúchadlá|sluchátka|in-ear|tws|earbuds|mikrofon|mikrofón|microphone|webkamera|webcam|záruka|záruky|carepack|onsite|premier support|warranty|adp|servisný balík|premium care|mb|mb sc|motherboard|základná|základní|zdroj|psu|skriňa|skrinka|pc case|mini tower|mid tower|big tower|eatx case|křeslo|stolička|chair|podložka|teplovodivá pasta|skin|klíč steam|cleaning|tool kit|digital artbook|soundtrack|deluxe edition|digital|kabel|kábel|redukcia|redukce|fan|chladenie|chladič|vodní|ssd|nvme|stand)\b/i;
 
