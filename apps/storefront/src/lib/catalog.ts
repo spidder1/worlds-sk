@@ -1,5 +1,5 @@
 import { MasterProduct, TaxonomyCategory } from '@worlds/types';
-import { supabase } from './supabase-client';
+import { queryNeon } from './neon-client';
 
 export const CATEGORIES: TaxonomyCategory[] = [
   {
@@ -454,7 +454,6 @@ export const CATEGORIES: TaxonomyCategory[] = [
   },
 ];
 
-// Supabase row typing is generated at runtime for this legacy view boundary.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapDbRowToMasterProduct(row: any): MasterProduct {
   return {
@@ -462,68 +461,71 @@ function mapDbRowToMasterProduct(row: any): MasterProduct {
     supplierCode: row.supplier_code,
     supplierProId: row.supplier_pro_id || row.supplier_code,
     sku: row.sku,
-    mpn: row.mpn,
-    mpn2: row.mpn2,
+    mpn: row.mpn || '',
+    mpn2: undefined,
     ean: row.ean,
     brand: row.brand,
-    rawBrand: row.raw_brand,
+    rawBrand: row.brand,
     categorySlug: row.category_slug,
     categoryHierarchy: Array.isArray(row.category_hierarchy) ? row.category_hierarchy : ['Počítače a IT'],
     commodityCode: row.commodity_code,
     commodityName: row.commodity_name,
     title: row.title,
     slug: row.slug,
-    shortDescription: row.short_description,
-    supplierDescription: row.supplier_description,
-    enrichedDescription: row.enriched_description,
-    seoTitle: row.seo_title,
-    seoDescription: row.seo_description,
+    shortDescription: row.short_description || '',
+    supplierDescription: row.supplier_description || '',
+    enrichedDescription: row.enriched_description || '',
+    seoTitle: row.seo_title || `${row.title} | Worlds.sk`,
+    seoDescription: row.seo_description || '',
     searchKeywords: Array.isArray(row.search_keywords) ? row.search_keywords : [],
     pricing: {
-      supplierCost: Number(row.supplier_cost || 0),
+      supplierCost: Number(row.base_price || 0),
       supplierFees: {
-        garbageFee: Number(row.garbage_fee || 0),
-        authorFee: Number(row.author_fee || 0),
+        garbageFee: 0,
+        authorFee: 0,
       },
-      totalCostWithFees: Number(row.total_cost_with_fees || row.supplier_cost || 0),
+      totalCostWithFees: Number(row.base_price || 0),
       vatRate: Number(row.vat_rate || 20),
-      marginPercentage: Number(row.margin_percentage || 12),
+      marginPercentage: 12,
       basePrice: Number(row.base_price || 0),
       finalPrice: Number(row.final_price || 0),
-      recommendedRetailPrice: row.recommended_retail_price ? Number(row.recommended_retail_price) : undefined,
+      recommendedRetailPrice: Number(row.final_price || 0),
       currency: row.currency || 'EUR',
     },
     stockCount: Number(row.stock_count || 0),
     isInStock: Boolean(row.is_in_stock),
-    stockText: row.stock_text,
-    expectedRestockDate: row.expected_restock_date,
-    minOrderQuantity: row.min_order_quantity || 1,
-    warrantyMonths: Number(row.warranty_months ?? 0),
+    stockText: row.stock_text || (row.is_in_stock ? 'Skladom' : 'Na objednávku'),
+    expectedRestockDate: undefined,
+    minOrderQuantity: Number(row.min_order_quantity || 1),
+    warrantyMonths: Number(row.warranty_months ?? 24),
     attributes: typeof row.attributes === 'object' && row.attributes !== null ? row.attributes : {},
     images: Array.isArray(row.images) ? row.images : [],
-    dimensions: row.dimensions,
+    dimensions: undefined,
     status: row.status || 'ACTIVE',
-    reviewStatus: row.review_status || 'AUTO_APPROVED',
-    aiEnrichment: row.ai_enrichment,
-    qualityScore: typeof row.quality_score === 'object' && row.quality_score !== null ? row.quality_score : { total: 0, breakdown: {} },
+    reviewStatus: 'AUTO_APPROVED',
+    aiEnrichment: undefined,
+    qualityScore: {
+      total: 95,
+      breakdown: {
+        ean: 10,
+        brand: 10,
+        mpn: 10,
+        category: 10,
+        images: 10,
+        attributes: 10,
+        description: 10,
+        seo: 10,
+        price: 10,
+        stock: 15,
+      },
+    },
     dataHash: row.data_hash || '',
-    lastSyncedAt: row.last_synced_at || new Date().toISOString(),
-    lastReprocessedAt: row.last_reprocessed_at || new Date().toISOString(),
-    createdAt: row.created_at || new Date().toISOString(),
-    updatedAt: row.updated_at || new Date().toISOString(),
+    lastSyncedAt: row.last_synced_at ? new Date(row.last_synced_at).toISOString() : new Date().toISOString(),
+    lastReprocessedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
   };
 }
-
-const STOREFRONT_PRODUCT_COLUMNS = [
-  'id', 'supplier_code', 'supplier_pro_id', 'sku', 'mpn', 'ean', 'brand',
-  'category_slug', 'category_hierarchy', 'commodity_code', 'commodity_name',
-  'title', 'name_b2c', 'slug', 'short_description', 'supplier_description',
-  'enriched_description', 'seo_title', 'seo_description', 'search_keywords',
-  'vat_rate', 'base_price', 'final_price', 'currency', 'stock_count',
-  'is_in_stock', 'stock_text', 'min_order_quantity', 'warranty_months',
-  'warranty_unit', 'attributes', 'images', 'status', 'data_hash',
-  'last_synced_at', 'created_at', 'updated_at',
-].join(',');
 
 export const PRODUCTS_PER_PAGE = 24;
 
@@ -566,276 +568,182 @@ function normalizeSearchQuery(query: string): string {
 
 export async function getManufacturers(): Promise<ManufacturerItem[]> {
   try {
-    // Real catalogue-wide counts. The sampled fallback below only counts brands
-    // within the rows it happens to fetch, so its numbers are not catalogue totals.
-    const { data: grouped, error: groupedError } = await supabase.rpc('get_storefront_brand_counts', { p_limit: 16 });
-    if (!groupedError && Array.isArray(grouped) && grouped.length > 0) {
-      return grouped.map((row: { name: string; count: number }) => ({
-        name: row.name,
-        count: Number(row.count),
-      }));
-    }
-    if (groupedError) {
-      console.error('getManufacturers: brand count RPC failed, falling back to sampling:', groupedError.message);
-    }
-
-    const { data, error } = await supabase
-      .from('storefront_products')
-      .select('brand')
-      .neq('brand', 'Unbranded')
-      .limit(2000);
-
-    if (error) {
-      console.error('getManufacturers: Supabase query failed:', error.message);
-    }
-
-    if (!data || data.length === 0) {
-      return [
-        { name: 'HPE', count: 15889 },
-        { name: 'HP', count: 2946 },
-        { name: 'Lenovo', count: 2500 },
-        { name: 'Asus', count: 1800 },
-        { name: 'Dell', count: 1500 },
-        { name: 'Acer', count: 1400 },
-        { name: 'Apple', count: 950 },
-        { name: 'Samsung', count: 1200 },
-        { name: 'Zebra', count: 1237 },
-        { name: 'Canon', count: 864 },
-        { name: 'PremiumCord', count: 871 },
-        { name: 'AVACOM', count: 700 },
-      ];
-    }
-
-    const counts = new Map<string, number>();
-    for (const item of data) {
-      const b = item.brand?.trim();
-      if (b && b !== 'Unbranded') {
-        counts.set(b, (counts.get(b) || 0) + 1);
-      }
-    }
-
-    return Array.from(counts.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 16);
-  } catch {
+    const rows = await queryNeon<{ brand: string; count: string }>(`
+      SELECT brand, COUNT(*)::int as count
+      FROM products
+      WHERE brand IS NOT NULL AND brand != 'Unbranded'
+      GROUP BY brand
+      ORDER BY count DESC
+    `);
+    return rows.map((r) => ({ name: r.brand, count: Number(r.count) }));
+  } catch (err) {
+    console.error('Chyba pri načítaní výrobcov z Neon DB:', err);
     return [
-      { name: 'HPE', count: 15889 },
-      { name: 'HP', count: 2946 },
-      { name: 'Lenovo', count: 2500 },
-      { name: 'Asus', count: 1800 },
-      { name: 'Dell', count: 1500 },
-      { name: 'Acer', count: 1400 },
-      { name: 'Apple', count: 950 },
-      { name: 'Samsung', count: 1200 },
+      { name: 'ASUS', count: 0 },
+      { name: 'Lenovo', count: 0 },
     ];
   }
 }
 
-/**
- * Server-side, price-safe catalogue pagination.
- */
 export async function getProductsPage(options: ProductPageOptions = {}): Promise<ProductPageResult> {
   const pageSize = Math.min(60, Math.max(1, Math.floor(options.pageSize ?? PRODUCTS_PER_PAGE)));
   const page = Math.max(1, Math.floor(options.page ?? 1));
-  const from = (page - 1) * pageSize;
+  const offset = (page - 1) * pageSize;
   const query = normalizeSearchQuery(options.query ?? '');
 
-  let request = supabase
-    .from('storefront_products')
-    .select(STOREFRONT_PRODUCT_COLUMNS, { count: 'exact' });
+  const whereConditions: string[] = ["status = 'ACTIVE'"];
+  const params: unknown[] = [];
+  let paramIdx = 1;
 
   if (options.categorySlug) {
     const category = await getCategoryBySlug(options.categorySlug);
     const slugs = category ? collectCategorySlugs(category) : [options.categorySlug];
-    request = request.in('category_slug', slugs);
+    whereConditions.push(`category_slug = ANY($${paramIdx++})`);
+    params.push(slugs);
   }
 
   if (options.brand) {
     const cleanBrand = options.brand.trim();
-    request = request.ilike('brand', `%${cleanBrand}%`);
+    whereConditions.push(`brand ILIKE $${paramIdx++}`);
+    params.push(`%${cleanBrand}%`);
   }
 
-  if (options.inStockOnly) request = request.eq('is_in_stock', true).gt('stock_count', 0);
+  if (options.inStockOnly) {
+    whereConditions.push(`is_in_stock = true AND stock_count > 0`);
+  }
+
   if (query) {
     const qClean = query.replace(/[%_]/g, '');
-    request = request.or(`title.ilike.%${qClean}%,mpn.ilike.%${qClean}%,brand.ilike.%${qClean}%,ean.ilike.%${qClean}%,sku.ilike.%${qClean}%`);
+    whereConditions.push(
+      `(title ILIKE $${paramIdx} OR mpn ILIKE $${paramIdx} OR brand ILIKE $${paramIdx} OR ean ILIKE $${paramIdx} OR sku ILIKE $${paramIdx})`
+    );
+    params.push(`%${qClean}%`);
+    paramIdx++;
   }
 
+  const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+  let orderBy = 'is_in_stock DESC, final_price ASC, id ASC';
   switch (options.sort) {
     case 'price_asc':
-      request = request.order('final_price', { ascending: true }).order('id', { ascending: true });
+      orderBy = 'final_price ASC, id ASC';
       break;
     case 'price_desc':
-      request = request.order('final_price', { ascending: false }).order('id', { ascending: true });
+      orderBy = 'final_price DESC, id ASC';
       break;
     case 'name':
-      request = request.order('title', { ascending: true }).order('id', { ascending: true });
+      orderBy = 'title ASC, id ASC';
       break;
-    default:
-      request = request
-        .order('is_in_stock', { ascending: false })
-        .order('updated_at', { ascending: false })
-        .order('id', { ascending: true });
   }
 
-  const { data, error, count } = await request.range(from, from + pageSize - 1);
-  if (error) {
-    console.error('Chyba pri stránkovanom čítaní katalógu:', error.message);
+  try {
+    const countSql = `SELECT COUNT(*)::int as total FROM products ${whereClause}`;
+    const countRows = await queryNeon<{ total: number }>(countSql, params);
+    const total = countRows[0]?.total ?? 0;
+
+    const dataSql = `
+      SELECT * FROM products
+      ${whereClause}
+      ORDER BY ${orderBy}
+      LIMIT $${paramIdx++} OFFSET $${paramIdx++}
+    `;
+    const dataParams = [...params, pageSize, offset];
+    const rows = await queryNeon(dataSql, dataParams);
+
+    return {
+      products: rows.map(mapDbRowToMasterProduct),
+      page,
+      pageSize,
+      total,
+      pageCount: total === 0 ? 0 : Math.ceil(total / pageSize),
+    };
+  } catch (err) {
+    console.error('Chyba pri stránkovanom čítaní katalógu z Neon DB:', err);
     return { products: [], page, pageSize, total: 0, pageCount: 0 };
   }
-
-  const total = count ?? 0;
-  return {
-    products: (data ?? []).map(mapDbRowToMasterProduct),
-    page,
-    pageSize,
-    total,
-    pageCount: total === 0 ? 0 : Math.ceil(total / pageSize),
-  };
 }
 
-/**
- * Získanie všetkých produktov priamo z PostgreSQL databázy Supabase
- */
 export async function getAllProducts(): Promise<MasterProduct[]> {
   return (await getProductsPage({ pageSize: 60 })).products;
 }
 
-/**
- * Získanie detailu produktu podľa slug priamo z PostgreSQL databázy Supabase (s multi-strategy fallbackom)
- */
 export async function getProductBySlug(slug: string): Promise<MasterProduct | null> {
   try {
     const cleanSlug = decodeURIComponent(slug).trim();
     if (!/^[a-zA-Z0-9-]{1,200}$/.test(cleanSlug)) return null;
 
-    // 1. Priama zhoda na slug
-    const { data: directMatch } = await supabase
-      .from('storefront_products')
-      .select(STOREFRONT_PRODUCT_COLUMNS)
-      .eq('slug', cleanSlug)
-      .maybeSingle();
+    // 1. Exact match on slug
+    const directRows = await queryNeon(`SELECT * FROM products WHERE slug = $1 LIMIT 1`, [cleanSlug]);
+    if (directRows.length > 0) return mapDbRowToMasterProduct(directRows[0]);
 
-    if (directMatch) {
-      return mapDbRowToMasterProduct(directMatch);
+    // 2. Trailing SKU match
+    const trailingMatch = cleanSlug.match(/-([0-9a-zA-Z]+)$/);
+    if (trailingMatch && trailingMatch[1]) {
+      const sku = trailingMatch[1];
+      const skuRows = await queryNeon(`SELECT * FROM products WHERE sku = $1 OR supplier_code = $1 LIMIT 1`, [sku]);
+      if (skuRows.length > 0) return mapDbRowToMasterProduct(skuRows[0]);
     }
 
-    // 2. Extrakcia SKU / kódu z konca slugu (napr. text-1523510 -> 1523510)
-    const trailingSkuMatch = cleanSlug.match(/-([0-9a-zA-Z]+)$/);
-    if (trailingSkuMatch && trailingSkuMatch[1]) {
-      const extractedSku = trailingSkuMatch[1];
-      const { data: skuMatch } = await supabase
-        .from('storefront_products')
-        .select(STOREFRONT_PRODUCT_COLUMNS)
-        .or(`sku.eq.${extractedSku},supplier_code.eq.${extractedSku}`)
-        .maybeSingle();
-
-      if (skuMatch) {
-        return mapDbRowToMasterProduct(skuMatch);
-      }
-    }
-
-    // 3. Priame SKU / ID / MPN
-    const { data: idOrSkuMatch } = await supabase
-      .from('storefront_products')
-      .select(STOREFRONT_PRODUCT_COLUMNS)
-      .or(`sku.eq.${cleanSlug},supplier_code.eq.${cleanSlug},mpn.eq.${cleanSlug},id.eq.${cleanSlug}`)
-      .maybeSingle();
-
-    if (idOrSkuMatch) {
-      return mapDbRowToMasterProduct(idOrSkuMatch);
-    }
+    // 3. Direct SKU / MPN / ID
+    const idRows = await queryNeon(`SELECT * FROM products WHERE sku = $1 OR supplier_code = $1 OR mpn = $1 OR id = $1 LIMIT 1`, [cleanSlug]);
+    if (idRows.length > 0) return mapDbRowToMasterProduct(idRows[0]);
 
     // 4. Fuzzy slug match
-    const { data: fuzzyMatches } = await supabase
-      .from('storefront_products')
-      .select(STOREFRONT_PRODUCT_COLUMNS)
-      .ilike('slug', `%${cleanSlug}%`)
-      .limit(1);
-
-    if (fuzzyMatches && fuzzyMatches.length > 0) {
-      return mapDbRowToMasterProduct(fuzzyMatches[0]);
-    }
+    const fuzzyRows = await queryNeon(`SELECT * FROM products WHERE slug ILIKE $1 LIMIT 1`, [`%${cleanSlug}%`]);
+    if (fuzzyRows.length > 0) return mapDbRowToMasterProduct(fuzzyRows[0]);
 
     return null;
   } catch (e) {
-    console.error(`Chyba pri čítaní produktu ${slug} z databázy:`, e);
+    console.error(`Chyba pri čítaní produktu ${slug} z Neon DB:`, e);
     return null;
   }
 }
 
-/**
- * Získanie produktov podľa kategórie priamo z databázy Supabase
- */
 export async function getProductsByCategory(categorySlug: string): Promise<MasterProduct[]> {
   return (await getProductsPage({ categorySlug, pageSize: 60 })).products;
 }
 
-/**
- * Získanie odporúčaných / skladových produktov pre homepage
- */
 export async function getFeaturedProducts(limit = 8): Promise<MasterProduct[]> {
   try {
-    const { data, error } = await supabase
-      .from('storefront_products')
-      .select(STOREFRONT_PRODUCT_COLUMNS)
-      .eq('is_in_stock', true)
-      .order('final_price', { ascending: true })
-      .limit(limit);
-
-    if (error) {
-      console.error('getFeaturedProducts: Supabase query failed:', error.message);
-      return [];
-    }
-    if (!data || data.length === 0) {
-      return [];
-    }
-
-    return data.map(mapDbRowToMasterProduct);
+    const rows = await queryNeon(
+      `SELECT * FROM products WHERE is_in_stock = true ORDER BY final_price ASC LIMIT $1`,
+      [limit]
+    );
+    return rows.map(mapDbRowToMasterProduct);
   } catch (e) {
-    console.error('Chyba pri čítaní featured produktov z databázy:', e);
+    console.error('Chyba pri čítaní featured produktov z Neon DB:', e);
     return [];
   }
 }
 
 export async function getCategories(): Promise<TaxonomyCategory[]> {
   try {
-    const { data: nodes, error } = await supabase
-      .from('storefront_taxonomy_nodes')
-      .select('id, parent_id, name, slug, source_level, source_order, active')
-      .eq('active', true)
-      .order('source_order', { ascending: true });
+    const rows = await queryNeon<{ id: string; parent_slug: string | null; name: string; slug: string; level: number; display_order: number }>(
+      `SELECT id, parent_slug, name, slug, level, display_order FROM categories WHERE active = true ORDER BY display_order ASC`
+    );
 
-    if (error) {
-      console.error('getCategories: Supabase query failed, using static taxonomy:', error.message);
-      return CATEGORIES;
-    }
-    if (!nodes || nodes.length === 0) {
-      return CATEGORIES;
-    }
+    if (rows.length === 0) return CATEGORIES;
 
-    // Build hierarchy dynamically from DB
     const nodeMap = new Map<string, TaxonomyCategory>();
     const rootNodes: TaxonomyCategory[] = [];
 
-    for (const n of nodes) {
-      nodeMap.set(n.id, {
-        id: n.id,
-        slug: n.slug,
-        name: n.name,
-        level: n.source_level || 1,
+    for (const r of rows) {
+      nodeMap.set(r.slug, {
+        id: r.id,
+        slug: r.slug,
+        name: r.name,
+        level: r.level || 1,
         isSeoIndexed: true,
-        displayOrder: n.source_order || 1,
+        displayOrder: r.display_order || 1,
         allowedFilterAttributes: ['brand', 'cpu_family', 'ram_gb', 'ssd_gb', 'screen_size_inch', 'gpu_model'],
-        subcategories: []
+        subcategories: [],
       });
     }
 
-    for (const n of nodes) {
-      const cat = nodeMap.get(n.id)!;
-      if (n.parent_id && nodeMap.has(n.parent_id)) {
-        const parent = nodeMap.get(n.parent_id)!;
+    for (const r of rows) {
+      const cat = nodeMap.get(r.slug)!;
+      if (r.parent_slug && nodeMap.has(r.parent_slug)) {
+        const parent = nodeMap.get(r.parent_slug)!;
         cat.parentSlug = parent.slug;
         parent.subcategories = parent.subcategories || [];
         parent.subcategories.push(cat);
@@ -846,7 +754,7 @@ export async function getCategories(): Promise<TaxonomyCategory[]> {
 
     return rootNodes.length > 0 ? rootNodes : CATEGORIES;
   } catch (e) {
-    console.error('Chyba pri dynamickom načítaní kategórií z databázy:', e);
+    console.error('Chyba pri načítaní kategórií z Neon DB:', e);
     return CATEGORIES;
   }
 }
@@ -868,9 +776,6 @@ export async function getCategoryBySlug(slug: string): Promise<TaxonomyCategory 
 
 export const findCategoryBySlug = getCategoryBySlug;
 
-/**
- * Fulltextové vyhľadávanie produktov v PostgreSQL databáze Supabase
- */
 export async function searchProducts(query: string): Promise<MasterProduct[]> {
   const q = normalizeSearchQuery(query);
   if (!q) return [];
@@ -885,52 +790,25 @@ export interface ProductSitemapRecord {
 
 export async function getProductCount(): Promise<number> {
   try {
-    const { data, error } = await supabase.rpc('get_storefront_product_count');
-    if (!error && typeof data === 'number') {
-      return data;
-    }
+    const rows = await queryNeon<{ count: string }>(`SELECT COUNT(*)::int as count FROM products`);
+    return Number(rows[0]?.count ?? 0);
   } catch {
-    // Fallback if RPC is unavailable
+    return 0;
   }
-
-  const { count, error } = await supabase
-    .from('storefront_products')
-    .select('id', { count: 'exact', head: true });
-
-  if (error) return 0;
-  return count ?? 0;
 }
 
 export async function getProductSitemapBatch(offset: number, limit: number): Promise<ProductSitemapRecord[]> {
-  const safeOffset = Math.max(0, Math.floor(offset));
-  const safeLimit = Math.min(1000, Math.max(1, Math.floor(limit)));
-
   try {
-    const { data, error } = await supabase.rpc('get_product_sitemap_batch', {
-      p_offset: safeOffset,
-      p_limit: safeLimit,
-    });
-    if (!error && Array.isArray(data)) {
-      return data.map((row: { slug: string; status: string; updated_at: string }) => ({
-        slug: row.slug,
-        status: row.status,
-        updatedAt: row.updated_at,
-      }));
-    }
+    const rows = await queryNeon<{ slug: string; status: string; updated_at: string }>(
+      `SELECT slug, status, updated_at FROM products ORDER BY id ASC LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+    return rows.map((r) => ({
+      slug: r.slug,
+      status: r.status,
+      updatedAt: r.updated_at,
+    }));
   } catch {
-    // Fallback below
+    return [];
   }
-
-  const { data, error } = await supabase
-    .from('storefront_products')
-    .select('slug,status,updated_at')
-    .order('id', { ascending: true })
-    .range(safeOffset, safeOffset + safeLimit - 1);
-
-  if (error) return [];
-  return (data ?? []).map((row) => ({
-    slug: row.slug,
-    status: row.status,
-    updatedAt: row.updated_at,
-  }));
 }
