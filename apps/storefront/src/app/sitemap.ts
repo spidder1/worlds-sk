@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { getCategories, getProductCount, getProductSitemapBatch } from '../lib/catalog';
+import { SITE_URL } from '../lib/site';
 
 const PRODUCT_SITEMAP_PAGE_SIZE = 1000;
 
@@ -15,7 +16,7 @@ export async function generateSitemaps() {
 }
 
 export default async function sitemap({ id }: { id: number | string }): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://worlds.sk';
+  const baseUrl = SITE_URL;
   const pageId = Number(id);
 
   // 1. Static Pages

@@ -1,5 +1,9 @@
 name: eD catalog synchronization
 
+# Writes straight into the Neon database the storefront reads. The previous
+# version of this workflow pushed into the retired Supabase project, so nothing
+# it imported ever reached production.
+
 on:
   workflow_dispatch:
     inputs:
@@ -12,8 +16,10 @@ on:
           - stock-price
           - full
   schedule:
-    - cron: '17 */2 * * *'
-    - cron: '43 2 * * 0'
+    # Stock and purchase prices, hourly.
+    - cron: '0 * * * *'
+    # Full catalogue, twice a day (06:30 and 20:30 UTC).
+    - cron: '30 6,20 * * *'
 
 permissions:
   contents: read
@@ -22,9 +28,14 @@ concurrency:
   group: ed-catalog-import
   cancel-in-progress: false
 
+env:
+  ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
+  IMPORT_TRANSPORT: neon
+  IMPORT_BATCH_SIZE: 200
+
 jobs:
   stock-price:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'stock-price' || github.event.schedule == '17 */2 * * *'
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'stock-price' || github.event.schedule == '0 * * * *'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -40,15 +51,12 @@ jobs:
       - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
       - run: pnpm sync:stock-price
         env:
-          IMPORT_BATCH_SIZE: 200
-          ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ED_LOGIN: ${{ secrets.ED_LOGIN }}
           ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
 
   full-catalog:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'full' || github.event.schedule == '43 2 * * 0'
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'full' || github.event.schedule == '30 6,20 * * *'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -64,10 +72,10 @@ jobs:
       - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
       - run: pnpm sync:catalog
         env:
-          IMPORT_BATCH_SIZE: 200
-          ED_CATALOG_SCOPE: it-only
-          ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ED_LOGIN: ${{ secrets.ED_LOGIN }}
           ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          ED_CATALOG_SCOPE: it-only
+          # Launch catalogue is ASUS + Lenovo. Widening this widens the shop;
+          # products outside the list are never retired by a full run.
+          ED_BRAND_SCOPE: ${{ vars.ED_BRAND_SCOPE || 'ASUS,Lenovo' }}

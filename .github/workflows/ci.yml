@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # A committed connection string is how the previous production password
+      # leaked into a public repository. Fail the build rather than merge one.
+      - name: Scan for committed credentials
+        run: node scripts/scan-secrets.mjs
+
+      - run: pnpm install --frozen-lockfile
+
+      # The storefront now refuses to build without DATABASE_URL, so that a
+      # misconfigured deploy fails instead of publishing an empty catalogue.
+      # CI has no database, so it builds against an unreachable placeholder:
+      # prerendering degrades gracefully on a connection failure, while a
+      # genuinely absent DATABASE_URL still fails the build.
+      - run: pnpm build
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?sslmode=disable # scan-secrets-allow: loopback placeholder, not a credential
+
+      # `pnpm test` runs the compiled output in dist/, so it must follow build.
+      - run: pnpm test
+      - run: pnpm lint
