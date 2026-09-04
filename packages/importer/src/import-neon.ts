@@ -121,6 +121,11 @@ function classifyWithStoredRules(
     const terms = Array.isArray(rule.match_expression?.title_any)
       ? rule.match_expression.title_any.map((term) => String(term).toLowerCase())
       : [];
+    const notebookContext = /\b(notebook|laptop|ntb)\b|notebooky|notebooku/i.test(fullText);
+    if (
+      ['herne-notebooky', 'firemne-notebooky', 'ultrabooky', '2v1-a-dotykove-notebooky'].includes(rule.target_category_slug) &&
+      !notebookContext
+    ) continue;
     if (terms.some((term) => term && fullText.includes(term))) {
       return {
         slug: rule.target_category_slug,
