@@ -36,13 +36,6 @@ export function requiredEnv(name: string): string {
   return value;
 }
 
-export function getSupabaseRestConfig() {
-  return {
-    url: requiredEnv('SUPABASE_URL').replace(/\/$/, ''),
-    secretKey: requiredEnv('SUPABASE_SECRET_KEY'),
-  };
-}
-
 export function getEdCredentials() {
   return {
     login: requiredEnv('ED_LOGIN'),
