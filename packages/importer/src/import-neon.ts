@@ -9,10 +9,11 @@ import { classifyProductIndependently } from './taxonomy-definition.js';
 import { sanitizeAndFormatHtml } from './html-sanitizer.js';
 import { WORLDS_IT_CATEGORIES } from './taxonomy-definition.js';
 import { TaxonomyCategory } from '@worlds/types';
+import { requiredEnv } from './runtime-config.js';
 
 const { Pool } = pg;
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_nLuIOvXw7dZ3@ep-withered-thunder-au37ajrg-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const connectionString = requiredEnv('DATABASE_URL');
 
 function isTargetBrand(name: string, rawBrand?: string): { isMatch: boolean; brandName: 'ASUS' | 'Lenovo' | null } {
   const b = (rawBrand || '').toUpperCase().trim();

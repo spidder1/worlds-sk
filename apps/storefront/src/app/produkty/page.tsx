@@ -4,11 +4,12 @@ import { Check, Grid3X3 } from 'lucide-react';
 import { Pagination } from '../../components/Pagination';
 import { ProductCard } from '../../components/ProductCard';
 import { getCategories, getProductsPage, type ProductSort } from '../../lib/catalog';
+import { absoluteUrl } from '../../lib/site';
 
 export const metadata: Metadata = {
   title: 'Všetky IT produkty | Worlds.sk',
   description: 'Kompletný IT katalóg Worlds.sk s aktuálnymi cenami a dostupnosťou.',
-  alternates: { canonical: 'https://worlds.sk/produkty' },
+  alternates: { canonical: absoluteUrl('/produkty') },
 };
 
 interface Props {

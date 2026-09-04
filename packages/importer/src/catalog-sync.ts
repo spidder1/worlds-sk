@@ -14,10 +14,12 @@ import { sanitizeAndFormatHtml } from './html-sanitizer.js';
 import { getSupabaseRestConfig } from './runtime-config.js';
 import { classifyProductIndependently } from './taxonomy-definition.js';
 import { assessCatalogScope } from './catalog-scope.js';
+import { createNeonRpcClient } from './neon-rpc.js';
+import { calculateQualityScore } from '@worlds/types';
 
 type SyncMode = 'full' | 'stock-price';
 type CatalogScope = 'it-only' | 'all';
-type ImportTransport = 'rest' | 'supabase-cli';
+type ImportTransport = 'neon' | 'rest' | 'supabase-cli';
 
 interface CliOptions {
   mode: SyncMode;
@@ -28,6 +30,7 @@ interface CliOptions {
   scope: CatalogScope;
   dryRun: boolean;
   transport: ImportTransport;
+  brandScope: string[];
 }
 
 interface RpcBatchResult {
@@ -57,7 +60,15 @@ function parseArgs(argv: string[]): CliOptions {
   const rawLimit = valueOf('--limit');
   const rawBatchSize = valueOf('--batch-size') ?? process.env.IMPORT_BATCH_SIZE ?? '50';
   const rawScope = valueOf('--scope') ?? process.env.ED_CATALOG_SCOPE ?? 'it-only';
-  const rawTransport = valueOf('--transport') ?? process.env.SUPABASE_IMPORT_TRANSPORT ?? 'rest';
+  // Neon is the storefront's database, so it is the default target. The
+  // Supabase transports remain available for the retired project.
+  const defaultTransport = process.env.DATABASE_URL?.trim() ? 'neon' : 'rest';
+  const rawTransport = valueOf('--transport') ?? process.env.IMPORT_TRANSPORT ?? process.env.SUPABASE_IMPORT_TRANSPORT ?? defaultTransport;
+  const rawBrandScope = valueOf('--brands') ?? process.env.ED_BRAND_SCOPE ?? '';
+  const brandScope = rawBrandScope
+    .split(',')
+    .map((brand) => brand.trim())
+    .filter(Boolean);
   const limit = rawLimit && rawLimit !== 'all' ? Number.parseInt(rawLimit, 10) : undefined;
   const batchSize = Number.parseInt(rawBatchSize, 10);
   if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1)) {
@@ -70,8 +81,8 @@ function parseArgs(argv: string[]): CliOptions {
   if (rawScope !== 'it-only' && rawScope !== 'all') {
     throw new Error('--scope must be "it-only" or "all".');
   }
-  if (rawTransport !== 'rest' && rawTransport !== 'supabase-cli') {
-    throw new Error('--transport must be "rest" or "supabase-cli".');
+  if (rawTransport !== 'neon' && rawTransport !== 'rest' && rawTransport !== 'supabase-cli') {
+    throw new Error('--transport must be "neon", "rest" or "supabase-cli".');
   }
 
   return {
@@ -83,6 +94,7 @@ function parseArgs(argv: string[]): CliOptions {
     scope: rawScope,
     dryRun: argv.includes('--dry-run'),
     transport: rawTransport,
+    brandScope,
   };
 }
 
@@ -234,6 +246,42 @@ function transformFullProduct(product: Record<string, unknown>): Record<string, 
   const extracted = extractStructuredAttributes(title, rawDescription, specs, brand, mpn, warrantyMonths);
   const imageUrls = extractProductImageUrls(product);
   const proId = value(product.ProId) || code;
+  const shortDescription = plainText.slice(0, 300);
+  const seoTitle = `${title} | Worlds.sk`;
+  const seoDescription = (plainText || title).replace(/\s+/g, ' ').trim().slice(0, 155);
+  const searchKeywords = [...new Set([brand, mpn, mpn2, ean, ...title.split(/[\s/,]+/)]
+    .filter((keyword): keyword is string => Boolean(keyword && keyword.length > 1))
+    .map((keyword) => keyword.toLowerCase()))].slice(0, 30);
+  const images = imageUrls.map((url, position) => ({
+    url,
+    position,
+    isPrimary: position === 0,
+    altText: title,
+  }));
+  const qualityScore = calculateQualityScore({
+    ean: ean ?? undefined,
+    brand,
+    mpn,
+    categorySlug: category.slug,
+    categoryHierarchy: category.hierarchy,
+    images: images.map((image) => ({ ...image, id: `${code}-${image.position}` })),
+    attributes: extracted.allAttributes,
+    supplierDescription: plainText,
+    enrichedDescription: cleanHtml,
+    seoTitle,
+    seoDescription,
+    pricing: {
+      supplierCost,
+      supplierFees: { garbageFee, authorFee },
+      totalCostWithFees,
+      vatRate,
+      marginPercentage,
+      basePrice,
+      finalPrice,
+      currency: 'EUR',
+    },
+    stockCount,
+  }).total;
   const contentHash = hash([title, brand, mpn, mpn2, ean, cleanHtml, category.slug, imageUrls, extracted.allAttributes]);
   const priceHash = hash([supplierCost, garbageFee, authorFee, totalCostWithFees, vatRate, basePrice, finalPrice]);
   const inventoryHash = hash([stockCount, isInStock, value(product.DateOfDelivery)]);
@@ -251,6 +299,11 @@ function transformFullProduct(product: Record<string, unknown>): Record<string, 
     slug: safeSlug(title, code),
     enriched_description: cleanHtml,
     supplier_description: plainText,
+    short_description: shortDescription,
+    seo_title: seoTitle,
+    seo_description: seoDescription,
+    search_keywords: searchKeywords,
+    quality_score: qualityScore,
     supplier_cost: supplierCost,
     garbage_fee: garbageFee,
     author_fee: authorFee,
@@ -274,12 +327,7 @@ function transformFullProduct(product: Record<string, unknown>): Record<string, 
     order_multiple: Math.max(1, numberValue(product.MultipleQuantity, 1)),
     b2c_eligible: booleanValue(product.B2C ?? true),
     is_premium: booleanValue(product.IsPremium ?? product.Premium) || finalPrice > 1500,
-    images: imageUrls.map((url, position) => ({
-      url,
-      position,
-      isPrimary: position === 0,
-      altText: title,
-    })),
+    images,
     attributes: extracted.allAttributes,
     identity_hash: hash([code, proId, mpn, mpn2, ean]),
     content_hash: contentHash,
@@ -607,7 +655,8 @@ function createRestRpcClient() {
   };
 }
 
-function createRpcClient(transport: ImportTransport) {
+function createRpcClient(transport: ImportTransport, brandScope: string[]) {
+  if (transport === 'neon') return createNeonRpcClient({ brandScope });
   return transport === 'supabase-cli' ? createCliRpcClient() : createRestRpcClient();
 }
 
@@ -621,11 +670,11 @@ function addResult(target: RpcBatchResult, update: Partial<RpcBatchResult>): voi
 
 export async function runCatalogSync(options = parseArgs(process.argv.slice(2))): Promise<RpcBatchResult> {
   const startedAt = Date.now();
-  const rpc = options.dryRun ? undefined : createRpcClient(options.transport);
+  const rpc = options.dryRun ? undefined : createRpcClient(options.transport, options.brandScope);
   const sources = await resolveSources(options);
   const sourceBytes = sources.reduce((total, source) => total + fs.statSync(source.filePath).size, 0);
   const sourceMethod = sources.map((source) => source.sourceMethod).join(',');
-  console.log(`[import] mode=${options.mode} sources=${sources.length} bytes=${sourceBytes}`);
+  console.log(`[import] mode=${options.mode} transport=${options.transport} scope=${options.scope} brands=${options.brandScope.join(',') || 'all'} sources=${sources.length} bytes=${sourceBytes}`);
 
   const batchId = rpc ? await rpc<string>('begin_ed_import', {
     p_batch_type: options.mode === 'full' ? 'FULL_CATALOG' : 'STOCK_PRICE',
@@ -709,6 +758,16 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
           }
         }
         const transformed = options.mode === 'full' ? transformFullProduct(rawProduct) : transformStockProduct(rawProduct);
+        if (transformed && options.mode === 'full' && options.brandScope.length > 0) {
+          const brand = String(transformed.brand ?? '').toLowerCase();
+          const inScope = options.brandScope.some((allowed) => allowed.toLowerCase() === brand);
+          if (!inScope) {
+            filtered += 1;
+            const key = `BRAND_OUT_OF_SCOPE:${transformed.brand}`;
+            filteredByReason[key] = (filteredByReason[key] ?? 0) + 1;
+            continue;
+          }
+        }
         if (transformed && options.mode === 'full') {
           const scope = assessCatalogScope({
             title: rawProduct.Name ?? rawProduct.ProductName,
