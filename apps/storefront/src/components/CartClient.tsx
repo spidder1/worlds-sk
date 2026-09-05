@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { FormEvent } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type CartItem = { product_id: string; quantity: number; title: string; slug: string; final_price: number; image_url: string | null };
 
@@ -14,6 +14,7 @@ export function CartClient() {
   const [submitting, setSubmitting] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
   const [error, setError] = useState('');
+  const idempotencyKeyRef = useRef<string | null>(null);
   async function load(session?: string) { const r = await fetch(`/api/cart${session ? `?session=${encodeURIComponent(session)}` : ''}`); const data = await r.json(); if (data.sessionToken) { localStorage.setItem('worlds-cart-session', data.sessionToken); setSessionToken(data.sessionToken); } setItems(data.items || []); }
   useEffect(() => { const session = localStorage.getItem('worlds-cart-session') || ''; load(session).finally(() => setLoading(false)); }, []);
   const total = useMemo(() => items.reduce((sum, item) => sum + item.final_price * item.quantity, 0), [items]);
@@ -21,10 +22,12 @@ export function CartClient() {
   async function createOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSubmitting(true); setError('');
     const form = new FormData(event.currentTarget);
-    const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionToken, customerName: form.get('customerName'), customerEmail: form.get('customerEmail'), customerPhone: form.get('customerPhone'), paymentMethod: form.get('paymentMethod'), shippingAddress: { street: form.get('street'), city: form.get('city'), postalCode: form.get('postalCode'), country: form.get('country') } }) });
+    const idempotencyKey = idempotencyKeyRef.current || globalThis.crypto.randomUUID();
+    idempotencyKeyRef.current = idempotencyKey;
+    const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionToken, idempotencyKey, customerName: form.get('customerName'), customerEmail: form.get('customerEmail'), customerPhone: form.get('customerPhone'), paymentMethod: form.get('paymentMethod'), shippingAddress: { street: form.get('street'), city: form.get('city'), postalCode: form.get('postalCode'), country: form.get('country') } }) });
     const data = await response.json();
     if (!response.ok) setError(data.error || 'Objednávku sa nepodarilo vytvoriť.');
-    else { setOrderNumber(data.orderNumber); setItems([]); }
+    else { setOrderNumber(data.orderNumber); setItems([]); idempotencyKeyRef.current = null; }
     setSubmitting(false);
   }
   if (loading) return <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-500">Načítavam košík…</div>;
