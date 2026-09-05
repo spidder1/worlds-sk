@@ -91,6 +91,7 @@ const NOTEBOOK_SIGNAL_RE = /\b(notebook|notebooky|laptop|ntb|macbook|thinkpad|id
 
 export function categorizeProductSmartly(title: string, currentSlug: string): { slug: string; hierarchy: string[] } {
   const t = title.toLowerCase();
+  const notebookContext = /(notebook|laptop|\bntb\b|macbook|thinkpad|probook|elitebook|latitude|ideapad|chromebook|aspire|vivobook|zenbook|yoga|legion|rog|tuf)/i.test(t);
 
   // High-confidence product-family rules run first. Supplier titles frequently
   // contain compatible-device words (for example "for Chromebook"), so these
@@ -110,16 +111,22 @@ export function categorizeProductSmartly(title: string, currentSlug: string): { 
   if (/\b(flash disk|usb flash|thumb ?drive|pendrive|usb stick)\b/i.test(t)) {
     return { slug: 'usb-flash-disky', hierarchy: ['Úložiská a pamäte', 'USB flash disky'] };
   }
+  if (/\b(smartphone|phone|iphone|ipad|tablet|tab|legion go|smartwatch|skoda|škoda|superb)\b/i.test(t)) {
+    return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
+  }
+  if (/\b(smart-?ups|ups|battery pack.*ups|ups.*batéri|ups.*bateri|záložný zdroj|zalozny zdroj)\b/i.test(t)) {
+    return { slug: 'ups-zalozne-zdroje', hierarchy: ['Napájanie a káble', 'UPS a záložné zdroje'] };
+  }
   if (/(laptop lock|notebook lock|zámok na notebook|zamok na notebook|briefcase|laptop bag|laptop roller|aktovka na notebook|stolek na notebook|notebook table|powerbank|power bank)/i.test(t)) {
     return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
   }
   if (/(notebook|laptop|\bntb\b|macbook|thinkpad|probook|elitebook|latitude|ideapad|chromebook|aspire|vivobook|zenbook)/i.test(t) && /(secret|filter|podstav|stojan|stolek|kábel|kabel|cable|držiak|drzak|držák|zámok|zamok|lock|t-lock|čisti|cisti|vrecko|messenger|taška|taska|puzdro|sleeve|batoh|vozík|vozik|napájací|napajaci|power cord|napájecí zdroj|napajeci zdroj|zdroj pre notebook|screw|skrut|hdd|hard drive|hardware kit|pevného disku|lte|modul|pamäť|pamat|sodimm|ddr[345])/i.test(t)) {
     return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
   }
-  if (/(batéri|bateri|battery|li-ion|li-pol|mah\b|\d+\s*wh\b|nabíjač|nabijac|charger|power adapter)/i.test(t)) {
+  if (notebookContext && /(batéri|bateri|battery|li-ion|li-pol|mah\b|\d+\s*wh\b|nabíjač|nabijac|charger|power adapter)/i.test(t)) {
     return { slug: 'baterie-a-adaptery-k-notebookom', hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Batérie a adaptéry k notebookom'] };
   }
-  if (/(ochrann[áaeé] fóli|ochrann[áaeé] foli|ochrann[ée] sk|screen protector|privacy filter|paper feeling|flexibleglass|bladeshield|lens protection|tempered glass|fólie|folie|folia pro)/i.test(t)) {
+  if (notebookContext && /(ochrann[áaeé] fóli|ochrann[áaeé] foli|ochrann[ée] sk|screen protector|privacy filter|paper feeling|flexibleglass|bladeshield|lens protection|tempered glass|fólie|folie|folia pro)/i.test(t)) {
     return { slug: 'ochranne-folie-a-skla', hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Ochranné fólie a sklá'] };
   }
   if (/\b(taška|taska|brašna|brasna|batoh|backpack|sleeve|topload|carry case|puzdro|pouzdro|kufrík|kufrik|bag pro)\b/i.test(t)) {
@@ -203,17 +210,11 @@ export function categorizeProductSmartly(title: string, currentSlug: string): { 
 
   // --- Rule 1: Laptop Accessories (Batteries, Chargers, Docks, Bags, Warranties, Covers, Pens, Stands) ---
   if (
-    t.includes('bateria') ||
-    t.includes('batéria') ||
-    t.includes('baterie') ||
-    t.includes('battery') ||
-    t.includes('adaptér') ||
-    t.includes('adapter') ||
-    t.includes('nabíjač') ||
-    t.includes('nabijac') ||
-    t.includes('konektor') ||
-    t.includes('power supply') ||
-    t.includes('charging cable')
+    notebookContext && (
+      t.includes('bateria') || t.includes('batéria') || t.includes('baterie') || t.includes('battery') ||
+      t.includes('adaptér') || t.includes('adapter') || t.includes('nabíjač') || t.includes('nabijac') ||
+      t.includes('konektor') || t.includes('power supply') || t.includes('charging cable')
+    )
   ) {
     return {
       slug: 'baterie-a-adaptery-k-notebookom',
@@ -294,7 +295,7 @@ export function categorizeProductSmartly(title: string, currentSlug: string): { 
     };
   }
 
-  if (t.includes('sklo') || t.includes('fólia') || t.includes('folia') || t.includes('privacy') || t.includes('súkromie')) {
+  if (notebookContext && (t.includes('sklo') || t.includes('fólia') || t.includes('folia') || t.includes('privacy') || t.includes('súkromie'))) {
     return {
       slug: 'ochranne-folie-a-skla',
       hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Ochranné fólie a sklá'],
