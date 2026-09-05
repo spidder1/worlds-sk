@@ -60,6 +60,7 @@ const FULL_COLUMNS = [
   'is_premium',
   'warranty_months',
   'attributes',
+  'source_extra',
   'images',
   'quality_score',
   'scope_reason',
@@ -147,6 +148,7 @@ WITH input AS (
     item.is_premium,
     item.warranty_months,
     COALESCE(item.attributes, '{}'::jsonb)          AS attributes,
+    COALESCE(item.source_extra, '{}'::jsonb)        AS source_extra,
     COALESCE(item.images, '[]'::jsonb)              AS images,
     item.quality_score,
     item.scope_reason,
@@ -167,7 +169,7 @@ WITH input AS (
     margin_percentage numeric, base_price numeric, final_price numeric,
     has_commercial_data boolean, stock_count numeric, is_in_stock boolean, stock_text text,
     expected_at text, order_multiple integer, b2c_eligible boolean, is_premium boolean,
-    warranty_months integer, attributes jsonb, images jsonb, quality_score integer,
+    warranty_months integer, attributes jsonb, source_extra jsonb, images jsonb, quality_score integer,
     scope_reason text, scope_signal text, identity_hash text, content_hash text,
     data_hash text, price_hash text, inventory_hash text
   )

@@ -25,6 +25,11 @@ test('full imports preserve administrator-owned category decisions', () => {
   }
 });
 
+test('full imports persist the extensible source payload', () => {
+  assert.match(upsert, /source_extra/);
+  assert.match(upsert, /source_extra jsonb/);
+});
+
 test('unchanged products are skipped but still stamped with the current batch', () => {
   assert.match(upsert, /products\.content_hash IS DISTINCT FROM EXCLUDED\.content_hash/);
   assert.match(upsert, /products\.price_hash IS DISTINCT FROM EXCLUDED\.price_hash/);
