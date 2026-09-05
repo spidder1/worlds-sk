@@ -109,5 +109,10 @@ SELECT mode, status, total_read, created_count, changed_count, missing_count, me
   loaded 747 active candidates into Neon; regenerate the CSV with
   `node scripts/build-legacy-redirect-candidates.mjs` when a newer legacy URL
   export is available, then load it with `node scripts/import-legacy-redirects.mjs`.
-- Verify `/kosik`, payment webhooks and the eD supplier-order worker in a
+- If Comgate is enabled, configure `COMGATE_MERCHANT`, `COMGATE_SECRET` and
+  `COMGATE_TEST` in Vercel. Register
+  `https://worlds.sk/api/payments/comgate/notify` as the Comgate status URL;
+  the webhook is accepted only after the transaction is verified against the
+  Comgate status API.
+- Verify `/kosik`, Stripe/Comgate payment webhooks and the eD supplier-order worker in a
   production-like environment before switching DNS.

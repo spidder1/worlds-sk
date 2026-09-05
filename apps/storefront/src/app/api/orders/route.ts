@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getNeonPool } from '../../../lib/neon-client';
 import { normalizeVatId, validateVatId } from '../../../lib/vies';
+import { createComgatePayment } from '../../../lib/comgate';
 import Stripe from 'stripe';
 
 export const runtime = 'nodejs';
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
     if (requiredAddressFields.some((field) => !shippingAddress[field]?.trim() || shippingAddress[field].trim().length > 200)) {
       return NextResponse.json({ error: 'Vyplňte úplnú dodaciu adresu.' }, { status: 400 });
     }
-    const paymentMethod = body.paymentMethod === 'CARD' ? 'CARD' : body.paymentMethod === 'COD' ? 'COD' : 'BANK_TRANSFER';
+    const paymentMethod = body.paymentMethod === 'CARD' ? 'CARD' : body.paymentMethod === 'COMGATE' ? 'COMGATE' : body.paymentMethod === 'COD' ? 'COD' : 'BANK_TRANSFER';
     const idempotencyKey = body.idempotencyKey?.trim() || randomUUID();
     if (!/^[a-zA-Z0-9-]{16,100}$/.test(idempotencyKey)) return NextResponse.json({ error: 'Neplatný idempotency kľúč.' }, { status: 400 });
     const client = await getNeonPool().connect();
@@ -123,6 +124,7 @@ export async function POST(request: Request) {
       const orderId = randomUUID();
       const orderNumber = `W-${new Date().getFullYear()}-${orderId.slice(0, 8).toUpperCase()}`;
       let stripeSessionId: string | null = null;
+      let comgateTransactionId: string | null = null;
       let checkoutUrl: string | null = null;
       if (paymentMethod === 'CARD') {
         const secret = process.env.STRIPE_SECRET_KEY?.trim();
@@ -142,10 +144,20 @@ export async function POST(request: Request) {
         stripeSessionId = session.id;
         checkoutUrl = session.url;
       }
+      if (paymentMethod === 'COMGATE') {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
+        const payment = await createComgatePayment({ orderNumber, amount: subtotal, currency: 'EUR', email: customerEmail, fullName: customerName, returnUrl: `${siteUrl}/kosik?comgate=return&order=${encodeURIComponent(orderNumber)}`, notifyUrl: `${siteUrl}/api/payments/comgate/notify` });
+        if (!payment.configured) {
+          await client.query('ROLLBACK');
+          return NextResponse.json({ error: 'Platba Comgate nie je momentálne nakonfigurovaná.' }, { status: 503 });
+        }
+        comgateTransactionId = payment.transId;
+        checkoutUrl = payment.redirect;
+      }
       await client.query(
-        `INSERT INTO orders (id, order_number, idempotency_key, session_token, customer_name, customer_email, customer_phone, customer_type, customer_ico, customer_dic, customer_ic_dph, shipping_address, payment_method, stripe_session_id, subtotal, total, vat_rate, subtotal_net, vat_total, reverse_charge, vat_validation_status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
-        [orderId, orderNumber, idempotencyKey, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, customerType, customerIco, customerDic, customerIcDph, JSON.stringify(shippingAddress), paymentMethod, stripeSessionId, subtotal.toFixed(2), subtotal.toFixed(2), vatRate.toFixed(2), netSubtotal.toFixed(2), vatTotal.toFixed(2), reverseCharge, vatValidationStatus],
+        `INSERT INTO orders (id, order_number, idempotency_key, session_token, customer_name, customer_email, customer_phone, customer_type, customer_ico, customer_dic, customer_ic_dph, shipping_address, payment_method, stripe_session_id, comgate_transaction_id, subtotal, total, vat_rate, subtotal_net, vat_total, reverse_charge, vat_validation_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
+        [orderId, orderNumber, idempotencyKey, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, customerType, customerIco, customerDic, customerIcDph, JSON.stringify(shippingAddress), paymentMethod, stripeSessionId, comgateTransactionId, subtotal.toFixed(2), subtotal.toFixed(2), vatRate.toFixed(2), netSubtotal.toFixed(2), vatTotal.toFixed(2), reverseCharge, vatValidationStatus],
       );
       for (const item of items.rows) {
         await client.query(
