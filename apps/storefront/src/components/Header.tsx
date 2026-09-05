@@ -15,7 +15,7 @@ function MegaMenu({ categories }: { categories: TaxonomyCategory[] }) {
         <ChevronDown className="h-4 w-4 transition-transform group-hover:rotate-180" />
       </button>
 
-      <div className="invisible absolute left-0 top-full z-50 w-[min(84rem,calc(100vw-2rem))] translate-y-2 rounded-b-2xl border border-slate-200 bg-white p-6 opacity-0 shadow-2xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+      <div className="invisible absolute left-0 top-full z-50 max-h-[70vh] w-[min(84rem,calc(100vw-2rem))] translate-y-2 overflow-y-auto rounded-b-2xl border border-slate-200 bg-white p-6 opacity-0 shadow-2xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
         <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
           <h3 className="text-base font-black text-slate-900">Kompletný katalóg kategórií</h3>
           <Link href="/produkty" className="text-xs font-semibold text-brand-600 hover:text-brand-800 hover:underline">Zobraziť všetky produkty &rarr;</Link>
@@ -28,20 +28,13 @@ function MegaMenu({ categories }: { categories: TaxonomyCategory[] }) {
               </Link>
               {cat.subcategories?.length ? (
                 <ul className="space-y-1 pl-1">
-                  {cat.subcategories.slice(0, 6).map((sub) => (
+                  {cat.subcategories.map((sub) => (
                     <li key={sub.id}>
                       <Link href={`/kategoria/${sub.slug}`} className="text-xs text-slate-600 hover:text-brand-600">
                         {sub.name}
                       </Link>
                     </li>
                   ))}
-                  {cat.subcategories.length > 6 ? (
-                    <li>
-                      <Link href={`/kategoria/${cat.slug}`} className="text-xs font-semibold text-brand-600 hover:underline">
-                        + ďalších {cat.subcategories.length - 6} &rarr;
-                      </Link>
-                    </li>
-                  ) : null}
                 </ul>
               ) : null}
             </div>
