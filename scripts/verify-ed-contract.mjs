@@ -30,11 +30,16 @@ if (/(ED_PASSWORD|ED_LOGIN|password\s*[:=]|authorization\s*[:=])/i.test(body)) {
 }
 
 const sha256 = crypto.createHash('sha256').update(body, 'utf8').digest('hex');
+const operations = [...body.matchAll(/<s:element\s+name="([^"]+)"/gi)]
+  .map((match) => match[1])
+  .filter((name) => !/Response$/.test(name))
+  .filter((name, index, all) => all.indexOf(name) === index)
+  .sort();
 const here = path.dirname(fileURLToPath(import.meta.url));
 const outputDir = path.resolve(here, '..', 'downloads', 'contracts');
 const outputPath = path.join(outputDir, 'ed-service.wsdl');
 const metadataPath = path.join(outputDir, 'ed-service.wsdl.json');
 fs.mkdirSync(outputDir, { recursive: true });
 fs.writeFileSync(outputPath, body, 'utf8');
-fs.writeFileSync(metadataPath, `${JSON.stringify({ endpointHost: endpoint.hostname, wsdlUrl: wsdlUrl.toString(), sha256, bytes: Buffer.byteLength(body), capturedAt: new Date().toISOString() }, null, 2)}\n`, 'utf8');
+fs.writeFileSync(metadataPath, `${JSON.stringify({ endpointHost: endpoint.hostname, wsdlUrl: wsdlUrl.toString(), sha256, bytes: Buffer.byteLength(body), operations, capturedAt: new Date().toISOString() }, null, 2)}\n`, 'utf8');
 console.log(`[ed-contract] saved ${path.relative(process.cwd(), outputPath)} sha256=${sha256} bytes=${Buffer.byteLength(body)}`);
