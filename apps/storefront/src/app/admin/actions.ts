@@ -149,6 +149,26 @@ export async function queueSupplierOrder(formData: FormData) {
   redirect('/admin/objednavky?saved=1');
 }
 
+export async function reconcileUnknownSupplierOrder(formData: FormData) {
+  if (!(await isAdminAuthenticated())) redirect('/admin');
+  const id = String(formData.get('id') || '').trim();
+  const decision = String(formData.get('decision') || '').trim();
+  const supplierSymbol = String(formData.get('supplier_symbol') || '').trim().slice(0, 160);
+  if (!id || !['RETRY', 'CONFIRMED_SENT'].includes(decision)) return;
+  if (decision === 'CONFIRMED_SENT' && !supplierSymbol) return;
+  if (decision === 'RETRY') {
+    await queryNeon(`UPDATE orders SET supplier_order_status = 'QUEUED', supplier_order_error = NULL, updated_at = NOW()
+      WHERE id = $1 AND supplier_order_status = 'UNKNOWN'`, [id]);
+  } else {
+    await queryNeon(`UPDATE orders SET supplier_order_status = 'SENT', supplier_order_symbol = $1, supplier_order_sent_at = COALESCE(supplier_order_sent_at, NOW()), supplier_order_error = NULL, updated_at = NOW()
+      WHERE id = $2 AND supplier_order_status = 'UNKNOWN'`, [supplierSymbol, id]);
+  }
+  await queryNeon(`INSERT INTO supplier_order_events (order_id, event_type, payload)
+    VALUES ($1, $2, $3::jsonb)`, [id, decision === 'RETRY' ? 'UNKNOWN_RECONCILED_RETRY' : 'UNKNOWN_RECONCILED_CONFIRMED_SENT', JSON.stringify({ decision, supplierSymbol: supplierSymbol || null })]);
+  await recordAdminAudit('UNKNOWN_SUPPLIER_ORDER_RECONCILED', 'order', id, { decision, supplierSymbol: supplierSymbol || null });
+  redirect('/admin/objednavky?saved=1');
+}
+
 export async function updateManufacturerReview(formData: FormData) {
   if (!(await isAdminAuthenticated())) redirect('/admin');
   const id = String(formData.get('id') || '');

@@ -113,23 +113,25 @@ try {
       console.log(`[supplier-orders] ${order.order_number} sent${isTest ? ' (test)' : ''}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      const submissionUnknown = error?.name === 'AbortError' || /timeout|timed out|fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|socket hang up|network/i.test(message);
+      const attemptStatus = submissionUnknown ? 'UNKNOWN' : 'FAILED';
       if (attemptId) {
         await pool.query(
-          `UPDATE supplier_order_attempts SET status = 'FAILED', error_message = $1, completed_at = NOW() WHERE id = $2`,
-          [message.slice(0, 2000), attemptId],
+          `UPDATE supplier_order_attempts SET status = $1, error_message = $2, completed_at = NOW() WHERE id = $3`,
+          [attemptStatus, message.slice(0, 2000), attemptId],
         );
         await pool.query(
-          `UPDATE supplier_order_requests SET status = 'FAILED', response_received_at = NOW(), updated_at = NOW() WHERE attempt_id = $1`,
-          [attemptId],
+          `UPDATE supplier_order_requests SET status = $1, response_received_at = NOW(), updated_at = NOW() WHERE attempt_id = $2`,
+          [attemptStatus, attemptId],
         );
         await pool.query(
           `INSERT INTO supplier_order_events (order_id, attempt_id, event_type, payload)
-           VALUES ($1, $2, 'FAILED', $3::jsonb)`,
-          [order.id, attemptId, JSON.stringify({ message: message.slice(0, 2000) })],
+           VALUES ($1, $2, $3, $4::jsonb)`,
+          [order.id, attemptId, submissionUnknown ? 'SUBMISSION_UNKNOWN' : 'FAILED', JSON.stringify({ status: attemptStatus, message: message.slice(0, 2000) })],
         );
       }
-      await pool.query(`UPDATE orders SET supplier_order_status = 'FAILED', supplier_order_error = $1, updated_at = NOW() WHERE id = $2`, [message.slice(0, 2000), order.id]);
-      console.error(`[supplier-orders] ${order.order_number} failed: ${message}`);
+      await pool.query(`UPDATE orders SET supplier_order_status = $1, supplier_order_error = $2, updated_at = NOW() WHERE id = $3`, [submissionUnknown ? 'UNKNOWN' : 'FAILED', message.slice(0, 2000), order.id]);
+      console.error(`[supplier-orders] ${order.order_number} ${submissionUnknown ? 'submission unknown' : 'failed'}: ${message}`);
     }
   }
 } finally {
