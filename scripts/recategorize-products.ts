@@ -113,7 +113,7 @@ export function categorizeProductSmartly(title: string, currentSlug: string): { 
   if (/(laptop lock|notebook lock|zámok na notebook|zamok na notebook|briefcase|laptop bag|laptop roller|aktovka na notebook|stolek na notebook|notebook table|powerbank|power bank)/i.test(t)) {
     return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
   }
-  if (/(notebook|laptop|\bntb\b)/i.test(t) && /(secret|filter|podstav|stojan|kábel|kabel|cable|držiak|drzak|napájací|napajaci|power cord)/i.test(t)) {
+  if (/(notebook|laptop|\bntb\b|macbook|thinkpad|probook|elitebook|latitude|ideapad|chromebook|aspire|vivobook|zenbook)/i.test(t) && /(secret|filter|podstav|stojan|stolek|kábel|kabel|cable|držiak|drzak|držák|zámok|zamok|lock|t-lock|čisti|cisti|vrecko|messenger|taška|taska|puzdro|sleeve|batoh|vozík|vozik|napájací|napajaci|power cord|napájecí zdroj|napajeci zdroj|zdroj pre notebook|screw|skrut|hdd|hard drive|hardware kit|pevného disku|lte|modul|pamäť|pamat|sodimm|ddr[345])/i.test(t)) {
     return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
   }
   if (/(batéri|bateri|battery|li-ion|li-pol|mah\b|\d+\s*wh\b|nabíjač|nabijac|charger|power adapter)/i.test(t)) {
@@ -165,6 +165,9 @@ export function categorizeProductSmartly(title: string, currentSlug: string): { 
     return { slug: 'zakladne-dosky', hierarchy: ['Počítačové komponenty', 'Základné dosky'] };
   }
   if (/\b(ssd nvme case|nvme case|m\.2.*box|externí box pro ssd|externy box pre ssd)\b/i.test(t)) {
+    return { slug: 'ssd-a-pevne-disky', hierarchy: ['Úložiská a pamäte', 'SSD a pevné disky'] };
+  }
+  if (/(\bssd\b|solid state drive|nvme ssd|m\.2 ssd)/i.test(t) && !/(notebook|laptop|\bntb\b|macbook|thinkpad|probook|elitebook|latitude|ideapad|chromebook|aspire|vivobook|zenbook|legion|rog|tuf)/i.test(t)) {
     return { slug: 'ssd-a-pevne-disky', hierarchy: ['Úložiská a pamäte', 'SSD a pevné disky'] };
   }
   if (/(vga splitter|vga rozbočovač|vga kábel|vga kabel|vga cable|vga holder|kvm prepínač|kvm prepinac|gpu .*cbl|gpu .*cable|gpu pwr|gpu support bracket)/i.test(t)) {
@@ -390,7 +393,10 @@ export function categorizeProductSmartly(title: string, currentSlug: string): { 
 
   // Gaming brand names also occur on peripherals, games and power supplies;
   // keep those out of the notebook branches unless the title describes a PC.
-  if (!/(notebook|laptop|ntb|macbook)/i.test(t) && /(digital|steam|soundtrack|artbook|skin|wrist rest|podložka na zem|cosmic mat|sada osvětlení|sada osvetleni|zdroj tuf gaming|headphones|in-ear)/i.test(t)) {
+  if (!/(notebook|laptop|ntb|macbook)/i.test(t) && /(digital|steam|soundtrack|artbook|skin|wrist rest|podložka na zem|cosmic mat|sada osvětlení|sada osvetleni|zdroj tuf gaming|headphones|in-ear|ssd disk|\bssd\b|\bzdroj\b|power supply|motherboard|základná doska|case)/i.test(t)) {
+    return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
+  }
+  if (/\b(tablet|tab)\b/i.test(t) || /(herní křeslo|herne kreslo|gaming chair|stolička|stolicka)/i.test(t)) {
     return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
   }
 
