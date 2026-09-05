@@ -1,6 +1,6 @@
 import pg from 'pg';
-import { WORLDS_IT_CATEGORIES } from '../packages/importer/src/taxonomy-definition.js';
-import { TaxonomyCategory } from '@worlds/types';
+import { WORLDS_IT_CATEGORIES } from '../packages/importer/src/taxonomy-definition.ts';
+import type { TaxonomyCategory } from '@worlds/types';
 
 const { Pool } = pg;
 

@@ -1,4 +1,4 @@
-import { TaxonomyCategory } from '@worlds/types';
+import type { TaxonomyCategory } from '@worlds/types';
 
 /**
  * Čistá, prehľadná taxonómia počítačového hardvéru a IT techniky pre Worlds.sk
