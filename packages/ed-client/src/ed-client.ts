@@ -314,10 +314,12 @@ export class EDSystemClient {
     const relations = rawRelations ? (Array.isArray(rawRelations) ? rawRelations : [rawRelations]) : [];
 
     return relations.map((raw: Record<string, any>) => {
-      const rawChildren = raw.Childs?.ProductRelationChild
-        ?? raw.Children?.ProductRelationChild
-        ?? raw.Child
-        ?? raw.ProductRelationChild;
+      const childContainer = raw.Childs ?? raw.Children;
+      const rawChildren = Array.isArray(childContainer)
+        ? childContainer
+        : childContainer?.ProductRelationChild
+          ?? raw.Child
+          ?? raw.ProductRelationChild;
       const children = rawChildren ? (Array.isArray(rawChildren) ? rawChildren : [rawChildren]) : [];
       return {
         ParentProId: xmlString(raw.ParentProId ?? raw.ParentProductId) ?? '',
