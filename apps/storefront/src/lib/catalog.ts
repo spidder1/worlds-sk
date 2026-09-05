@@ -587,6 +587,7 @@ export interface ProductPageOptions {
   cpu?: string;
   ram?: string;
   ssd?: string;
+  maxPrice?: number;
 }
 
 export interface ManufacturerItem {
@@ -834,6 +835,11 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
 
   if (options.inStockOnly) {
     baseConditions.push(`is_in_stock = true AND stock_count > 0`);
+  }
+
+  if (typeof options.maxPrice === 'number' && Number.isFinite(options.maxPrice) && options.maxPrice > 0) {
+    baseConditions.push(`final_price <= $${baseParamIdx++}`);
+    baseParams.push(options.maxPrice);
   }
 
   if (query) {
