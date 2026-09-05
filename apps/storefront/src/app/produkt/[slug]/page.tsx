@@ -23,6 +23,10 @@ import {
   Tag
 } from 'lucide-react';
 
+function categorySlug(name: string): string {
+  return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 interface Props {
   params: Promise<{ slug: string }>;
 }
@@ -158,7 +162,7 @@ export default async function ProductDetailPage({ params }: Props) {
         {product.categoryHierarchy.map((catName, idx) => (
           <React.Fragment key={idx}>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-            <span className="text-slate-700 font-medium truncate">{catName}</span>
+            <Link href={`/kategoria/${idx === product.categoryHierarchy.length - 1 && product.categorySlug ? product.categorySlug : categorySlug(catName)}`} className="text-slate-700 font-medium truncate hover:text-brand-700">{catName}</Link>
           </React.Fragment>
         ))}
         <ChevronRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />

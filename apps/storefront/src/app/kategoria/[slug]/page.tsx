@@ -100,7 +100,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         <ChevronRight className="h-3.5 w-3.5" />
         <Link href="/vyhladavanie" className="hover:text-slate-900">Produkty</Link>
         <ChevronRight className="h-3.5 w-3.5" />
-        <span className="font-semibold text-slate-900">{category.name}</span>
+        <Link href={`/kategoria/${category.slug}`} className="font-semibold text-slate-900 hover:text-brand-700">{category.name}</Link>
       </nav>
 
       <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

@@ -1,4 +1,4 @@
-export type CatalogScopeReason = 'IT_SIGNAL' | 'NON_IT_KEYWORD' | 'NO_IT_SIGNAL';
+export type CatalogScopeReason = 'IT_SIGNAL' | 'NON_IT_KEYWORD' | 'SERVICE_CATEGORY' | 'NO_IT_SIGNAL';
 
 export interface CatalogScopeInput {
   title?: unknown;
@@ -59,6 +59,16 @@ const IT_PATTERNS: Array<[string, RegExp]> = [
   ['security-it', /\b(ip kamera|network camera|nvr|dvr|video surveillance|dochadzkov[y] system|videokonferenc|conference camera)\b/],
 ];
 
+// Supplier commodities in this group are not sellable hardware items. Keep
+// this separate from the general title rules so a notebook that merely has a
+// warranty description is not removed, while warranty/service catalogue rows
+// are consistently excluded by their commodity classification.
+const SERVICE_COMMODITY_PATTERNS: Array<[string, RegExp]> = [
+  ['warranty', /\b(z[aá]ruk|warranty|care ?pack|carepack|support contract|service contract|onsite support)\b/],
+  ['license', /\b(licen[cs]|predplat|subscription|antivirus|software assurance)\b/],
+  ['service', /\b(servis|service|implement[aá]cia|installation|consulting|konzult[aá]cia|skolenie|training)\b/],
+];
+
 function firstMatch(haystack: string, patterns: Array<[string, RegExp]>): string | undefined {
   return patterns.find(([, pattern]) => pattern.test(haystack))?.[0];
 }
@@ -71,6 +81,9 @@ export function assessCatalogScope(input: CatalogScopeInput): CatalogScopeDecisi
     text(input.description),
     text(input.commodityName),
   ].join(' '));
+
+  const serviceCommodity = firstMatch(normalize(text(input.commodityName)), SERVICE_COMMODITY_PATTERNS);
+  if (serviceCommodity) return { included: false, reason: 'SERVICE_CATEGORY', matchedTerm: serviceCommodity };
 
   const excludedBy = firstMatch(titleText || haystack, NON_IT_PATTERNS);
   const includedBy = firstMatch(haystack, IT_PATTERNS);

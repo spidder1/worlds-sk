@@ -19,8 +19,8 @@ export const NEW_ACCESSORY_CATEGORIES: TaxonomyCategory[] = [
     id: 'cat-prislusenstvo-k-notebookom',
     slug: 'prislusenstvo-k-notebookom',
     name: 'Príslušenstvo k notebookom',
-    parentSlug: 'prislusenstvo-a-periferie',
-    level: 2,
+    parentSlug: null,
+    level: 1,
     isSeoIndexed: true,
     displayOrder: 1,
     subcategories: [
@@ -507,7 +507,7 @@ export async function recategorizeAllProducts() {
 
     if (cat.subcategories && cat.subcategories.length > 0) {
       for (const sub of cat.subcategories) {
-        await insertCategoryNode(sub, cat.slug);
+        await insertCategoryNode(sub, sub.parentSlug ?? undefined);
       }
     }
   }
@@ -517,7 +517,7 @@ export async function recategorizeAllProducts() {
   }
   // Keep these nodes in the public taxonomy tree (the historical importer
   // created them as roots before the notebook accessory hierarchy existed).
-  await pool.query("UPDATE categories SET parent_slug = 'notebooky', level = 3, updated_at = NOW() WHERE slug = 'prislusenstvo-k-notebookom'");
+  await pool.query("UPDATE categories SET parent_slug = NULL, parent_id = NULL, level = 1, updated_at = NOW() WHERE slug = 'prislusenstvo-k-notebookom'");
   await pool.query("UPDATE categories SET parent_slug = 'prislusenstvo-a-periferie', level = 2, updated_at = NOW() WHERE slug = 'zaruky-a-sluzby'");
 
   const res = await pool.query('SELECT id, title, category_slug FROM products');

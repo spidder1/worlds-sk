@@ -10,12 +10,15 @@ export async function POST(request: Request) {
     const body = await request.json() as {
       sessionToken?: string; customerName?: string; customerEmail?: string;
       customerPhone?: string; shippingAddress?: Record<string, string>; idempotencyKey?: string;
-      paymentMethod?: string;
+      paymentMethod?: string; customerType?: 'PRIVATE' | 'LEGAL'; customerIco?: string; customerDic?: string;
     };
     if (!body.sessionToken || !/^[a-zA-Z0-9-]{16,100}$/.test(body.sessionToken)) return NextResponse.json({ error: 'Neplatná relácia košíka.' }, { status: 400 });
     if (!body.customerName?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.customerEmail || '')) return NextResponse.json({ error: 'Vyplňte meno a platný e-mail.' }, { status: 400 });
     const customerName = body.customerName.trim();
     const customerEmail = body.customerEmail!.trim().toLowerCase();
+    const customerType = body.customerType === 'LEGAL' ? 'LEGAL' : 'PRIVATE';
+    const customerIco = body.customerIco?.trim() || null;
+    const customerDic = body.customerDic?.trim() || null;
     const shippingAddress = body.shippingAddress && typeof body.shippingAddress === 'object' ? body.shippingAddress : {};
     const requiredAddressFields = ['street', 'city', 'postalCode', 'country'] as const;
     if (requiredAddressFields.some((field) => !shippingAddress[field]?.trim() || shippingAddress[field].trim().length > 200)) {
@@ -27,6 +30,16 @@ export async function POST(request: Request) {
     const client = await getNeonPool().connect();
     try {
       await client.query('BEGIN');
+      const privateSetting = await client.query<{ value: { value?: boolean } }>("SELECT value FROM store_settings WHERE key = 'checkout.allow_private_purchase' LIMIT 1");
+      const allowPrivatePurchase = privateSetting.rows[0]?.value?.value !== false;
+      if (!allowPrivatePurchase && customerType !== 'LEGAL') {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: 'Nákup je momentálne povolený iba právnickým osobám.' }, { status: 403 });
+      }
+      if (customerType === 'LEGAL' && (!customerIco || !customerDic)) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: 'Pre právnickú osobu vyplňte IČO a DIČ.' }, { status: 400 });
+      }
       const existing = await client.query<{ id: string; order_number: string; total: string; payment_status: string; payment_method: string }>(
         'SELECT id, order_number, total, payment_status, payment_method FROM orders WHERE idempotency_key = $1 LIMIT 1', [idempotencyKey]);
       if (existing.rows.length) {
@@ -59,9 +72,9 @@ export async function POST(request: Request) {
       const orderId = randomUUID();
       const orderNumber = `W-${new Date().getFullYear()}-${orderId.slice(0, 8).toUpperCase()}`;
       await client.query(
-        `INSERT INTO orders (id, order_number, idempotency_key, session_token, customer_name, customer_email, customer_phone, shipping_address, payment_method, subtotal, total)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $10)`,
-        [orderId, orderNumber, idempotencyKey, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, JSON.stringify(shippingAddress), paymentMethod, subtotal.toFixed(2)],
+        `INSERT INTO orders (id, order_number, idempotency_key, session_token, customer_name, customer_email, customer_phone, customer_type, customer_ico, customer_dic, shipping_address, payment_method, subtotal, total)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $13)`,
+        [orderId, orderNumber, idempotencyKey, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, customerType, customerIco, customerDic, JSON.stringify(shippingAddress), paymentMethod, subtotal.toFixed(2)],
       );
       for (const item of items.rows) {
         await client.query(

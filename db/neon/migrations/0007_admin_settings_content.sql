@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS content_pages (
 
 INSERT INTO store_settings (key, value) VALUES
   ('pricing.vat_rate', '{"value":20}'::jsonb),
-  ('feed.minimum_cost_eur', '{"value":0}'::jsonb)
+  ('feed.minimum_cost_eur', '{"value":0}'::jsonb),
+  ('checkout.allow_private_purchase', '{"value":true}'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 
 INSERT INTO pricing_rules (min_cost, max_cost, margin_percent, display_order)

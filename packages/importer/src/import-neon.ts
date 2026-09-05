@@ -268,7 +268,7 @@ async function syncCategoriesAndManufacturers(pool: pg.Pool) {
 
     if (cat.subcategories && cat.subcategories.length > 0) {
       for (const sub of cat.subcategories) {
-        await insertCategoryNode(sub, cat.slug);
+      await insertCategoryNode(sub, sub.parentSlug ?? undefined);
       }
     }
   }

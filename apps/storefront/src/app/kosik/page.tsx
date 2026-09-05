@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { Home, ChevronRight } from 'lucide-react';
 import { CartClient } from '../../components/CartClient';
+import { queryNeon } from '../../lib/neon-client';
 
 export const metadata: Metadata = {
   title: 'Nákupný košík | Worlds.sk',
@@ -9,7 +10,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default function CartPage() {
+export default async function CartPage() {
+  const settings = await queryNeon<{ value: { value?: boolean } }>("SELECT value FROM store_settings WHERE key = 'checkout.allow_private_purchase' LIMIT 1");
+  const allowPrivatePurchase = settings[0]?.value?.value !== false;
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
       <nav className="flex items-center gap-2 text-xs text-slate-500">
@@ -21,7 +24,7 @@ export default function CartPage() {
         <span className="text-slate-900 font-semibold">Košík</span>
       </nav>
 
-      <CartClient />
+      <CartClient allowPrivatePurchase={allowPrivatePurchase} />
     </div>
   );
 }
