@@ -56,6 +56,8 @@ export default async function SearchPage({ searchParams }: Props) {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
     if (inStock === 'true') params.set('inStock', 'true');
+    if (rawMinPrice) params.set('minPrice', rawMinPrice);
+    if (rawMaxPrice) params.set('maxPrice', rawMaxPrice);
     if (key !== 'vyrobca' && vyrobca) params.set('vyrobca', vyrobca);
     if (key !== 'cpu' && cpu) params.set('cpu', cpu);
     if (key !== 'ram' && ram) params.set('ram', ram);
