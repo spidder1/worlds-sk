@@ -226,6 +226,7 @@ function transformFullProduct(product: Record<string, unknown>): Record<string, 
   const { cleanHtml, plainText, specs } = sanitizeAndFormatHtml(rawDescription);
   const category = classifyProductIndependently({
     title,
+    commodityName: value(product.CommodityName),
     mpn,
     ean: ean ?? '',
     description: rawDescription,

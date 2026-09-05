@@ -475,6 +475,7 @@ export const WORLDS_IT_CATEGORIES: TaxonomyCategory[] = [
 
 export interface ProductInputFields {
   title: string;
+  commodityName?: string;
   mpn?: string;
   ean?: string;
   description?: string;
@@ -488,7 +489,7 @@ export interface ProductInputFields {
  * NEPOUŽÍVA nespoľahlivú kategorizáciu dodávateľa.
  */
 export function classifyProductIndependently(item: ProductInputFields): { slug: string; hierarchy: string[] } {
-  const t = (item.title || '').toLowerCase();
+  const t = `${item.title || ''} ${item.commodityName || ''}`.toLowerCase();
   const desc = ((item.description || '') + ' ' + (item.descriptionShort || '')).toLowerCase();
   const fullText = `${t} ${desc} ${item.mpn || ''}`.toLowerCase();
 

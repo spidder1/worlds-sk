@@ -180,6 +180,7 @@ function classifyWithStoredRules(
 
   const fallback = classifyProductIndependently({
     title: String(product.Name || product.ProductName || ''),
+    commodityName: String(product.CommodityName || ''),
     mpn: String(product.PartNumber || product.PartNumber2 || ''),
     ean: String(product.EANCode || product.EAN || ''),
     description: product.Description || '',
