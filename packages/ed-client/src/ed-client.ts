@@ -277,12 +277,13 @@ export class EDSystemClient {
       const rawChildren = Array.isArray(childContainer)
         ? childContainer
         : childContainer?.ProductRelationChild
+          ?? childContainer?.ProductRealationChild
           ?? raw.Child
           ?? raw.ProductRelationChild;
       const children = rawChildren ? (Array.isArray(rawChildren) ? rawChildren : [rawChildren]) : [];
       return {
-        ParentProId: xmlString(raw.ParentProId ?? raw.ParentProductId) ?? '',
-        ParentCode: xmlString(raw.ParentCode ?? raw.ParentProductCode) ?? '',
+        ParentProId: xmlString(raw.ParentProId ?? raw.ParentProductId ?? raw.ProId) ?? '',
+        ParentCode: xmlString(raw.ParentCode ?? raw.ParentProductCode ?? raw.Code) ?? '',
         Childs: children.map((child: Record<string, any>): EDProductRelationChild => ({
           ProId: xmlString(child.ProId ?? child.ProductProId) ?? '',
           Code: xmlString(child.Code ?? child.ProductCode) ?? '',
