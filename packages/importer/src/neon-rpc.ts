@@ -394,6 +394,28 @@ marketing_written AS (
     source_payload = EXCLUDED.source_payload, updated_at = now()
   RETURNING product_id
 ),
+change_logged AS (
+  INSERT INTO product_change_log
+    (product_id, supplier_code, import_batch_id, change_kind,
+     previous_content_hash, content_hash, previous_price_hash, price_hash,
+     previous_inventory_hash, inventory_hash, changed_at)
+  SELECT
+    product.id,
+    changed.supplier_code,
+    $1::uuid,
+    CASE WHEN before.supplier_code IS NULL THEN 'CREATED' ELSE 'UPDATED' END,
+    before.content_hash,
+    product.content_hash,
+    before.price_hash,
+    product.price_hash,
+    before.inventory_hash,
+    product.inventory_hash,
+    now()
+  FROM upserted changed
+  JOIN products product ON product.supplier_code = changed.supplier_code
+  LEFT JOIN before ON before.supplier_code = changed.supplier_code
+  RETURNING product_id
+),
 search_queue AS (
   INSERT INTO search_sync_queue (product_id, reason, enqueued_at, processed_at, last_error)
   SELECT 'ed-' || supplier_code, 'catalog_sync', now(), NULL, NULL FROM upserted

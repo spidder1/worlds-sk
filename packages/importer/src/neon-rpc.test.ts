@@ -36,6 +36,8 @@ test('full imports persist the extensible source payload', () => {
   assert.match(upsert, /supplier_packaging/);
   assert.match(upsert, /jsonb_array_elements\(COALESCE\(source\.logistic_data/);
   assert.match(upsert, /supplier_product_marketing_flags/);
+  assert.match(upsert, /product_change_log/);
+  assert.match(upsert, /previous_content_hash/);
 });
 
 test('full imports persist B2C naming and feed currency', () => {
