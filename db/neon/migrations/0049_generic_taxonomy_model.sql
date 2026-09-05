@@ -71,7 +71,9 @@ CREATE INDEX IF NOT EXISTS idx_product_taxonomy_node
 -- Mirror the current editable Worlds category tree.
 INSERT INTO taxonomy_nodes (id, taxonomy_code, external_code, slug, name, parent_node_id, display_order, source_payload)
 SELECT 'worlds:' || c.id, 'WORLDS_CATALOG', c.id, c.slug, c.name,
-       CASE WHEN c.parent_id IS NULL THEN NULL ELSE 'worlds:' || c.parent_id END,
+       CASE WHEN c.parent_id IS NOT NULL
+                  AND EXISTS (SELECT 1 FROM categories parent WHERE parent.id = c.parent_id)
+            THEN 'worlds:' || c.parent_id ELSE NULL END,
        COALESCE(c.display_order, 0), jsonb_build_object('source', 'categories')
   FROM categories c
 ON CONFLICT (id) DO UPDATE SET
