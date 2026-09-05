@@ -11,6 +11,7 @@ import { WORLDS_IT_CATEGORIES } from './taxonomy-definition.js';
 import { TaxonomyCategory } from '@worlds/types';
 import { requiredEnv } from './runtime-config.js';
 import { assessCatalogScope } from './catalog-scope.js';
+import { loadPricingConfig, marginFor, type PricingConfig } from './pricing-config.js';
 
 const { Pool } = pg;
 
@@ -34,21 +35,6 @@ function configuredMinimumCostEur(): number | null {
   const value = Number(raw.replace(',', '.'));
   if (!Number.isFinite(value) || value < 0) throw new Error('ED_MIN_COST_EUR musí byť nezáporné číslo.');
   return value;
-}
-
-async function loadMinimumCostEur(pool: pg.Pool): Promise<number> {
-  const override = configuredMinimumCostEur();
-  if (override !== null) return override;
-  try {
-    const result = await pool.query<{ value: { value?: unknown } | null }>(
-      `SELECT value FROM store_settings WHERE key = 'feed.minimum_cost_eur' LIMIT 1`,
-    );
-    const configured = Number(result.rows[0]?.value?.value);
-    return Number.isFinite(configured) && configured >= 0 ? configured : 0;
-  } catch (error) {
-    console.warn(`[import] minimálna cena nie je dostupná v store_settings; použijem 0 €: ${error instanceof Error ? error.message : String(error)}`);
-    return 0;
-  }
 }
 
 function targetBrandsLabel(): string {
@@ -396,14 +382,14 @@ async function fetchLiveStockMap(): Promise<Map<string, any>> {
   return stockMap;
 }
 
-function retailPriceFromCost(cost: number, vatRate: number): { basePrice: number; finalPrice: number } {
+function retailPriceFromCost(cost: number, pricing: PricingConfig): { basePrice: number; finalPrice: number } {
   if (!Number.isFinite(cost) || cost <= 0) return { basePrice: 0, finalPrice: 0 };
-  const marginPct = cost < 50 ? 18 : cost > 1000 ? 10 : 12;
+  const marginPct = marginFor(cost, pricing.marginBands);
   const basePrice = Number((cost * (1 + marginPct / 100)).toFixed(2));
-  return { basePrice, finalPrice: Number((basePrice * (1 + vatRate / 100)).toFixed(2)) };
+  return { basePrice, finalPrice: Number((basePrice * (1 + pricing.vatRate / 100)).toFixed(2)) };
 }
 
-async function syncStockOnly(pool: pg.Pool, stockMap: Map<string, any>, batchId: string | undefined, minimumCostEur: number): Promise<void> {
+async function syncStockOnly(pool: pg.Pool, stockMap: Map<string, any>, batchId: string | undefined, minimumCostEur: number, pricingConfig: PricingConfig): Promise<void> {
   if (stockMap.size === 0) throw new Error('Stock feed neobsahuje žiadne položky.');
   const products = await pool.query<{ id: string; supplier_code: string; supplier_pro_id: string | null; mpn: string | null; vat_rate: string | number }>(
     `SELECT id, supplier_code, supplier_pro_id, mpn, vat_rate
@@ -417,7 +403,7 @@ async function syncStockOnly(pool: pg.Pool, stockMap: Map<string, any>, batchId:
     if (!info) continue;
     matched++;
     const stockCount = Math.max(0, Number(info.stockCount) || 0);
-    const pricing = retailPriceFromCost(Number(info.price), Number(product.vat_rate || 20));
+    const pricing = retailPriceFromCost(Number(info.price), pricingConfig);
     if (pricing.finalPrice > 0) priced++;
     if (stockCount > 0) inStock++;
     await pool.query(
@@ -425,12 +411,13 @@ async function syncStockOnly(pool: pg.Pool, stockMap: Map<string, any>, batchId:
           SET stock_count = $2::numeric,
               is_in_stock = $3::boolean,
               stock_text = $4::text,
-              base_price = CASE WHEN $5::numeric > 0 THEN $6::numeric ELSE base_price END,
-              final_price = CASE WHEN $5::numeric > 0 THEN $7::numeric ELSE final_price END,
-              data_hash = CONCAT('stock_', $2::text, '_', COALESCE($5::text, '0')),
+              vat_rate = $5::numeric,
+              base_price = CASE WHEN $6::numeric > 0 THEN $7::numeric ELSE base_price END,
+              final_price = CASE WHEN $6::numeric > 0 THEN $8::numeric ELSE final_price END,
+              data_hash = CONCAT('stock_', $2::text, '_', COALESCE($6::text, '0'), '_', $5::text),
               updated_at = NOW()
         WHERE id = $1`,
-      [product.id, stockCount, stockCount > 0, stockCount > 0 ? `Skladom > ${stockCount} ks` : 'Na objednávku', Number(info.price) || 0, pricing.basePrice, pricing.finalPrice],
+      [product.id, stockCount, stockCount > 0, stockCount > 0 ? `Skladom > ${stockCount} ks` : 'Na objednávku', pricingConfig.vatRate, Number(info.price) || 0, pricing.basePrice, pricing.finalPrice],
     );
   }
   if (minimumCostEur > 0) {
@@ -479,11 +466,12 @@ export async function importAsusLenovoToNeon() {
   const batchId = batchResult.rows[0]?.id;
 
   try {
-    const minimumCostEur = await loadMinimumCostEur(pool);
+    const pricingConfig = await loadPricingConfig(connectionString);
+    const minimumCostEur = configuredMinimumCostEur() ?? pricingConfig.minimumCostEur;
     const stockOnly = process.env.ED_STOCK_ONLY === 'true';
     if (stockOnly) {
       const stockMap = await fetchLiveStockMap();
-      await syncStockOnly(pool, stockMap, batchId, minimumCostEur);
+      await syncStockOnly(pool, stockMap, batchId, minimumCostEur, pricingConfig);
       return;
     }
     await syncCategoriesAndManufacturers(pool);
@@ -588,12 +576,10 @@ export async function importAsusLenovoToNeon() {
 
     let basePrice = 0;
     let finalPrice = 0;
-    const vatRate = Number(p.Vat || 20);
+    const vatRate = pricingConfig.vatRate;
 
     if (cost > 0) {
-      let marginPct = 12;
-      if (cost < 50) marginPct = 18;
-      else if (cost > 1000) marginPct = 10;
+      const marginPct = marginFor(cost, pricingConfig.marginBands);
 
       basePrice = Number((cost * (1 + marginPct / 100)).toFixed(2));
       finalPrice = Number((basePrice * (1 + vatRate / 100)).toFixed(2));
@@ -667,7 +653,7 @@ export async function importAsusLenovoToNeon() {
       commodity_code: String(p.CommodityCode || 'IT'),
       commodity_name: String(p.CommodityName || 'Hardvér'),
       title: name,
-      name_b2c: null,
+      name_b2c: String(p.NameB2C || p.NameB2c || name).trim() || name,
       slug,
       short_description: plainText.slice(0, 250),
       supplier_description: plainText,
@@ -678,7 +664,7 @@ export async function importAsusLenovoToNeon() {
       vat_rate: vatRate,
       base_price: basePrice,
       final_price: finalPrice,
-      currency: 'EUR',
+      currency: String(p.PriceCurrency || p.Currency || 'EUR').trim().toUpperCase(),
       stock_count: stockCount,
       is_in_stock: isInStock,
       stock_text: isInStock ? `Skladom > ${stockCount} ks` : 'Na objednávku',
