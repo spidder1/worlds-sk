@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { ChevronDown, Grid3X3, Menu, Search, ShieldCheck, ShoppingCart } from 'lucide-react';
 import type { TaxonomyCategory } from '@worlds/types';
 
@@ -73,7 +73,13 @@ function MobileCategory({ category }: { category: TaxonomyCategory }) {
 
 export function Header({ categories }: { categories: TaxonomyCategory[] }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const pathname = usePathname();
   const router = useRouter();
+
+  // The administration has its own dark navigation. Do not render the
+  // storefront header (including the public category bar) above it.
+  if (pathname?.startsWith('/admin')) return null;
+
   const primaryCategories = categories.filter((category) =>
     ['pocitace-a-notebooky', 'pocitacove-komponenty', 'monitory-a-displeje'].includes(category.slug),
   );
