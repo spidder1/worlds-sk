@@ -101,9 +101,11 @@ export async function POST(request: Request) {
         await client.query('ROLLBACK');
         return NextResponse.json({ error: 'Košík je prázdny.' }, { status: 400 });
       }
-      const items = await client.query<{ product_id: string; quantity: number; sku: string; title: string; final_price: string; currency: string; stock_count: string; b2c_eligible: boolean }>(
+      const items = await client.query<{ product_id: string; quantity: number; sku: string; title: string; final_price: string; currency: string; stock_count: string; b2c_eligible: boolean; min_order_quantity: number; order_multiple: number }>(
         `SELECT ci.product_id, ci.quantity, p.sku, p.title, p.final_price, p.currency, p.stock_count
                 , COALESCE(p.b2c_eligible, true) AS b2c_eligible
+                , COALESCE(p.min_order_quantity, 1) AS min_order_quantity
+                , COALESCE(p.order_multiple, 1) AS order_multiple
            FROM cart_items ci JOIN products p ON p.id = ci.product_id
           WHERE ci.cart_id = $1 AND p.status = 'ACTIVE' AND p.final_price > 0
           FOR UPDATE OF p`, [cart.rows[0].id]);
@@ -114,6 +116,15 @@ export async function POST(request: Request) {
       if (customerType === 'PRIVATE' && items.rows.some((item) => !item.b2c_eligible)) {
         await client.query('ROLLBACK');
         return NextResponse.json({ error: 'Niektorý produkt v košíku je určený iba pre právnické osoby.' }, { status: 403 });
+      }
+      const invalidQuantityItem = items.rows.find((item) => {
+        const minimum = Math.max(1, Math.floor(Number(item.min_order_quantity) || 1));
+        const multiple = Math.max(1, Math.floor(Number(item.order_multiple) || 1));
+        return item.quantity < minimum || item.quantity % multiple !== 0;
+      });
+      if (invalidQuantityItem) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: `Množstvo produktu ${invalidQuantityItem.title} nezodpovedá minimálnemu alebo násobkovému baleniu.` }, { status: 409 });
       }
       const stockLimitedItem = items.rows.find((item) => {
         const stockCount = Number(item.stock_count);
