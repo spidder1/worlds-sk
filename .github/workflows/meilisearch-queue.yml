@@ -2,8 +2,6 @@ name: Meilisearch incremental queue
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '*/10 * * * *'
 
 permissions:
   contents: read

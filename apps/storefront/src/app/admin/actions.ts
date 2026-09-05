@@ -175,6 +175,10 @@ export async function runSyncJob(formData: FormData) {
             ? 'transport-dictionary'
             : jobKey === 'supplier-orders'
               ? 'supplier-orders'
+            : jobKey === 'search-drain'
+              ? 'search-drain'
+            : jobKey === 'search-reindex'
+              ? 'search-reindex'
             : null;
   if (process.env.REDIS_URL?.trim() && queueJob) {
     try {

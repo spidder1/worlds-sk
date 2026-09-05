@@ -2,8 +2,6 @@ name: Meilisearch product index
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '45 2 * * *'
 
 permissions:
   contents: read

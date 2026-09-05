@@ -9,6 +9,7 @@ const commands: Record<string, string[]> = {
   'transport-dictionary': ['transport:sync'],
   'supplier-orders': ['orders:submit'],
   'search-drain': ['search:drain'],
+  'search-reindex': ['search:reindex'],
 };
 
 function runCommand(args: string[], data: Record<string, unknown>): Promise<void> {
