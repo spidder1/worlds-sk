@@ -17,7 +17,7 @@ try {
   if (!defaultTransportCode) {
     console.warn('[supplier-orders] no transport code configured; eD will receive TransportCode=0');
   }
-  const { rows: orders } = await pool.query(`SELECT id, order_number, customer_name, customer_email, customer_phone, shipping_address, total, payment_method
+    const { rows: orders } = await pool.query(`SELECT id, order_number, customer_name, customer_email, customer_phone, customer_type, customer_ico, customer_dic, customer_ic_dph, shipping_address, total, payment_method
     FROM orders WHERE payment_status = 'PAID' AND supplier_order_status = 'QUEUED' ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 10`);
   for (const order of orders) {
     const claimed = await pool.query(`UPDATE orders SET supplier_order_status = 'PROCESSING', supplier_order_error = NULL, updated_at = NOW() WHERE id = $1 AND supplier_order_status = 'QUEUED'`, [order.id]);
@@ -45,14 +45,17 @@ try {
        WHERE oi.order_id = $1
        ORDER BY oi.id`, [order.id]);
       const address = order.shipping_address || {};
+      const isLegalCustomer = String(order.customer_type || '').toUpperCase() === 'LEGAL';
       const edItems = items.map((item) => {
         const vatMultiplier = item.reverse_charge ? 1 : 1 + Number(item.vat_rate || 20) / 100;
         const priceVat = Number(item.unit_price);
         const price = priceVat / vatMultiplier;
         return { ProductCode: item.sku, Qty: Number(item.quantity), Price: Number(price.toFixed(2)), PriceVat: Number(priceVat.toFixed(2)), VatRate: Number(vatMultiplier.toFixed(4)) };
       });
+      const b2bItems = edItems.map((item) => ({ ProductCode: item.ProductCode, Qty: item.Qty }));
+      const orderMode = isLegalCustomer ? 'B2B' : 'B2C';
+      const safeRequest = { mode: orderMode, itemCodes: edItems.map((item) => ({ code: item.ProductCode, qty: item.Qty })), transportCode: defaultTransportCode, testMode: isTest };
       if (attemptId) {
-        const safeRequest = { itemCodes: edItems.map((item) => ({ code: item.ProductCode, qty: item.Qty })), transportCode: defaultTransportCode, testMode: isTest };
         await pool.query(
           `UPDATE supplier_order_attempts SET request_payload = $1::jsonb WHERE id = $2`,
           [JSON.stringify(safeRequest), attemptId],
@@ -65,20 +68,30 @@ try {
           [order.id, attemptId, JSON.stringify(safeRequest)],
         );
       }
-      const priceVat = Number(order.total);
-      const result = await client.createNewOrderCustomer({
-        NewOrderCustomerItems: edItems,
-        ShippingAddress: { name: order.customer_name, street: String(address.street || ''), city: String(address.city || ''), zipCode: String(address.postalCode || ''), countryCode: String(address.country || 'SK').slice(0, 2).toUpperCase(), phone: order.customer_phone || undefined, email: order.customer_email },
-        OrderSymbolCustomer: order.order_number,
-        customerName: order.customer_name,
-        custumerInvoiceCode: order.order_number,
-        email: order.customer_email,
-        telephone: order.customer_phone || '',
-        price: Number((edItems.reduce((sum, item) => sum + item.Price * item.Qty, 0)).toFixed(2)),
-        priceVat,
-        noCashOnDelivery: order.payment_method !== 'COD',
-        TransportCode: defaultTransportCode ? Number(defaultTransportCode) : 0,
-      }, isTest);
+      const shippingAddress = { name: order.customer_name, street: String(address.street || ''), city: String(address.city || ''), zipCode: String(address.postalCode || ''), countryCode: String(address.country || 'SK').slice(0, 2).toUpperCase(), phone: order.customer_phone || undefined, email: order.customer_email };
+      const result = isLegalCustomer
+        ? await client.createNewOrder({
+          NewOrderItems: b2bItems,
+          ShippingAddress: shippingAddress,
+          OrderSymbolCustomer: order.order_number,
+          OrderNote: [order.customer_ico ? `IČO: ${order.customer_ico}` : '', order.customer_dic ? `DIČ: ${order.customer_dic}` : '', order.customer_ic_dph ? `IČ DPH: ${order.customer_ic_dph}` : ''].filter(Boolean).join('; '),
+          email: order.customer_email,
+          telephone: order.customer_phone || undefined,
+          TransportCode: defaultTransportCode ? Number(defaultTransportCode) : 0,
+        }, isTest)
+        : await client.createNewOrderCustomer({
+          NewOrderCustomerItems: edItems,
+          ShippingAddress: shippingAddress,
+          OrderSymbolCustomer: order.order_number,
+          customerName: order.customer_name,
+          custumerInvoiceCode: order.order_number,
+          email: order.customer_email,
+          telephone: order.customer_phone || '',
+          price: Number((edItems.reduce((sum, item) => sum + item.Price * item.Qty, 0)).toFixed(2)),
+          priceVat: Number(order.total),
+          noCashOnDelivery: order.payment_method !== 'COD',
+          TransportCode: defaultTransportCode ? Number(defaultTransportCode) : 0,
+        }, isTest);
       if (result.Status.StatusCode !== 'DONE') throw new Error(result.Status.ErrorText || 'eD objednávka bola odmietnutá');
       if (attemptId) {
         await pool.query(
