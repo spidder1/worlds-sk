@@ -120,5 +120,10 @@ SELECT mode, status, total_read, created_count, changed_count, missing_count, me
 - For incremental search updates, configure `MEILISEARCH_HOST` and
   `MEILISEARCH_API_KEY`; the `meilisearch-queue.yml` worker drains changes
   every ten minutes, while the nightly full reindex remains the recovery path.
+- For BullMQ scheduling, provide `REDIS_URL` to `@worlds/queue` and run its
+  worker as a persistent process. Jobs can be enqueued with
+  `pnpm queue:enqueue search-drain` (or `catalog-full`, `stock-price`,
+  `image-loader`, `manufacturer-cleanup`). GitHub Actions remains a safe
+  fallback until the worker is deployed.
 - Verify `/kosik`, Stripe/Comgate payment webhooks and the eD supplier-order worker in a
   production-like environment before switching DNS.

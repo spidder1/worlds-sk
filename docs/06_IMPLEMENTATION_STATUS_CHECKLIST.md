@@ -43,7 +43,7 @@ Posledná revízia: 2026-09-04.
 | GDPR cookie lišta | ✅ | Súhlas v localStorage a odkazy na právne stránky |
 | 301 mapa zo starého worlds.sk | 🟡 | Registry `seo_redirects`, 301 catch-all handler a CSV loader sú hotové; treba načítať historický URL export |
 | Testy storefrontu, E2E (Playwright) | ✅ | Smoke testy katalógu, košíka a VIES endpointu v `apps/storefront/tests/e2e/`, spúšťané v CI |
-| Redis / BullMQ | ❌ | Plánovanie rieši GitHub Actions cron |
+| Redis / BullMQ | 🟡 | Voliteľný `@worlds/queue` BullMQ worker a enqueue CLI sú pripravené; treba nasadiť worker s `REDIS_URL` |
 
 ---
 

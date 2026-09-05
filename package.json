@@ -5,7 +5,7 @@
   "description": "Worlds.sk Commerce Platform & AI Ingestion Pipeline",
   "packageManager": "pnpm@9.12.2",
   "scripts": {
-    "build": "pnpm --filter @worlds/types run build && pnpm --filter @worlds/ed-client run build && pnpm --filter @worlds/importer run build && pnpm --filter storefront run build",
+    "build": "pnpm --filter @worlds/types run build && pnpm --filter @worlds/ed-client run build && pnpm --filter @worlds/importer run build && pnpm --filter @worlds/queue run build && pnpm --filter storefront run build",
     "test": "pnpm -r run test",
     "lint": "pnpm -r run lint",
     "dev:storefront": "pnpm --filter storefront dev",
@@ -15,7 +15,8 @@
     "manufacturers:clean": "node scripts/normalize-manufacturers.mjs",
     "import:sample": "pnpm --filter @worlds/importer run import:sample",
     "search:reindex": "node scripts/reindex-meilisearch.mjs",
-    "search:drain": "node scripts/drain-meilisearch-queue.mjs"
+    "search:drain": "node scripts/drain-meilisearch-queue.mjs",
+    "queue:enqueue": "node scripts/enqueue-sync-job.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
