@@ -59,9 +59,22 @@ export async function approveCategoryReview(formData: FormData) {
   const id = String(formData.get('id') || '').trim();
   const category = String(formData.get('category') || '').trim();
   if (!id || !category) return;
-  await queryNeon(`UPDATE products
-    SET category_slug = $1, category_source = 'ADMIN', category_confidence = 1, category_reasoning = 'Schválené administrátorom', updated_at = NOW()
-    WHERE id = $2`, [category, id]);
+  await queryNeon(`WITH RECURSIVE category_path AS (
+    SELECT c.slug, c.parent_slug, ARRAY[c.name]::text[] AS names
+      FROM categories c WHERE c.slug = $1
+    UNION ALL
+    SELECT parent.slug, parent.parent_slug, ARRAY[parent.name] || path.names
+      FROM categories parent JOIN category_path path ON parent.slug = path.parent_slug
+  )
+  UPDATE products
+     SET category_slug = $1,
+         category_hierarchy = COALESCE((SELECT to_jsonb(names) FROM category_path WHERE parent_slug IS NULL LIMIT 1), category_hierarchy),
+         category_source = 'ADMIN',
+         category_confidence = 1,
+         category_reasoning = 'Schválené administrátorom',
+         updated_at = NOW()
+   WHERE id = $2
+     AND EXISTS (SELECT 1 FROM categories WHERE slug = $1)`, [category, id]);
   redirect('/admin/kategorizacia?saved=1');
 }
 
