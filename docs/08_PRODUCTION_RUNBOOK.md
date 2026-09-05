@@ -105,7 +105,9 @@ SELECT mode, status, total_read, created_count, changed_count, missing_count, me
 - Attach `worlds.sk` to the Vercel project and set `NEXT_PUBLIC_SITE_URL`.
   Until then the site is intentionally invisible to search engines.
 - Build and load the 301 map from the exported legacy worlds.sk URLs to the new
-  routes before the DNS switch. The redirect table/loader remains a cutover
-  task because the legacy URL export is not yet present in this repository.
+  routes before the DNS switch. The current Wayback reconciliation produced and
+  loaded 747 active candidates into Neon; regenerate the CSV with
+  `node scripts/build-legacy-redirect-candidates.mjs` when a newer legacy URL
+  export is available, then load it with `node scripts/import-legacy-redirects.mjs`.
 - Verify `/kosik`, payment webhooks and the eD supplier-order worker in a
   production-like environment before switching DNS.

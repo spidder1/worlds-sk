@@ -6,7 +6,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request, { params }: { params: Promise<{ legacy: string[] }> }) {
   const { legacy } = await params;
-  const sourcePath = `/${legacy.map((part) => encodeURIComponent(decodeURIComponent(part))).join('/')}`;
+  const requestUrl = new URL(request.url);
+  const sourcePath = `/${legacy.map((part) => encodeURIComponent(decodeURIComponent(part))).join('/')}${requestUrl.search}`;
   const result = await getNeonPool().query<{ target_path: string; http_status: number }>(
     'SELECT target_path, http_status FROM seo_redirects WHERE source_path = $1 AND active = true LIMIT 1',
     [sourcePath],
