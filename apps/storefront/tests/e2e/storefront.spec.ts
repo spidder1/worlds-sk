@@ -16,3 +16,9 @@ test('VAT validation rejects malformed identifiers without external call', async
   expect(response.status()).toBe(400);
   expect(await response.json()).toMatchObject({ valid: false, status: 'INVALID_FORMAT' });
 });
+
+test('company lookup rejects malformed Slovak ICO', async ({ request }) => {
+  const response = await request.post('/api/company/lookup', { data: { country: 'SK', ico: '123' } });
+  expect(response.status()).toBe(400);
+  expect(await response.json()).toMatchObject({ status: 'INVALID', country: 'SK' });
+});
