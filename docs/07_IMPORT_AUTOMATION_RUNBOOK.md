@@ -50,6 +50,8 @@ pnpm db:migrate
 pnpm report:classification
 ```
 
+Migrácie vytvárajú aj trigramové/JSONB indexy pre vyhľadávanie, MPN/EAN, atribúty a storefront filtre.
+
 Storefront health endpoint `/api/health` musí vrátiť `ok: true`, databázu `neon` a počet predajných produktov.
 Odpoveď obsahuje aj `lastSync` s režimom, stavom a počtom importovaných produktov.
 V `sync_batches.metrics` sa ukladajú `priced_count`, `image_product_count`, `image_count` a `multi_image_product_count`.
