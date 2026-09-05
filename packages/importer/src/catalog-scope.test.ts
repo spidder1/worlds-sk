@@ -14,6 +14,15 @@ test('includes representative IT products', () => {
   }
 });
 
+test('keeps PC hardware that contains generic furniture-like words', () => {
+  for (const title of [
+    'ASUS ROG STRIX B550-F GAMING motherboard',
+    'ASUS TUF GAMING GT502 Mid Tower PC skriňa',
+  ]) {
+    assert.equal(assessCatalogScope({ title }).included, true, title);
+  }
+});
+
 test('excludes white goods and garden products even when they contain smart features', () => {
   for (const title of [
     'Smart Wi-Fi chladnicka s displejom',
