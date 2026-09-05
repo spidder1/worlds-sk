@@ -84,6 +84,8 @@ function titlePrefix(title) {
 
 function stripMarkup(value) {
   return String(value || '')
+    .replace(/\bLt;/gi, '<')
+    .replace(/\bGt;/gi, '>')
     .replace(/<[^>]*>/g, ' ')
     .replace(/&(?:lt|gt|amp|quot|apos|nbsp);/gi, (entity) => ({ '&lt;': '<', '&gt;': '>', '&amp;': '&', '&quot;': '"', '&apos;': "'", '&nbsp;': ' ' }[entity.toLowerCase()] || ' '))
     .replace(/<[^>]*>/g, ' ')
@@ -93,13 +95,13 @@ function stripMarkup(value) {
 }
 
 function isInvalidBrand(value) {
-  return !value || value.length > 80 || /https?:\/\//i.test(value) || /[<>]/.test(value) || /&(?:lt|gt|amp);/i.test(value) || /[{}[\]|]/.test(value);
+  return !value || value.length > 80 || /https?:\/\//i.test(value) || /[<>]/.test(value) || /&?(?:lt|gt|amp);/i.test(value) || /[{}[\]|]/.test(value);
 }
 
 function cleanBrand(raw, title, knownBrands) {
   const value = stripMarkup(raw);
   const cleanTitle = stripMarkup(title);
-  const candidateFromTitle = titleBrand(cleanTitle, knownBrands) || titlePrefix(cleanTitle);
+  const candidateFromTitle = titleBrand(cleanTitle, knownBrands) || (value ? titlePrefix(cleanTitle) : undefined);
   const words = value.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
   const isNoise = isInvalidBrand(String(raw || '').trim()) || !value || words.length === 0 || words.every((word) => NOISE.has(word));
   if (isNoise) return candidateFromTitle ? titleCaseBrand(candidateFromTitle) : 'Unbranded';
