@@ -120,20 +120,30 @@ async function main() {
     if (categoryAttributes.length > 0) {
       await db.query('DELETE FROM supplier_attributes');
       for (const item of categoryAttributes) {
+        const attributeCode = text(item.AttributeCode);
+        if (!attributeCode) continue;
         await db.query(
           `INSERT INTO supplier_attributes (attribute_code, attribute_name, is_primary, filter_operator, source_payload, updated_at)
-           VALUES ($1,$2,$3,$4,$5::jsonb,NOW())`,
-          [String(item.AttributeCode), String(item.AttributeName || ''), String(item.IsPrimary).toLowerCase() === 'true', item.FilterOperator ? String(item.FilterOperator) : null, JSON.stringify(item)],
+           VALUES ($1,$2,$3,$4,$5::jsonb,NOW())
+           ON CONFLICT (attribute_code) DO UPDATE SET attribute_name = EXCLUDED.attribute_name,
+             is_primary = EXCLUDED.is_primary, filter_operator = EXCLUDED.filter_operator,
+             source_payload = EXCLUDED.source_payload, updated_at = NOW()`,
+          [attributeCode, text(item.AttributeName), String(item.IsPrimary).toLowerCase() === 'true', item.FilterOperator ? text(item.FilterOperator) : null, JSON.stringify(item)],
         );
       }
     }
     if (attributeValues.length > 0) {
       await db.query('DELETE FROM supplier_attribute_values');
       for (const item of attributeValues) {
+        const attributeCode = text(item.AttributeCode);
+        const valueCode = text(item.ValueCode);
+        if (!attributeCode || !valueCode) continue;
         await db.query(
           `INSERT INTO supplier_attribute_values (attribute_code, value_code, value_text, value_sort, source_payload, updated_at)
-           VALUES ($1,$2,$3,$4,$5::jsonb,NOW())`,
-          [String(item.AttributeCode), String(item.ValueCode), String(item.Value || ''), item.ValueSort == null ? null : Number(item.ValueSort), JSON.stringify(item)],
+           VALUES ($1,$2,$3,$4,$5::jsonb,NOW())
+           ON CONFLICT (attribute_code, value_code) DO UPDATE SET value_text = EXCLUDED.value_text,
+             value_sort = EXCLUDED.value_sort, source_payload = EXCLUDED.source_payload, updated_at = NOW()`,
+          [attributeCode, valueCode, text(item.Value), numberOrNull(item.ValueSort), JSON.stringify(item)],
         );
       }
     }
