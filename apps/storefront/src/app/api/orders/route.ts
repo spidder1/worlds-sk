@@ -38,13 +38,21 @@ export async function POST(request: Request) {
         await client.query('ROLLBACK');
         return NextResponse.json({ error: 'Košík je prázdny.' }, { status: 400 });
       }
-      const items = await client.query<{ product_id: string; quantity: number; sku: string; title: string; final_price: string; currency: string }>(
-        `SELECT ci.product_id, ci.quantity, p.sku, p.title, p.final_price, p.currency
+      const items = await client.query<{ product_id: string; quantity: number; sku: string; title: string; final_price: string; currency: string; stock_count: string }>(
+        `SELECT ci.product_id, ci.quantity, p.sku, p.title, p.final_price, p.currency, p.stock_count
            FROM cart_items ci JOIN storefront_products p ON p.id = ci.product_id
           WHERE ci.cart_id = $1`, [cart.rows[0].id]);
       if (!items.rows.length) {
         await client.query('ROLLBACK');
         return NextResponse.json({ error: 'Košík je prázdny.' }, { status: 400 });
+      }
+      const stockLimitedItem = items.rows.find((item) => {
+        const stockCount = Number(item.stock_count);
+        return Number.isFinite(stockCount) && stockCount > 0 && item.quantity > Math.floor(stockCount);
+      });
+      if (stockLimitedItem) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: `Produkt ${stockLimitedItem.title} už nemá požadované množstvo na sklade.` }, { status: 409 });
       }
       const subtotal = items.rows.reduce((sum, item) => sum + Number(item.final_price) * item.quantity, 0);
       const orderId = randomUUID();
