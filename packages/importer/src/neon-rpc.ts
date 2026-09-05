@@ -589,6 +589,16 @@ export function createNeonRpcClient(options: { brandScope?: string[] } = {}): Rp
       }
 
       case 'stage_ed_catalog_batch': {
+        await pool.query(
+          `INSERT INTO staging_products (batch_id, source_key, normalized_payload, validation_status, issue_count)
+           SELECT $1::uuid, item.code, item.payload, 'IMPORTED', 0
+             FROM jsonb_to_recordset($2::jsonb) AS item(code text, payload jsonb)
+           ON CONFLICT (batch_id, source_key) DO UPDATE SET
+             normalized_payload = EXCLUDED.normalized_payload,
+             validation_status = EXCLUDED.validation_status,
+             updated_at = now()`,
+          [parameters.p_batch_id, jsonParameter((parameters.p_items as Array<Record<string, unknown>>).map((item) => ({ code: item.code, payload: item })))],
+        );
         const { rows } = await pool.query<RpcBatchResult>(fullUpsertSql, [
           parameters.p_batch_id,
           jsonParameter(parameters.p_items),
@@ -609,6 +619,15 @@ export function createNeonRpcClient(options: { brandScope?: string[] } = {}): Rp
           `INSERT INTO product_quarantine (batch_id, supplier_code, pro_id, reason, error_details, raw_payload)
            SELECT $1::uuid, COALESCE(item.supplier_code, 'UNKNOWN'), item.pro_id, item.reason,
                   item.error_details, COALESCE(item.raw_payload, '{}'::jsonb)
+             FROM jsonb_to_recordset($2::jsonb) AS item(
+               supplier_code text, pro_id text, reason text, error_details text, raw_payload jsonb
+             )`,
+          [parameters.p_batch_id, jsonParameter(parameters.p_items)],
+        );
+        await pool.query(
+          `INSERT INTO import_issues (batch_id, source_key, issue_code, severity, message, details)
+           SELECT $1::uuid, item.supplier_code, item.reason, 'ERROR', item.error_details,
+                  COALESCE(item.raw_payload, '{}'::jsonb)
              FROM jsonb_to_recordset($2::jsonb) AS item(
                supplier_code text, pro_id text, reason text, error_details text, raw_payload jsonb
              )`,
