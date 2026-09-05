@@ -1020,7 +1020,21 @@ export async function getFeaturedProducts(limit = 8): Promise<MasterProduct[]> {
 export async function getCategories(): Promise<TaxonomyCategory[]> {
   try {
     const rows = await queryNeon<{ id: string; parent_slug: string | null; name: string; slug: string; level: number; display_order: number }>(
-      `SELECT id, parent_slug, name, slug, level, display_order FROM categories WHERE active = true ORDER BY display_order ASC`
+      `WITH RECURSIVE category_tree AS (
+        SELECT c.id, c.parent_slug, c.name, c.slug, c.level, c.display_order,
+               ARRAY[LPAD(c.display_order::text, 8, '0') || ':' || c.name]::text[] AS sort_path
+          FROM categories c
+         WHERE c.active = true AND c.parent_slug IS NULL
+        UNION ALL
+        SELECT child.id, child.parent_slug, child.name, child.slug, child.level, child.display_order,
+               tree.sort_path || (LPAD(child.display_order::text, 8, '0') || ':' || child.name)
+          FROM categories child
+          JOIN category_tree tree ON child.parent_slug = tree.slug
+         WHERE child.active = true
+      )
+      SELECT id, parent_slug, name, slug, level, display_order
+        FROM category_tree
+       ORDER BY sort_path`
     );
 
     if (rows.length === 0) return CATEGORIES;
