@@ -39,7 +39,7 @@ export async function saveSyncJobSettings(formData: FormData) {
   const jobKey = String(formData.get('job_key') || '').trim();
   const scheduleCron = String(formData.get('schedule_cron') || '').trim().slice(0, 120);
   const enabled = String(formData.get('enabled') || '') === 'true';
-  if (!jobKey) return;
+  if (!jobKey || (scheduleCron && !/^\S+(?:\s+\S+){4}$/.test(scheduleCron))) return;
   await queryNeon('UPDATE sync_job_settings SET schedule_cron = $1, enabled = $2, updated_at = NOW() WHERE job_key = $3', [scheduleCron || null, enabled, jobKey]);
   redirect('/admin/importy?saved=1');
 }
