@@ -10,10 +10,9 @@ import { sanitizeAndFormatHtml } from './html-sanitizer.js';
 import { WORLDS_IT_CATEGORIES } from './taxonomy-definition.js';
 import { TaxonomyCategory } from '@worlds/types';
 import { requiredEnv } from './runtime-config.js';
+import { assessCatalogScope } from './catalog-scope.js';
 
 const { Pool } = pg;
-
-const connectionString = requiredEnv('DATABASE_URL');
 
 const rawConnectionString = requiredEnv('DATABASE_URL');
 const connectionUrl = new URL(rawConnectionString);

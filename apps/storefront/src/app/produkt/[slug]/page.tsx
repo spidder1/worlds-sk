@@ -4,6 +4,8 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { getProductBySlug } from '../../../lib/catalog';
 import { ProductDescription } from '../../../components/ProductDescription';
+import { ProductGallery } from '../../../components/ProductGallery';
+import { AddToCartButton } from '../../../components/AddToCartButton';
 import { absoluteUrl } from '../../../lib/site';
 import {
   ShieldCheck,
