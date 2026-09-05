@@ -53,11 +53,13 @@ async function main() {
     password: required('ED_PASSWORD'),
     endpointUrl: process.env.ED_ENDPOINT_URL?.trim(),
   });
-  const [index1, index2, relations, informationCodes] = await Promise.all([
+  const [index1, index2, relations, informationCodes, producers, commodities] = await Promise.all([
     client.getProductIndexTree1(),
     client.getProductIndexTree2(),
     client.getProductRelationList(),
     client.getProductInformationList(),
+    client.getProductProducerList(),
+    client.getProductCommodityList(),
   ]);
   const indexRows = [
     ...flattenIndexTree(index1, 'INDEX_1'),
@@ -93,10 +95,30 @@ async function main() {
         );
       }
     }
+    if (producers.length > 0) {
+      await db.query('DELETE FROM supplier_producers');
+      for (const item of producers) {
+        await db.query(
+          `INSERT INTO supplier_producers (producer_code, producer_name, producer_id, source_payload, updated_at)
+           VALUES ($1,$2,$3,$4::jsonb,NOW())`,
+          [String(item.ProducerCode), String(item.ProducerName || ''), item.ProducerId == null ? null : String(item.ProducerId), JSON.stringify(item)],
+        );
+      }
+    }
+    if (commodities.length > 0) {
+      await db.query('DELETE FROM supplier_commodities');
+      for (const item of commodities) {
+        await db.query(
+          `INSERT INTO supplier_commodities (commodity_code, commodity_name, parent_commodity_code, source_payload, updated_at)
+           VALUES ($1,$2,$3,$4::jsonb,NOW())`,
+          [String(item.CommodityCode), String(item.CommodityName || ''), item.CommodityParentCode ? String(item.CommodityParentCode) : null, JSON.stringify(item)],
+        );
+      }
+    }
 
     const batch = await db.query(
       `INSERT INTO sync_batches (batch_number, mode, status, source_method, started_at)
-       VALUES ($1, 'reference', 'RUNNING', 'getProductInformationList/getProductRelationList/getProductIndexTree1/getProductIndexTree2', NOW())
+       VALUES ($1, 'reference', 'RUNNING', 'getProductProducerList/getProductCommodityList/getProductInformationList/getProductRelationList/getProductIndexTree1/getProductIndexTree2', NOW())
        RETURNING id`,
       [`reference-${new Date().toISOString()}`],
     );
@@ -159,10 +181,10 @@ async function main() {
     await db.query(
       `UPDATE sync_batches SET status = 'COMPLETED', completed_at = NOW(), total_read = $1,
          imported_count = $2, filtered_count = $3, metrics = $4::jsonb WHERE id = $5`,
-      [relations.length, resolved, unresolved, JSON.stringify({ indexNodes: indexRows.length, informationCodes: informationCodes.length, relations: relations.length, resolved, unresolved }), batchId],
+      [relations.length, resolved, unresolved, JSON.stringify({ indexNodes: indexRows.length, informationCodes: informationCodes.length, producers: producers.length, commodities: commodities.length, relations: relations.length, resolved, unresolved }), batchId],
     );
     await db.query('COMMIT');
-    console.log(JSON.stringify({ indexNodes: indexRows.length, informationCodes: informationCodes.length, relationGroups: relations.length, resolved, unresolved }));
+    console.log(JSON.stringify({ indexNodes: indexRows.length, informationCodes: informationCodes.length, producers: producers.length, commodities: commodities.length, relationGroups: relations.length, resolved, unresolved }));
   } catch (error) {
     await db.query('ROLLBACK');
     throw error;
