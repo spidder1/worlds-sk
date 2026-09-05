@@ -33,9 +33,14 @@ function configuredTargetBrands(): Set<string> {
   );
 }
 
-function isTargetBrand(name: string, rawBrand: string | undefined, targetBrands: Set<string>): { isMatch: boolean; brandName: 'ASUS' | 'Lenovo' | null } {
+function isTargetBrand(name: string, rawBrand: string | undefined, targetBrands: Set<string>): { isMatch: boolean; brandName: string | null } {
   const b = (rawBrand || '').toUpperCase().trim();
   const title = name.toUpperCase();
+
+  if (targetBrands.has('ALL')) {
+    const inferred = (rawBrand || name.split(/\s+/)[0] || '').trim();
+    return inferred ? { isMatch: true, brandName: inferred.slice(0, 120) } : { isMatch: false, brandName: null };
+  }
 
   if (
     b === 'ASUS' ||
@@ -695,7 +700,8 @@ export async function importAsusLenovoToNeon() {
 }
 
 function sampleOnlyLabel(): string {
-  return process.env.ED_SAMPLE_ONLY === 'true' ? 'SAMPLE_ASUS_LENOVO' : 'FULL_ASUS_LENOVO';
+  const brands = (process.env.ED_SAMPLE_BRANDS || 'ASUS,Lenovo').replace(/\s+/g, '').replace(/,/g, '_').toUpperCase();
+  return process.env.ED_SAMPLE_ONLY === 'true' ? `SAMPLE_${brands}` : `FULL_${brands}`;
 }
 
 if (process.argv[1]?.endsWith('import-neon.ts') || process.argv[1]?.endsWith('import-neon.js')) {
