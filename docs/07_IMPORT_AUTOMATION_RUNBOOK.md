@@ -51,9 +51,11 @@ pnpm report:classification
 ```
 
 Storefront health endpoint `/api/health` musí vrátiť `ok: true`, databázu `neon` a počet predajných produktov.
+Odpoveď obsahuje aj `lastSync` s režimom, stavom a počtom importovaných produktov.
+V `sync_batches.metrics` sa ukladajú `priced_count`, `image_product_count`, `image_count` a `multi_image_product_count`.
 
 ## Budúci full import
 
-Full-feed import všetkých IT značiek je dostupný iba manuálne cez workflow `full` alebo po dry-run kontrole. Delta synchronizácia cien/skladu, kontrola chýbajúcich produktov, inventárna rezervácia a produkčné pravidlá pre ceny, dopravu a platobnú bránu ešte nie sú zapnuté.
+Full-feed import všetkých IT značiek je dostupný iba manuálne cez workflow `full` alebo po dry-run kontrole. Sample import synchronizuje ceny, sklad a dostupné obrázky; pri objednávke storefront znovu overí sklad a v transakcii uzamkne produktové riadky. Automatické označovanie dlhodobo chýbajúcich produktov, produkčná platobná brána a finálne obchodné pravidlá dopravy ešte nie sú zapnuté.
 
 Staršie Supabase importéry v repozitári sú historický kód a nie sú súčasťou aktívneho workflow.
