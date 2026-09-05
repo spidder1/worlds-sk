@@ -19,6 +19,7 @@ export function ProductCard({ product }: { product: MasterProduct }) {
             alt={`${product.brand} logo`}
             width={56}
             height={24}
+            unoptimized={/^https?:\/\//i.test(product.manufacturerLogoUrl)}
             className="max-h-6 max-w-[7rem] object-contain"
           />
         ) : (
