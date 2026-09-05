@@ -10,7 +10,7 @@ import { absoluteUrl } from '../../../lib/site';
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string; inStock?: string; sort?: string; vyrobca?: string; cpu?: string; ram?: string; ssd?: string }>;
+  searchParams: Promise<{ page?: string; inStock?: string; sort?: string; vyrobca?: string; cpu?: string; ram?: string; ssd?: string; minPrice?: string; maxPrice?: string }>;
 }
 
 function parsePage(value?: string): number {
@@ -45,6 +45,10 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const cpuFilters = filters.cpu?.split(',').map((s) => s.trim()).filter(Boolean) ?? [];
   const ramFilters = filters.ram?.split(',').map((s) => s.trim()).filter(Boolean) ?? [];
   const ssdFilters = filters.ssd?.split(',').map((s) => s.trim()).filter(Boolean) ?? [];
+  const minPrice = Number.parseFloat(filters.minPrice ?? '');
+  const maxPrice = Number.parseFloat(filters.maxPrice ?? '');
+  const validMinPrice = Number.isFinite(minPrice) && minPrice >= 0 ? minPrice : undefined;
+  const validMaxPrice = Number.isFinite(maxPrice) && maxPrice > 0 ? maxPrice : undefined;
 
   const [result, manufacturers] = await Promise.all([
     getProductsPage({
@@ -56,6 +60,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       cpu: filters.cpu,
       ram: filters.ram,
       ssd: filters.ssd,
+      minPrice: validMinPrice,
+      maxPrice: validMaxPrice,
     }),
     getManufacturers({ categorySlug: slug, inStockOnly }),
   ]);
@@ -72,6 +78,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     if (key !== 'cpu' && filters.cpu) query.set('cpu', filters.cpu);
     if (key !== 'ram' && filters.ram) query.set('ram', filters.ram);
     if (key !== 'ssd' && filters.ssd) query.set('ssd', filters.ssd);
+    if (filters.minPrice) query.set('minPrice', filters.minPrice);
+    if (filters.maxPrice) query.set('maxPrice', filters.maxPrice);
 
     if (updatedList.length > 0) {
       query.set(key, updatedList.join(','));
@@ -88,6 +96,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     if (filters.cpu && key !== 'cpu') query.set('cpu', filters.cpu);
     if (filters.ram && key !== 'ram') query.set('ram', filters.ram);
     if (filters.ssd && key !== 'ssd') query.set('ssd', filters.ssd);
+    if (filters.minPrice && key !== 'minPrice') query.set('minPrice', filters.minPrice);
+    if (filters.maxPrice && key !== 'maxPrice') query.set('maxPrice', filters.maxPrice);
     if (value) query.set(key, value);
     const serialized = query.toString();
     return `/kategoria/${slug}${serialized ? `?${serialized}` : ''}`;
@@ -207,7 +217,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                 basePath={`/kategoria/${slug}`}
                 currentPage={result.page}
                 totalPages={result.pageCount}
-                searchParams={{ inStock: filters.inStock, sort: filters.sort, vyrobca: filters.vyrobca, cpu: filters.cpu, ram: filters.ram, ssd: filters.ssd }}
+                searchParams={{ inStock: filters.inStock, sort: filters.sort, vyrobca: filters.vyrobca, cpu: filters.cpu, ram: filters.ram, ssd: filters.ssd, minPrice: filters.minPrice, maxPrice: filters.maxPrice }}
               />
             </>
           ) : (
