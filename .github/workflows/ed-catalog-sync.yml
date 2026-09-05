@@ -41,6 +41,7 @@ jobs:
         env:
           ED_SAMPLE_ONLY: true
           ED_SAMPLE_LIMIT: 250
+          ED_SAMPLE_BRANDS: ASUS,Lenovo
           ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
           ED_LOGIN: ${{ secrets.ED_LOGIN }}
           ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
@@ -65,6 +66,7 @@ jobs:
         env:
           ED_SAMPLE_ONLY: true
           ED_SAMPLE_LIMIT: 250
+          ED_SAMPLE_BRANDS: ASUS,Lenovo
           ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
           ED_LOGIN: ${{ secrets.ED_LOGIN }}
           ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
