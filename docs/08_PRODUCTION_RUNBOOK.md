@@ -125,5 +125,7 @@ SELECT mode, status, total_read, created_count, changed_count, missing_count, me
   `pnpm queue:enqueue search-drain` (or `catalog-full`, `stock-price`,
   `image-loader`, `manufacturer-cleanup`). GitHub Actions remains a safe
   fallback until the worker is deployed.
+  The repository also includes `Dockerfile.queue-worker` for a reproducible
+  Node 22 deployment on Railway, Fly.io, Hetzner or another persistent host.
 - Verify `/kosik`, Stripe/Comgate payment webhooks and the eD supplier-order worker in a
   production-like environment before switching DNS.
