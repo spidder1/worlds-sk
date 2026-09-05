@@ -416,6 +416,43 @@ change_logged AS (
   LEFT JOIN before ON before.supplier_code = changed.supplier_code
   RETURNING product_id
 ),
+identifiers_cleared AS (
+  DELETE FROM product_identifiers existing
+   USING upserted changed
+   WHERE existing.product_id = 'ed-' || changed.supplier_code
+  RETURNING existing.product_id
+),
+identifiers_written AS (
+  INSERT INTO product_identifiers
+    (product_id, identifier_type, identifier_value, normalized_value, is_primary, source, updated_at)
+  SELECT product.id, identifier.identifier_type, identifier.identifier_value,
+         identifier.normalized_value, identifier.is_primary, 'ED', now()
+    FROM upserted changed
+    JOIN products product ON product.supplier_code = changed.supplier_code
+    CROSS JOIN LATERAL (
+      SELECT 'EAN'::text AS identifier_type, product.ean AS identifier_value,
+             regexp_replace(product.ean, '[^0-9]', '', 'g') AS normalized_value, true AS is_primary
+       WHERE NULLIF(product.ean, '') IS NOT NULL
+      UNION ALL
+      SELECT 'MPN', product.mpn, upper(trim(product.mpn)), true
+       WHERE NULLIF(product.mpn, '') IS NOT NULL
+      UNION ALL
+      SELECT 'MPN2', product.mpn2, upper(trim(product.mpn2)), false
+       WHERE NULLIF(product.mpn2, '') IS NOT NULL
+      UNION ALL
+      SELECT 'SUPPLIER_CODE', product.supplier_code, upper(trim(product.supplier_code)), true
+       WHERE NULLIF(product.supplier_code, '') IS NOT NULL
+      UNION ALL
+      SELECT 'SUPPLIER_PRO_ID', product.supplier_pro_id, upper(trim(product.supplier_pro_id)), false
+       WHERE NULLIF(product.supplier_pro_id, '') IS NOT NULL
+    ) AS identifier
+    CROSS JOIN (SELECT count(*) FROM identifiers_cleared) AS barrier
+  ON CONFLICT (product_id, identifier_type, identifier_value) DO UPDATE SET
+    normalized_value = EXCLUDED.normalized_value,
+    is_primary = EXCLUDED.is_primary,
+    updated_at = now()
+  RETURNING product_id
+),
 search_queue AS (
   INSERT INTO search_sync_queue (product_id, reason, enqueued_at, processed_at, last_error)
   SELECT 'ed-' || supplier_code, 'catalog_sync', now(), NULL, NULL FROM upserted
