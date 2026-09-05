@@ -12,6 +12,15 @@ CREATE TABLE IF NOT EXISTS product_localizations (
   PRIMARY KEY (product_id, locale)
 );
 
+-- Capacity guard for the starter Neon plan. These secondary admin/reporting
+-- indexes are not required by storefront reads and can be rebuilt after the
+-- normalized projections are deployed.
+DROP INDEX IF EXISTS idx_products_category_confidence;
+DROP INDEX IF EXISTS idx_products_last_import_batch;
+DROP INDEX IF EXISTS idx_products_index_codes;
+DROP INDEX IF EXISTS idx_products_ean_not_null;
+DROP INDEX IF EXISTS idx_products_brand;
+
 CREATE INDEX IF NOT EXISTS idx_product_localizations_locale
   ON product_localizations (locale, approved, updated_at DESC);
 
@@ -41,12 +50,18 @@ CREATE TABLE IF NOT EXISTS slugs (
 CREATE INDEX IF NOT EXISTS idx_slugs_lookup
   ON slugs (locale, slug, is_canonical);
 
+-- This migration is still unrecorded while it is being deployed. Rebuild the
+-- projection tables once so a retry after a storage interruption does not
+-- create dead row versions through a large upsert.
+TRUNCATE product_localizations, product_seo, slugs;
+
 INSERT INTO product_localizations
   (product_id, locale, title, short_description, description, seo_title, seo_description, source, approved)
 SELECT p.id, 'sk', COALESCE(NULLIF(p.name_b2c, ''), p.title), COALESCE(p.short_description, ''),
        COALESCE(p.enriched_description, p.supplier_description, ''), p.seo_title, p.seo_description,
        'IMPORT', true
   FROM products p
+ WHERE p.status IN ('ACTIVE', 'OUT_OF_STOCK')
 ON CONFLICT (product_id, locale) DO UPDATE SET
   title = EXCLUDED.title, short_description = EXCLUDED.short_description,
   description = EXCLUDED.description, seo_title = EXCLUDED.seo_title,
@@ -54,10 +69,12 @@ ON CONFLICT (product_id, locale) DO UPDATE SET
 
 INSERT INTO product_seo (product_id, locale, canonical_path, provenance)
 SELECT p.id, 'sk', '/produkt/' || p.slug, 'IMPORT' FROM products p
+ WHERE p.status IN ('ACTIVE', 'OUT_OF_STOCK')
 ON CONFLICT (product_id, locale) DO UPDATE SET canonical_path = EXCLUDED.canonical_path, updated_at = now();
 
 INSERT INTO slugs (entity_type, entity_id, locale, slug, is_canonical)
 SELECT 'PRODUCT', p.id, 'sk', p.slug, true FROM products p
+ WHERE p.status IN ('ACTIVE', 'OUT_OF_STOCK')
 ON CONFLICT (entity_type, entity_id, locale) DO UPDATE SET slug = EXCLUDED.slug, updated_at = now();
 
 CREATE OR REPLACE FUNCTION worlds_sync_product_localization_seo()

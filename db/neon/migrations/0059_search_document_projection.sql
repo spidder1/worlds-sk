@@ -73,6 +73,7 @@ SELECT p.id, p.last_import_batch::text, COALESCE(NULLIF(p.name_b2c, ''), p.title
        GREATEST(COALESCE(p.final_price, 0), 0), COALESCE(p.currency, 'EUR'), COALESCE(p.is_in_stock, false),
        GREATEST(COALESCE(p.stock_count, 0), 0), COALESCE(p.attributes, '{}'::jsonb), COALESCE(p.images, '[]'::jsonb), p.content_hash
   FROM products p
+ WHERE p.status IN ('ACTIVE', 'OUT_OF_STOCK')
 ON CONFLICT (product_id) DO UPDATE SET
   title = EXCLUDED.title, search_text = EXCLUDED.search_text, final_price = EXCLUDED.final_price,
   is_in_stock = EXCLUDED.is_in_stock, stock_count = EXCLUDED.stock_count,

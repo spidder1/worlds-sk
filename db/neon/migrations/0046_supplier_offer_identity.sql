@@ -1,5 +1,14 @@
 -- Normalized supplier-offer identity. products remains the canonical storefront
 -- record; this layer preserves the eD offer identity and its exact identifiers.
+-- These legacy expression-independent GIN indexes are not used by the current
+-- storefront queries (which fold text with translate()) and are superseded by
+-- the normalized search_documents projection. Removing them before the large
+-- supplier backfill keeps the starter Neon project within its storage limit.
+DROP INDEX IF EXISTS idx_products_title_trgm;
+DROP INDEX IF EXISTS idx_products_mpn_trgm;
+DROP INDEX IF EXISTS idx_products_brand_trgm;
+DROP INDEX IF EXISTS idx_products_attributes_gin;
+
 CREATE TABLE IF NOT EXISTS suppliers (
   id text PRIMARY KEY,
   name text NOT NULL,
