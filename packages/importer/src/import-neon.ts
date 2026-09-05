@@ -600,6 +600,13 @@ export async function importAsusLenovoToNeon() {
   console.log(` 📦 Celkovo s aktualizovanými cenami a fotkami: ${targetProducts.length}`);
   console.log(`===========================================================\n`);
 
+  if (targetProducts.length === 0) {
+    throw new Error(`Feed neobsahuje žiadne produkty pre rozsah ${targetBrandsLabel()}.`);
+  }
+  if (pricedCount === 0) {
+    throw new Error(`Feed neobsahuje žiadnu platnú cenu pre rozsah ${targetBrandsLabel()}.`);
+  }
+
   if (dryRun) {
     console.log('🧪 Dry-run: produkty sa nezapisujú do Neonu.');
     if (batchId) {
