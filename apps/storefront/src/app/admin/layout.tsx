@@ -14,6 +14,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <nav className="flex flex-wrap gap-2 border-b border-slate-800 px-6 py-3 text-sm">
         <Link className="rounded-lg px-3 py-2 hover:bg-slate-800" href="/admin">Prehľad</Link>
         <Link className="rounded-lg px-3 py-2 hover:bg-slate-800" href="/admin/produkty">Produkty</Link>
+        <Link className="rounded-lg px-3 py-2 hover:bg-slate-800" href="/admin/objednavky">Objednávky</Link>
         <Link className="rounded-lg px-3 py-2 hover:bg-slate-800" href="/admin/kategorie">Kategórie</Link>
         <Link className="rounded-lg px-3 py-2 hover:bg-slate-800" href="/admin/vyrobcovia">Výrobcovia</Link>
         <Link className="rounded-lg px-3 py-2 hover:bg-slate-800" href="/admin/importy">Importy a kvalita</Link>

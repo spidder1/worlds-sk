@@ -25,6 +25,16 @@ export async function updateProductCategory(formData: FormData) {
   redirect('/admin/produkty?saved=1');
 }
 
+export async function updateOrderStatus(formData: FormData) {
+  if (!(await isAdminAuthenticated())) redirect('/admin');
+  const id = String(formData.get('id') || '').trim();
+  const status = String(formData.get('status') || '').trim();
+  const paymentStatus = String(formData.get('payment_status') || '').trim();
+  if (!id || !['NEW', 'PROCESSING', 'SHIPPED', 'COMPLETED', 'CANCELLED'].includes(status) || !['PENDING', 'PAID', 'FAILED', 'REFUNDED'].includes(paymentStatus)) return;
+  await queryNeon('UPDATE orders SET status = $1, payment_status = $2, updated_at = NOW() WHERE id = $3', [status, paymentStatus, id]);
+  redirect('/admin/objednavky?saved=1');
+}
+
 export async function updateManufacturerReview(formData: FormData) {
   if (!(await isAdminAuthenticated())) redirect('/admin');
   const id = String(formData.get('id') || '');
