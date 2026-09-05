@@ -67,21 +67,28 @@ export async function POST(request: Request) {
     if (!Number.isInteger(requestedQuantity) || requestedQuantity < 1 || requestedQuantity > 99) {
       return NextResponse.json({ error: 'Neplatné množstvo.' }, { status: 400 });
     }
-    const quantity = requestedQuantity;
     const cartId = await ensureCart(session);
-    const product = await queryNeon<{ id: string; stock_count: string; is_in_stock: boolean }>(
-      'SELECT id, stock_count, is_in_stock FROM storefront_products WHERE id = $1 LIMIT 1',
+    const product = await queryNeon<{ id: string; stock_count: string; is_in_stock: boolean; min_order_quantity: number; order_multiple: number }>(
+      'SELECT id, stock_count, is_in_stock, COALESCE(min_order_quantity, 1) AS min_order_quantity, COALESCE(order_multiple, 1) AS order_multiple FROM storefront_products WHERE id = $1 LIMIT 1',
       [body.productId],
     );
     if (!product.length) return NextResponse.json({ error: 'Produkt nie je dostupný.' }, { status: 404 });
+    const minimumQuantity = Math.max(1, Math.floor(Number(product[0].min_order_quantity) || 1));
+    const orderMultiple = Math.max(1, Math.floor(Number(product[0].order_multiple) || 1));
+    const quantity = Math.max(minimumQuantity, Math.ceil(requestedQuantity / orderMultiple) * orderMultiple);
+    if (quantity > 99) return NextResponse.json({ error: 'Požadované balenie prekračuje maximálne množstvo v košíku.' }, { status: 400 });
     const current = await queryNeon<{ quantity: number }>(
       'SELECT quantity FROM cart_items WHERE cart_id = $1 AND product_id = $2 LIMIT 1',
       [cartId, body.productId],
     );
+    const currentQuantity = Number(current[0]?.quantity || 0);
+    const requestedTotal = currentQuantity + quantity;
+    if (requestedTotal > 99) {
+      return NextResponse.json({ error: 'V košíku je možné mať najviac 99 ks jedného produktu.' }, { status: 409 });
+    }
     const stockCount = Number(product[0].stock_count);
     if (Number.isFinite(stockCount) && stockCount > 0) {
       const maxAvailable = Math.min(99, Math.max(1, Math.floor(stockCount)));
-      const requestedTotal = Number(current[0]?.quantity || 0) + quantity;
       if (requestedTotal > maxAvailable) {
         return NextResponse.json({ error: `Na sklade je dostupných najviac ${maxAvailable} ks.` }, { status: 409 });
       }
