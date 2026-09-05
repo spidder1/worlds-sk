@@ -666,7 +666,7 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
   const sourceMetadata = await Promise.all(sources.map(async (source) => ({
     sourceMethod: source.sourceMethod,
     sourceName: path.basename(source.filePath),
-    storageUri: source.filePath,
+    storageUri: path.relative(process.cwd(), source.filePath).replaceAll('\\', '/'),
     byteSize: fs.statSync(source.filePath).size,
     sha256: await sha256File(source.filePath),
     mediaType: source.filePath.toLowerCase().endsWith('.zip') ? 'application/zip' : 'application/xml',
