@@ -51,6 +51,17 @@ export async function updateCategoryPresentation(formData: FormData) {
   await queryNeon(`UPDATE categories
     SET name = $1, display_order = $2, active = $3, updated_at = NOW()
     WHERE slug = $4`, [name, displayOrder, active, slug]);
+  await queryNeon(`WITH RECURSIVE category_path AS (
+    SELECT c.slug, c.parent_slug, ARRAY[c.name]::text[] AS names
+      FROM categories c WHERE c.slug = $1
+    UNION ALL
+    SELECT parent.slug, parent.parent_slug, ARRAY[parent.name] || path.names
+      FROM categories parent JOIN category_path path ON parent.slug = path.parent_slug
+  )
+  UPDATE products
+     SET category_hierarchy = COALESCE((SELECT to_jsonb(names) FROM category_path WHERE parent_slug IS NULL LIMIT 1), category_hierarchy),
+         updated_at = NOW()
+   WHERE category_slug = $1`, [slug]);
   redirect('/admin/kategorie?saved=1');
 }
 
