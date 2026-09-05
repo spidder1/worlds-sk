@@ -34,6 +34,34 @@ export async function updateManufacturerReview(formData: FormData) {
   redirect('/admin/vyrobcovia?saved=1');
 }
 
+export async function saveSyncJobSettings(formData: FormData) {
+  if (!(await isAdminAuthenticated())) redirect('/admin');
+  const jobKey = String(formData.get('job_key') || '').trim();
+  const scheduleCron = String(formData.get('schedule_cron') || '').trim().slice(0, 120);
+  const enabled = String(formData.get('enabled') || '') === 'true';
+  if (!jobKey) return;
+  await queryNeon('UPDATE sync_job_settings SET schedule_cron = $1, enabled = $2, updated_at = NOW() WHERE job_key = $3', [scheduleCron || null, enabled, jobKey]);
+  redirect('/admin/importy?saved=1');
+}
+
+export async function runSyncJob(formData: FormData) {
+  if (!(await isAdminAuthenticated())) redirect('/admin');
+  const jobKey = String(formData.get('job_key') || '').trim();
+  const rows = await queryNeon<{ workflow_file: string }>('SELECT workflow_file FROM sync_job_settings WHERE job_key = $1 AND enabled = true LIMIT 1', [jobKey]);
+  const workflow = rows[0]?.workflow_file;
+  const token = process.env.GITHUB_TOKEN?.trim();
+  const repository = process.env.GITHUB_REPOSITORY?.trim() || 'spidder1/worlds-sk';
+  if (!workflow || !token) redirect('/admin/importy?error=github');
+  const inputs = jobKey === 'stock-price' ? { mode: 'stock-price' } : jobKey === 'catalog-full' ? { mode: 'full' } : jobKey === 'manufacturer-cleanup' ? { dry_run: 'false' } : {};
+  const response = await fetch(`https://api.github.com/repos/${repository}/actions/workflows/${encodeURIComponent(workflow)}/dispatches`, {
+    method: 'POST', headers: { accept: 'application/vnd.github+json', authorization: `Bearer ${token}`, 'content-type': 'application/json', 'user-agent': 'worlds-admin' },
+    body: JSON.stringify({ ref: 'main', inputs }),
+  });
+  if (!response.ok) redirect('/admin/importy?error=github');
+  await queryNeon('UPDATE sync_job_settings SET last_requested_at = NOW(), updated_at = NOW() WHERE job_key = $1', [jobKey]);
+  redirect('/admin/importy?run=1');
+}
+
 function boundedNumber(value: FormDataEntryValue | null, fallback: number, min: number, max: number): number {
   const parsed = Number(String(value ?? ''));
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
