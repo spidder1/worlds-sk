@@ -6,8 +6,9 @@ type SettingRow = { key: string; value: { value?: number | boolean | string | nu
 type RuleRow = { min_cost: string; max_cost: string | null; margin_percent: string };
 type TransportRow = { code: string; name: string; type_code: string | null };
 
-export default async function AdminSettingsPage() {
+export default async function AdminSettingsPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   if (!(await isAdminAuthenticated())) return <p>Prihláste sa cez administračný vstup.</p>;
+  const params = await searchParams;
   const [settings, rules, transportMethods] = await Promise.all([
     queryNeon<SettingRow>(`SELECT key, value FROM store_settings WHERE key IN ('pricing.vat_rate', 'feed.minimum_cost_eur', 'checkout.allow_private_purchase', 'orders.default_transport_code')`),
     queryNeon<RuleRow>('SELECT min_cost, max_cost, margin_percent FROM pricing_rules WHERE active = true ORDER BY display_order, min_cost'),
@@ -22,7 +23,7 @@ export default async function AdminSettingsPage() {
     { min_cost: '1000', max_cost: null, margin_percent: '10' },
   ];
   return <div className="mx-auto max-w-4xl space-y-6">
-    <div><h2 className="text-2xl font-bold">Obchodné nastavenia</h2><p className="mt-1 text-sm text-slate-600">Tieto hodnoty používa ďalší import aj synchronizácia cien.</p></div>
+    <div><h2 className="text-2xl font-bold">Obchodné nastavenia</h2><p className="mt-1 text-sm text-slate-600">Tieto hodnoty používa ďalší import aj synchronizácia cien.</p>{params.error === 'margin' ? <p className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">Pásma marže sa prekrývajú alebo neobsahujú platné hodnoty. Skontrolujte hranice a skúste to znova.</p> : null}</div>
     <form action={updatePricingSettings} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-semibold">DPH (%)<input name="vat_rate" type="number" min="0" max="100" step="0.01" defaultValue={Number(values.get('pricing.vat_rate') ?? 20)} className="mt-1 w-full rounded-lg border p-2 font-normal" /></label>

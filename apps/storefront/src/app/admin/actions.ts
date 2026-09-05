@@ -224,7 +224,11 @@ export async function updatePricingSettings(formData: FormData) {
     return { min, max: maxRaw ? Number(maxRaw) : null, percent };
   }).filter((row) => Number.isFinite(row.min) && row.min >= 0 && Number.isFinite(row.percent) && row.percent >= -100 && row.percent <= 1000 && (row.max === null || (Number.isFinite(row.max) && row.max > row.min)))
     .sort((a, b) => a.min - b.min);
-  if (rows.length === 0) return;
+  if (rows.length === 0) redirect('/admin/nastavenia?error=margin');
+  for (let index = 1; index < rows.length; index += 1) {
+    const previous = rows[index - 1];
+    if (previous.max === null || previous.max > rows[index].min) redirect('/admin/nastavenia?error=margin');
+  }
   await queryNeon(`INSERT INTO store_settings (key, value, updated_at) VALUES ('pricing.vat_rate', $1::jsonb, NOW()), ('feed.minimum_cost_eur', $2::jsonb, NOW()), ('checkout.allow_private_purchase', $3::jsonb, NOW()), ('orders.default_transport_code', $4::jsonb, NOW())
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`, [JSON.stringify({ value: vatRate }), JSON.stringify({ value: minimumCostEur }), JSON.stringify({ value: allowPrivatePurchase }), JSON.stringify({ value: transportCode || null })]);
   await queryNeon('DELETE FROM pricing_rules');
