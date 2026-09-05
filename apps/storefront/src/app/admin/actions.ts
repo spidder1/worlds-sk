@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { queryNeon } from '../../lib/neon-client';
 import { adminPasswordMatches, clearAdminSession, isAdminAuthenticated, setAdminSession } from './auth';
+import type { SyncJobName } from '@worlds/queue';
 
 export async function loginAdmin(formData: FormData) {
   const password = String(formData.get('password') || '');
@@ -88,6 +89,17 @@ export async function runSyncJob(formData: FormData) {
   const jobKey = String(formData.get('job_key') || '').trim();
   const rows = await queryNeon<{ workflow_file: string }>('SELECT workflow_file FROM sync_job_settings WHERE job_key = $1 AND enabled = true LIMIT 1', [jobKey]);
   const workflow = rows[0]?.workflow_file;
+  const queueJob: SyncJobName | null = jobKey === 'stock-price' ? 'stock-price' : jobKey === 'catalog-full' ? 'catalog-full' : jobKey === 'manufacturer-cleanup' ? 'manufacturer-cleanup' : null;
+  if (process.env.REDIS_URL?.trim() && queueJob) {
+    try {
+      const { enqueueSyncJob } = await import(/* webpackIgnore: true */ '@worlds/queue');
+      await enqueueSyncJob(queueJob, { requestedBy: 'admin' });
+      await queryNeon('UPDATE sync_job_settings SET last_requested_at = NOW(), updated_at = NOW() WHERE job_key = $1', [jobKey]);
+      redirect('/admin/importy?run=1');
+    } catch {
+      redirect('/admin/importy?error=queue');
+    }
+  }
   const token = process.env.GITHUB_TOKEN?.trim();
   const repository = process.env.GITHUB_REPOSITORY?.trim() || 'spidder1/worlds-sk';
   if (!workflow || !token) redirect('/admin/importy?error=github');

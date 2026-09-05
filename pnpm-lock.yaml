@@ -51,6 +51,9 @@ importers:
       '@types/pdfkit':
         specifier: ^0.17.6
         version: 0.17.6
+      '@worlds/queue':
+        specifier: workspace:*
+        version: link:../../packages/queue
       '@worlds/types':
         specifier: workspace:*
         version: link:../../packages/types
