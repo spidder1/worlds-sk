@@ -201,7 +201,10 @@ try {
   const titleBrands = [...review.allowedRows]
     .filter((candidate) => (candidate.name.length >= 4 || /[A-Z0-9]/.test(candidate.name)) && !TITLE_BRAND_EXCLUDE.has(candidate.name.toLowerCase()))
     .sort((a, b) => b.name.length - a.name.length);
-  const result = await client.query(`SELECT id, brand, title FROM products WHERE status = 'ACTIVE' AND final_price > 0`);
+  // Normalize every stored product, not only currently sellable rows. Hidden
+  // and temporarily unpriced products must not keep invalid manufacturer
+  // values that would reappear when they become sellable again.
+  const result = await client.query(`SELECT id, brand, title FROM products`);
   const changes = [];
   const mappings = new Map();
   let exactMatches = 0;
