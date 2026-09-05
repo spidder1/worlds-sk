@@ -85,6 +85,17 @@ async function main() {
         [row.treeKey, row.indexCode, row.commodityCode, row.parentIndexCode, row.indexName, row.indexSort,
           row.indexSortCode, row.indexLevel, row.indexOrder, row.codeName, JSON.stringify(row.payload)],
       );
+      const taxonomyCode = row.treeKey === 'INDEX_1' ? 'ED_INDEX_1' : 'ED_INDEX_2';
+      const nodeId = `${taxonomyCode.toLowerCase()}:${row.indexCode}`;
+      const parentNodeId = row.parentIndexCode ? `${taxonomyCode.toLowerCase()}:${row.parentIndexCode}` : null;
+      await db.query(
+        `INSERT INTO taxonomy_nodes
+          (id, taxonomy_code, external_code, name, parent_node_id, display_order, source_payload, updated_at)
+         VALUES ($1,$2,$3,$4,$5,COALESCE($6,0),$7::jsonb,NOW())
+         ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, parent_node_id = EXCLUDED.parent_node_id,
+           display_order = EXCLUDED.display_order, source_payload = EXCLUDED.source_payload, updated_at = NOW()`,
+        [nodeId, taxonomyCode, row.indexCode, row.indexName, parentNodeId, row.indexOrder, JSON.stringify(row.payload)],
+      );
     }
     if (informationCodes.length > 0) {
       for (const item of informationCodes) {
@@ -115,6 +126,18 @@ async function main() {
            VALUES ($1,$2,$3,$4::jsonb,NOW())`,
           [String(item.CommodityCode), String(item.CommodityName || ''), item.CommodityParentCode ? String(item.CommodityParentCode) : null, JSON.stringify(item)],
         );
+        const commodityCode = text(item.CommodityCode);
+        if (commodityCode) {
+          const parentCode = text(item.CommodityParentCode);
+          await db.query(
+            `INSERT INTO taxonomy_nodes
+              (id, taxonomy_code, external_code, name, parent_node_id, source_payload, updated_at)
+             VALUES ($1,'ED_COMMODITY',$2,$3,$4,$5::jsonb,NOW())
+             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, parent_node_id = EXCLUDED.parent_node_id,
+               source_payload = EXCLUDED.source_payload, updated_at = NOW()`,
+            [`ed_commodity:${commodityCode}`, commodityCode, text(item.CommodityName), parentCode ? `ed_commodity:${parentCode}` : null, JSON.stringify(item)],
+          );
+        }
       }
     }
     if (categoryAttributes.length > 0) {
@@ -146,6 +169,25 @@ async function main() {
           [attributeCode, valueCode, text(item.Value), numberOrNull(item.ValueSort), JSON.stringify(item)],
         );
       }
+    }
+
+    for (const taxonomyCode of ['ED_INDEX_1', 'ED_INDEX_2', 'ED_COMMODITY']) {
+      await db.query('DELETE FROM taxonomy_node_closure WHERE taxonomy_code = $1', [taxonomyCode]);
+      await db.query(
+        `WITH RECURSIVE paths AS (
+           SELECT n.id AS ancestor_node_id, n.id AS descendant_node_id, 0 AS depth, ARRAY[n.id]::text[] AS visited
+             FROM taxonomy_nodes n WHERE n.taxonomy_code = $1
+           UNION ALL
+           SELECT p.ancestor_node_id, child.id, p.depth + 1, p.visited || child.id
+             FROM paths p JOIN taxonomy_nodes child
+               ON child.taxonomy_code = $1 AND child.parent_node_id = p.descendant_node_id
+            WHERE NOT child.id = ANY(p.visited)
+         )
+         INSERT INTO taxonomy_node_closure (taxonomy_code, ancestor_node_id, descendant_node_id, depth)
+         SELECT $1, ancestor_node_id, descendant_node_id, depth FROM paths
+         ON CONFLICT DO NOTHING`,
+        [taxonomyCode],
+      );
     }
 
     const batch = await db.query(
