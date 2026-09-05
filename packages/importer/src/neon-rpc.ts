@@ -628,6 +628,18 @@ export function createNeonRpcClient(options: { brandScope?: string[] } = {}): Rp
            ON CONFLICT (batch_id, source_name, sha256) DO NOTHING`,
           [parameters.p_batch_id, jsonParameter(parameters.p_sources)],
         );
+        await pool.query(
+          `INSERT INTO raw_documents
+             (batch_id, source_method, source_name, storage_uri, byte_size, sha256, media_type, metadata)
+           SELECT $1::uuid, item.source_method, item.source_name, item.storage_uri,
+                  item.byte_size, item.sha256, item.media_type, COALESCE(item.metadata, '{}'::jsonb)
+             FROM jsonb_to_recordset($2::jsonb) AS item(
+               source_method text, source_name text, storage_uri text, byte_size bigint,
+               sha256 text, media_type text, metadata jsonb
+             )
+           ON CONFLICT (batch_id, source_name, sha256) DO NOTHING`,
+          [parameters.p_batch_id, jsonParameter(parameters.p_sources)],
+        );
         return true as unknown as T;
       }
 
