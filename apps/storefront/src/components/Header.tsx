@@ -74,6 +74,9 @@ function MobileCategory({ category }: { category: TaxonomyCategory }) {
 export function Header({ categories }: { categories: TaxonomyCategory[] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
+  const primaryCategories = categories.filter((category) =>
+    ['pocitace-a-notebooky', 'pocitacove-komponenty', 'monitory-a-displeje'].includes(category.slug),
+  );
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -116,7 +119,7 @@ export function Header({ categories }: { categories: TaxonomyCategory[] }) {
           <MegaMenu categories={categories} />
           
           <div className="flex flex-1 items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">
-            {categories.map((category) => (
+            {primaryCategories.map((category) => (
               <Link
                 key={category.id}
                 href={`/kategoria/${category.slug}`}
