@@ -87,7 +87,11 @@ export async function saveSyncJobSettings(formData: FormData) {
 export async function runSyncJob(formData: FormData) {
   if (!(await isAdminAuthenticated())) redirect('/admin');
   const jobKey = String(formData.get('job_key') || '').trim();
-  const rows = await queryNeon<{ workflow_file: string }>('SELECT workflow_file FROM sync_job_settings WHERE job_key = $1 AND enabled = true LIMIT 1', [jobKey]);
+  // A disabled job must not run on the scheduler, but administrators still
+  // need to be able to trigger it manually for diagnostics or a one-off sync.
+  // Keep the enabled flag in the scheduler query only; this action is the
+  // explicit manual execution path.
+  const rows = await queryNeon<{ workflow_file: string }>('SELECT workflow_file FROM sync_job_settings WHERE job_key = $1 LIMIT 1', [jobKey]);
   const workflow = rows[0]?.workflow_file;
   const queueJob: SyncJobName | null = jobKey === 'stock-price' ? 'stock-price' : jobKey === 'catalog-full' ? 'catalog-full' : jobKey === 'manufacturer-cleanup' ? 'manufacturer-cleanup' : jobKey === 'transport-dictionary' ? 'transport-dictionary' : null;
   if (process.env.REDIS_URL?.trim() && queueJob) {
