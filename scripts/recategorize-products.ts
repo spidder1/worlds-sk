@@ -82,6 +82,13 @@ export const NEW_ACCESSORY_CATEGORIES: TaxonomyCategory[] = [
   },
 ];
 
+const NOTEBOOK_CATEGORY_SLUGS = new Set([
+  'notebooky', 'herne-notebooky', 'firemne-notebooky', 'ultrabooky', '2v1-a-dotykove-notebooky',
+  'prislusenstvo-k-notebookom', 'tasky-a-puzdra-na-notebooky', 'baterie-a-adaptery-k-notebookom',
+  'chladenie-a-stojany-na-notebooky', 'ochranne-folie-a-skla', 'pera-a-stylusy',
+]);
+const NOTEBOOK_SIGNAL_RE = /\b(notebook|notebooky|laptop|ntb|macbook|thinkpad|ideapad|thinkbook|legion|zenbook|vivobook|expertbook|chromebook|probook|elitebook|latitude|aspire|swift|yoga|surface book|rog|tuf)\b/i;
+
 export function categorizeProductSmartly(title: string, currentSlug: string): { slug: string; hierarchy: string[] } {
   const t = title.toLowerCase();
 
@@ -403,7 +410,10 @@ export async function recategorizeAllProducts() {
   const categoryStats: Record<string, number> = {};
 
   for (const p of products) {
-    const newCat = categorizeProductSmartly(p.title, p.category_slug);
+    let newCat = categorizeProductSmartly(p.title, p.category_slug);
+    if (NOTEBOOK_CATEGORY_SLUGS.has(newCat.slug) && !NOTEBOOK_SIGNAL_RE.test(p.title || '')) {
+      newCat = { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
+    }
     categoryStats[newCat.slug] = (categoryStats[newCat.slug] || 0) + 1;
 
     if (newCat.slug !== p.category_slug) {

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { MasterProduct } from '@worlds/types';
 import { CheckCircle2, AlertCircle, Eye } from 'lucide-react';
 import { ProductImage } from './ProductImage';
+import { AddToCartButton } from './AddToCartButton';
 
 export function ProductCard({ product }: { product: MasterProduct }) {
   const primaryImg = product.images[0]?.url || '/product-placeholder.svg';
@@ -92,13 +93,17 @@ export function ProductCard({ product }: { product: MasterProduct }) {
               </div>
             </div>
 
-            <Link
-              href={`/produkt/${product.slug}`}
-              className="bg-brand-600 hover:bg-brand-700 text-white p-2 rounded-lg transition-colors flex items-center justify-center shadow-sm"
-              title="Zobraziť detail"
-            >
-              <Eye className="w-4 h-4" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/produkt/${product.slug}`}
+                className="inline-flex items-center justify-center rounded-lg bg-brand-600 p-2 text-white shadow-sm transition-colors hover:bg-brand-700"
+                title="Zobraziť detail"
+                aria-label="Zobraziť detail produktu"
+              >
+                <Eye className="w-4 h-4" />
+              </Link>
+              <AddToCartButton productId={product.id} compact />
+            </div>
           </div>
         </div>
       </div>

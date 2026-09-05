@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Check, ShoppingCart } from 'lucide-react';
 
-export function AddToCartButton({ productId }: { productId: string }) {
+export function AddToCartButton({ productId, compact = false }: { productId: string; compact?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [added, setAdded] = useState(false);
 
@@ -26,8 +26,10 @@ export function AddToCartButton({ productId }: { productId: string }) {
     } finally { setBusy(false); }
   }
 
-  return <button type="button" onClick={addToCart} disabled={busy} className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white font-extrabold py-4 px-6 rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-brand-600/30 transition-all text-base">
+  return <button type="button" onClick={addToCart} disabled={busy} aria-label={compact ? (added ? 'Pridané do košíka' : 'Pridať do košíka') : undefined} className={compact
+    ? 'inline-flex items-center justify-center rounded-lg bg-emerald-600 p-2 text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-60'
+    : 'w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white font-extrabold py-4 px-6 rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-brand-600/30 transition-all text-base'}>
     {added ? <Check className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
-    {busy ? 'Pridávam…' : added ? 'Pridané do košíka' : 'Pridať do košíka'}
+    {!compact && (busy ? 'Pridávam…' : added ? 'Pridané do košíka' : 'Pridať do košíka')}
   </button>;
 }
