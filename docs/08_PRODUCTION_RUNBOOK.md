@@ -66,6 +66,23 @@ and later versions are applied in lexical filename order.
 To test a schema change without touching production, create a Neon branch, point
 `DATABASE_URL` at it, migrate there, then delete the branch.
 
+After a successful migration, verify the normalized import layers before the
+first public catalogue run:
+
+```sql
+SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 10;
+SELECT COUNT(*) AS attributes FROM attributes;
+SELECT COUNT(*) AS taxonomy_nodes FROM taxonomy_nodes;
+SELECT COUNT(*) AS price_rows FROM product_prices;
+SELECT COUNT(*) AS supplier_offers FROM supplier_products;
+SELECT COUNT(*) AS media_assets FROM media_assets;
+```
+
+The first production sequence is: apply migrations, run `reference-data`, run a
+limited full catalogue import, inspect `staging_products` and `import_issues`,
+then widen the import scope. The image loader and search drain may run only
+after the first successful full batch.
+
 ---
 
 ## 4. Catalogue synchronisation
@@ -91,6 +108,19 @@ Behaviour worth knowing before the first live run:
   **not** retire the brands you removed.
 - **A full run that parses zero products aborts** rather than marking the whole
   catalogue missing.
+
+- Missing reconciliation is two-pass: the first confirmed absence creates a
+  candidate, while the second consecutive successful full snapshot can mark a
+  product `DISCONTINUED`. A product seen again resets the streak.
+
+- Every full batch is retained in `staging_products`; invalid records are also
+  copied to `import_issues` and `product_quarantine`. Source checksums are in
+  `raw_documents` and `sync_batch_sources`.
+
+- Supplier price, inventory, media and lifecycle history are append-only or
+  rebuildable projections. The storefront still reads the current product
+  read-model, while `supplier_price_snapshots`, `supplier_inventory_snapshots`,
+  `product_lifecycle_history` and `outbox_events` support audit and recovery.
 
 Run it by hand first: Actions → *eD catalog synchronization* → Run workflow →
 `stock-price`, and check the row in `sync_batches` afterwards:
