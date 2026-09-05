@@ -5,7 +5,6 @@ import { runSyncJob, saveSyncJobSettings } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
-const modeLabels: Record<string, string> = { full: 'Úplný import katalógu', 'stock-price': 'Synchronizácia skladov a cien', sample: 'Testovací import', images: 'Synchronizácia obrázkov' };
 
 export default async function AdminImports({ searchParams }: { searchParams: Promise<{ saved?: string; run?: string; error?: string }> }) {
   if (!(await isAdminAuthenticated())) redirect('/admin');
