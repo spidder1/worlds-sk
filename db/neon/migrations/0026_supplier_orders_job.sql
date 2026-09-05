@@ -1,8 +1,8 @@
 INSERT INTO sync_job_settings (job_key, name, description, workflow_file, schedule_cron)
 VALUES (
   'supplier-orders',
-  'Odoslanie zaplatených objednávok do eD',
-  'Bezpečne odošle zaplatené objednávky čakajúce vo fronte do eD systemu a uloží stav, symbol objednávky alebo chybu.',
+  'Odoslanie zaplatených objednávok dodávateľovi',
+  'Bezpečne odošle zaplatené objednávky čakajúce vo fronte do eD systému a uloží stav, symbol objednávky alebo chybu.',
   'ed-order-sync.yml',
   '*/10 * * * *'
 )
