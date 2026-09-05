@@ -53,13 +53,15 @@ async function main() {
     password: required('ED_PASSWORD'),
     endpointUrl: process.env.ED_ENDPOINT_URL?.trim(),
   });
-  const [index1, index2, relations, informationCodes, producers, commodities] = await Promise.all([
+  const [index1, index2, relations, informationCodes, producers, commodities, categoryAttributes, attributeValues] = await Promise.all([
     client.getProductIndexTree1(),
     client.getProductIndexTree2(),
     client.getProductRelationList(),
     client.getProductInformationList(),
     client.getProductProducerList(),
     client.getProductCommodityList(),
+    client.getProductCategoryAttributeList(),
+    client.getProductCategoryAttributeValueList(),
   ]);
   const indexRows = [
     ...flattenIndexTree(index1, 'INDEX_1'),
@@ -115,10 +117,30 @@ async function main() {
         );
       }
     }
+    if (categoryAttributes.length > 0) {
+      await db.query('DELETE FROM supplier_attributes');
+      for (const item of categoryAttributes) {
+        await db.query(
+          `INSERT INTO supplier_attributes (attribute_code, attribute_name, is_primary, filter_operator, source_payload, updated_at)
+           VALUES ($1,$2,$3,$4,$5::jsonb,NOW())`,
+          [String(item.AttributeCode), String(item.AttributeName || ''), String(item.IsPrimary).toLowerCase() === 'true', item.FilterOperator ? String(item.FilterOperator) : null, JSON.stringify(item)],
+        );
+      }
+    }
+    if (attributeValues.length > 0) {
+      await db.query('DELETE FROM supplier_attribute_values');
+      for (const item of attributeValues) {
+        await db.query(
+          `INSERT INTO supplier_attribute_values (attribute_code, value_code, value_text, value_sort, source_payload, updated_at)
+           VALUES ($1,$2,$3,$4,$5::jsonb,NOW())`,
+          [String(item.AttributeCode), String(item.ValueCode), String(item.Value || ''), item.ValueSort == null ? null : Number(item.ValueSort), JSON.stringify(item)],
+        );
+      }
+    }
 
     const batch = await db.query(
       `INSERT INTO sync_batches (batch_number, mode, status, source_method, started_at)
-       VALUES ($1, 'reference', 'RUNNING', 'getProductProducerList/getProductCommodityList/getProductInformationList/getProductRelationList/getProductIndexTree1/getProductIndexTree2', NOW())
+       VALUES ($1, 'reference', 'RUNNING', 'getProductCategoryAttributeList/getProductCategoryAttributeValueList/getProductProducerList/getProductCommodityList/getProductInformationList/getProductRelationList/getProductIndexTree1/getProductIndexTree2', NOW())
        RETURNING id`,
       [`reference-${new Date().toISOString()}`],
     );
@@ -181,10 +203,10 @@ async function main() {
     await db.query(
       `UPDATE sync_batches SET status = 'COMPLETED', completed_at = NOW(), total_read = $1,
          imported_count = $2, filtered_count = $3, metrics = $4::jsonb WHERE id = $5`,
-      [relations.length, resolved, unresolved, JSON.stringify({ indexNodes: indexRows.length, informationCodes: informationCodes.length, producers: producers.length, commodities: commodities.length, relations: relations.length, resolved, unresolved }), batchId],
+      [relations.length, resolved, unresolved, JSON.stringify({ indexNodes: indexRows.length, informationCodes: informationCodes.length, producers: producers.length, commodities: commodities.length, categoryAttributes: categoryAttributes.length, attributeValues: attributeValues.length, relations: relations.length, resolved, unresolved }), batchId],
     );
     await db.query('COMMIT');
-    console.log(JSON.stringify({ indexNodes: indexRows.length, informationCodes: informationCodes.length, producers: producers.length, commodities: commodities.length, relationGroups: relations.length, resolved, unresolved }));
+    console.log(JSON.stringify({ indexNodes: indexRows.length, informationCodes: informationCodes.length, producers: producers.length, commodities: commodities.length, categoryAttributes: categoryAttributes.length, attributeValues: attributeValues.length, relationGroups: relations.length, resolved, unresolved }));
   } catch (error) {
     await db.query('ROLLBACK');
     throw error;
