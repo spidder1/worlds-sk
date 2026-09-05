@@ -23,7 +23,7 @@ try {
       await db.query(`INSERT INTO supplier_transport_methods (code, name, type_code, active, fetched_at)
         VALUES ($1, $2, $3, true, NOW())
         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, type_code = EXCLUDED.type_code, active = true, fetched_at = NOW()`,
-      [code, name, method.TypeCode ? String(method.TypeCode) : null]);
+      [code, name, method.TypeCode !== undefined && method.TypeCode !== null ? String(method.TypeCode) : null]);
     }
     await db.query('COMMIT');
   } catch (error) {

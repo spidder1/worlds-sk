@@ -322,25 +322,17 @@ export class EDSystemClient {
    * Returns allowed B2C dropship transportation types.
    */
   async getTransportationListCustomer(): Promise<EDOrderTransportation[]> {
-    const action = `${this.getSoapNamespace()}getTransportationListCustomer`;
-    const bodyXml = `<getTransportationListCustomer xmlns="${this.getSoapNamespace()}">
-      <login>${escapeXml(this.login)}</login>
-      <password>${escapeXml(this.pass)}</password>
-    </getTransportationListCustomer>`;
-
-    const response = await executeSoapCall<{ getTransportationListCustomerResponse?: { getTransportationListCustomerResult?: any } }>({
-      endpoint: this.endpoint,
-      action,
-      bodyXml,
-    });
-
-    const result = response?.getTransportationListCustomerResponse?.getTransportationListCustomerResult;
+    // eD exposes this dictionary through the URL-authenticated XML endpoint.
+    // Do not log the generated URL: it contains the supplier credentials.
+    const parsed = await this.getXmlOverUrl('getTransportationListCustomer');
+    const result = (parsed.ResponseTransportationList ?? parsed) as Record<string, unknown>;
     const status = result?.Status as Record<string, unknown> | undefined;
     const statusCode = xmlString(status?.StatusCode);
     if (statusCode && statusCode !== 'DONE') throw new Error(`eD transport list failed: ${xmlString(status?.ErrorText) ?? statusCode}`);
-    const items = result?.TransportationList?.Transportation ?? result?.Transportation ?? result?.TransportationList;
+    const list = result?.TransportationList as Record<string, unknown> | undefined;
+    const items = list?.Transportation ?? result?.Transportation ?? list;
     if (!items) return [];
-    return Array.isArray(items) ? items : [items];
+    return (Array.isArray(items) ? items : [items]) as EDOrderTransportation[];
   }
 
   /**
