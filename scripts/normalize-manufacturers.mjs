@@ -281,16 +281,25 @@ try {
     process.exit(0);
   }
 
-  // Keep the write transaction short. Logo providers are external and must
-  // never hold a Neon transaction open while they respond.
-  await client.query('BEGIN');
+  // Apply product changes in small committed batches. A single JSON payload
+  // for the whole catalogue exceeds Neon project storage/WAL limits.
   const changed = changes.map(({ id, canonical }) => ({ id, canonical }));
-  if (changed.length > 0) {
-    await client.query(`UPDATE products AS p
-      SET brand = m.canonical, updated_at = NOW()
-      FROM jsonb_to_recordset($1::jsonb) AS m(id text, canonical text)
-      WHERE p.id = m.id`, [JSON.stringify(changed)]);
+  for (let offset = 0; offset < changed.length; offset += 500) {
+    const chunk = changed.slice(offset, offset + 500);
+    await client.query('BEGIN');
+    try {
+      await client.query(`UPDATE products AS p
+        SET brand = m.canonical, updated_at = NOW()
+        FROM jsonb_to_recordset($1::jsonb) AS m(id text, canonical text)
+        WHERE p.id = m.id`, [JSON.stringify(chunk)]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    }
+    console.log(`[manufacturers] products ${Math.min(offset + chunk.length, changed.length)}/${changed.length}`);
   }
+  await client.query('BEGIN');
   await client.query(`DELETE FROM manufacturers WHERE name <> ALL($1::text[])`, [canonicalNames]);
   await client.query(`INSERT INTO manufacturers (id, name, slug, audit_class, audit_confidence, audit_reason, audit_source, logo_status)
     SELECT id, name, slug, audit_class, audit_confidence, audit_reason, audit_source, 'PENDING'

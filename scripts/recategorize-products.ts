@@ -79,6 +79,11 @@ export const NEW_ACCESSORY_CATEGORIES: TaxonomyCategory[] = [
     level: 2,
     isSeoIndexed: true,
     displayOrder: 6,
+    subcategories: [
+      { id: 'cat-predlzenia-zaruky', slug: 'predlzenia-zaruky', name: 'Predĺženia a rozšírenia záruky', parentSlug: 'zaruky-a-sluzby', level: 3, isSeoIndexed: true, displayOrder: 1 },
+      { id: 'cat-servisne-sluzby', slug: 'servisne-a-profesionalne-sluzby', name: 'Servisné a profesionálne služby', parentSlug: 'zaruky-a-sluzby', level: 3, isSeoIndexed: true, displayOrder: 2 },
+      { id: 'cat-licencie-predplatne', slug: 'licencie-a-predplatne', name: 'Licencie a predplatné', parentSlug: 'zaruky-a-sluzby', level: 3, isSeoIndexed: true, displayOrder: 3 },
+    ],
   },
 ];
 
@@ -96,8 +101,14 @@ export function categorizeProductSmartly(title: string, currentSlug: string): { 
   // High-confidence product-family rules run first. Supplier titles frequently
   // contain compatible-device words (for example "for Chromebook"), so these
   // checks must win before the generic notebook/component rules below.
-  if (/\b(záruk|zaruk|warranty|care ?pack|carepack|onsite|on-site|premier support|support contract|service contract|pickup.{0,20}return|technical support|support service|std exch|ons pda|trv nb|\d+\s*(?:y|year|years) .*svc|prodloužen|prodlouzeni|rozšíren|rozsiren|predĺžen|predlzen|pws|nbd|subscription|licenc|license)\b/i.test(t)) {
-    return { slug: 'zaruky-a-sluzby', hierarchy: ['Príslušenstvo a periférie', 'Záruky, rozšírenia a služby'] };
+  if (/\b(licenc|license|subscription|predplat|antivirus|bitdefender|acronis|veeam|microsoft 365|office 365|cal|csp)\b/i.test(t)) {
+    return { slug: 'licencie-a-predplatne', hierarchy: ['Príslušenstvo a periférie', 'Záruky, rozšírenia a služby', 'Licencie a predplatné'] };
+  }
+  if (/\b(install|installation|startup|professional service|prof services|data sanitization|consulting|consultancy|deployment|migrat|školenie|skolenie|service delivery)\b/i.test(t)) {
+    return { slug: 'servisne-a-profesionalne-sluzby', hierarchy: ['Príslušenstvo a periférie', 'Záruky, rozšírenia a služby', 'Servisné a profesionálne služby'] };
+  }
+  if (/\b(záruk|zaruk|warranty|care ?pack|carepack|onsite|on-site|premier support|support contract|service contract|pickup.{0,20}return|technical support|support service|std exch|ons pda|trv nb|\d+\s*(?:y|year|years) .*svc|prodloužen|prodlouzeni|rozšíren|rozsiren|predĺžen|predlzen|pws|nbd|tech care|foundation care|critical care|essential care|basic care|\bsvc\b)\b/i.test(t)) {
+    return { slug: 'predlzenia-zaruky', hierarchy: ['Príslušenstvo a periférie', 'Záruky, rozšírenia a služby', 'Predĺženia a rozšírenia záruky'] };
   }
   if (/\b(toner|cartridge|ink cartridge|atrament|inkoust|kazeta|valec pre|drum unit|printhead|náplň|naplň)\b/i.test(t)) {
     return { slug: 'tonery-a-naplne', hierarchy: ['Tlačiarne a kancelárska technika', 'Tonery a náplne'] };
@@ -223,18 +234,9 @@ export function categorizeProductSmartly(title: string, currentSlug: string): { 
   }
 
   if (
-    t.includes('taška') ||
-    t.includes('taska') ||
-    t.includes('puzdro') ||
-    t.includes('pouzdro') ||
-    t.includes('batoh') ||
-    t.includes('backpack') ||
-    t.includes('bag') ||
-    t.includes('sleeve') ||
-    t.includes('toploader') ||
-    t.includes('carry case') ||
-    t.includes('kufor') ||
-    t.includes('kufrik')
+    t.includes('taška') || t.includes('taska') || t.includes('puzdro') || t.includes('pouzdro') ||
+    t.includes('batoh') || t.includes('backpack') || t.includes('bag') || t.includes('sleeve') ||
+    t.includes('toploader') || t.includes('carry case') || t.includes('kufor') || t.includes('kufrik')
   ) {
     return {
       slug: 'tasky-a-puzdra-na-notebooky',
@@ -256,15 +258,7 @@ export function categorizeProductSmartly(title: string, currentSlug: string): { 
     };
   }
 
-  if (
-    t.includes('chladic') ||
-    t.includes('chladiac') ||
-    t.includes('cooling pad') ||
-    t.includes('stojan') ||
-    t.includes('stand') ||
-    t.includes('podložka pod notebook') ||
-    t.includes('podlozka pod notebook')
-  ) {
+  if (t.includes('chladic') || t.includes('chladiac') || t.includes('cooling pad') || t.includes('stojan') || t.includes('stand') || t.includes('podložka pod notebook') || t.includes('podlozka pod notebook')) {
     return {
       slug: 'chladenie-a-stojany-na-notebooky',
       hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Chladiace podložky a stojany'],
@@ -486,6 +480,7 @@ export function categorizeProductSmartly(title: string, currentSlug: string): { 
 }
 
 export async function recategorizeAllProducts() {
+  const dryRun = process.argv.includes('--dry-run');
   console.log('===========================================================');
   console.log(' Worlds.sk - INTELIGENTNÁ REKATEGORIZÁCIA KATALÓGU PRODUKTOV');
   console.log('===========================================================\n');
@@ -520,6 +515,10 @@ export async function recategorizeAllProducts() {
   for (const cat of NEW_ACCESSORY_CATEGORIES) {
     await insertCategoryNode(cat);
   }
+  // Keep these nodes in the public taxonomy tree (the historical importer
+  // created them as roots before the notebook accessory hierarchy existed).
+  await pool.query("UPDATE categories SET parent_slug = 'notebooky', level = 3, updated_at = NOW() WHERE slug = 'prislusenstvo-k-notebookom'");
+  await pool.query("UPDATE categories SET parent_slug = 'prislusenstvo-a-periferie', level = 2, updated_at = NOW() WHERE slug = 'zaruky-a-sluzby'");
 
   const res = await pool.query('SELECT id, title, category_slug FROM products');
   const products = res.rows;
@@ -545,6 +544,12 @@ export async function recategorizeAllProducts() {
   }
 
   console.log(`🚀 Rýchly dávkový zápis pre ${updatesToPerform.length} zmenených produktov...`);
+
+  if (dryRun) {
+    console.log('🧪 Dry-run: databáza sa nemení.');
+    await pool.end();
+    return;
+  }
 
   // Perform updates in fast bulk batches of 200 items
   const batchSize = 200;
