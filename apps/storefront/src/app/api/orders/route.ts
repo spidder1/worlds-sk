@@ -27,11 +27,11 @@ export async function POST(request: Request) {
     const client = await getNeonPool().connect();
     try {
       await client.query('BEGIN');
-      const existing = await client.query<{ id: string; order_number: string; total: string; payment_status: string }>(
-        'SELECT id, order_number, total, payment_status FROM orders WHERE idempotency_key = $1 LIMIT 1', [idempotencyKey]);
+      const existing = await client.query<{ id: string; order_number: string; total: string; payment_status: string; payment_method: string }>(
+        'SELECT id, order_number, total, payment_status, payment_method FROM orders WHERE idempotency_key = $1 LIMIT 1', [idempotencyKey]);
       if (existing.rows.length) {
         await client.query('COMMIT');
-        return NextResponse.json({ orderId: existing.rows[0].id, orderNumber: existing.rows[0].order_number, status: 'NEW', paymentStatus: existing.rows[0].payment_status, total: existing.rows[0].total, currency: 'EUR' }, { status: 200 });
+        return NextResponse.json({ orderId: existing.rows[0].id, orderNumber: existing.rows[0].order_number, status: 'NEW', paymentStatus: existing.rows[0].payment_status, paymentMethod: existing.rows[0].payment_method, total: existing.rows[0].total, currency: 'EUR' }, { status: 200 });
       }
       const cart = await client.query<{ id: string }>('SELECT id FROM carts WHERE session_token = $1 LIMIT 1 FOR UPDATE', [body.sessionToken]);
       if (!cart.rows.length) {
@@ -72,18 +72,19 @@ export async function POST(request: Request) {
       }
       await client.query('DELETE FROM cart_items WHERE cart_id = $1', [cart.rows[0].id]);
       await client.query('COMMIT');
-      return NextResponse.json({ orderId, orderNumber, status: 'NEW', paymentStatus: 'PENDING', total: subtotal.toFixed(2), currency: 'EUR' }, { status: 201 });
+      return NextResponse.json({ orderId, orderNumber, status: 'NEW', paymentStatus: 'PENDING', paymentMethod, total: subtotal.toFixed(2), currency: 'EUR' }, { status: 201 });
     } catch (transactionError) {
       await client.query('ROLLBACK').catch(() => undefined);
       if (transactionError && typeof transactionError === 'object' && 'code' in transactionError && transactionError.code === '23505') {
-        const existingAfterRace = await client.query<{ id: string; order_number: string; total: string; payment_status: string }>(
-          'SELECT id, order_number, total, payment_status FROM orders WHERE idempotency_key = $1 LIMIT 1', [idempotencyKey]);
+        const existingAfterRace = await client.query<{ id: string; order_number: string; total: string; payment_status: string; payment_method: string }>(
+          'SELECT id, order_number, total, payment_status, payment_method FROM orders WHERE idempotency_key = $1 LIMIT 1', [idempotencyKey]);
         if (existingAfterRace.rows.length) {
           return NextResponse.json({
             orderId: existingAfterRace.rows[0].id,
             orderNumber: existingAfterRace.rows[0].order_number,
             status: 'NEW',
             paymentStatus: existingAfterRace.rows[0].payment_status,
+            paymentMethod: existingAfterRace.rows[0].payment_method,
             total: existingAfterRace.rows[0].total,
             currency: 'EUR',
           }, { status: 200 });
