@@ -1,0 +1,26 @@
+name: Apply Neon migrations
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply versioned Neon migrations
+        run: node scripts/migrate-neon.mjs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
