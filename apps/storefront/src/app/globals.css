@@ -11,3 +11,16 @@ body {
   color: #1e293b;
   background-color: #f8fafc;
 }
+
+@keyframes manufacturer-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.manufacturer-marquee-track {
+  animation: manufacturer-marquee 55s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manufacturer-marquee-track { animation: none; }
+}

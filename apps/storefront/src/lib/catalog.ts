@@ -591,6 +591,7 @@ export interface ProductPageOptions {
 export interface ManufacturerItem {
   name: string;
   count: number;
+  logoUrl?: string | null;
 }
 
 export interface FacetValue {
@@ -776,15 +777,16 @@ export async function getManufacturers(options: ManufacturerOptions = {}): Promi
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
-    const rows = await queryNeon<{ brand: string; count: string }>(`
-      SELECT brand, COUNT(*)::int as count
-      FROM storefront_products
+    const rows = await queryNeon<{ brand: string; count: string; logo_url: string | null }>(`
+      SELECT p.brand, COUNT(*)::int as count, MAX(m.logo_url) AS logo_url
+      FROM storefront_products p
+      LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand)
       ${whereClause}
-      GROUP BY brand
+      GROUP BY p.brand
       ORDER BY count DESC
     `, params);
 
-    return rows.map((r) => ({ name: r.brand, count: Number(r.count) }));
+    return rows.map((r) => ({ name: r.brand, count: Number(r.count), logoUrl: r.logo_url }));
   } catch (err) {
     rethrowIfMisconfigured(err);
     console.error('Chyba pri načítaní výrobcov z Neon DB:', err);

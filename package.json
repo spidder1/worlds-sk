@@ -12,6 +12,7 @@
     "dev:importer": "pnpm --filter @worlds/importer dev",
     "sync:catalog": "pnpm --filter @worlds/importer run sync:catalog --",
     "sync:stock-price": "pnpm --filter @worlds/importer run sync:stock-price --",
+    "manufacturers:clean": "node scripts/normalize-manufacturers.mjs",
     "import:sample": "pnpm --filter @worlds/importer run import:sample"
   },
   "dependencies": {

@@ -1,0 +1,56 @@
+name: Manufacturer cleanup and logo sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Analyse names without changing Neon or downloading logos
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: '20 3 * * 0'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: manufacturer-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/migrate-neon.mjs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - name: Normalize manufacturers and download logos
+        if: github.event_name == 'schedule' || inputs.dry_run != true
+        run: pnpm manufacturers:clean
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          MANUFACTURER_LOGO_DIR: apps/storefront/public/manufacturers
+      - name: Dry-run manufacturer audit
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
+        run: pnpm manufacturers:clean -- --dry-run --no-download
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - name: Commit downloaded logos
+        if: github.event_name == 'schedule' || inputs.dry_run != true
+        run: |
+          git config user.name "worlds.sk automation"
+          git config user.email "automation@worlds.sk"
+          git add apps/storefront/public/manufacturers
+          git diff --cached --quiet || git commit -m "chore(manufacturers): refresh normalized logos"
+          git push

@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getCategories, getFeaturedProducts, getManufacturers, getProductCount } from '../lib/catalog';
 import { ProductCard } from '../components/ProductCard';
 import { Sparkles, ArrowRight, ShieldCheck, Zap, Server, Building2 } from 'lucide-react';
@@ -46,7 +47,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Top Manufacturers / Brands Grid */}
+      {/* Manufacturer train */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -62,24 +63,25 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {manufacturers.map((brand) => (
-            <Link
-              key={brand.name}
-              href={`/vyhladavanie?vyrobca=${encodeURIComponent(brand.name)}`}
-              className="bg-white p-4 rounded-xl border border-slate-200 hover:border-brand-500 hover:shadow-md transition-all group flex flex-col items-center justify-center text-center"
-            >
-              <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-brand-50 text-slate-700 group-hover:text-brand-600 font-black text-sm flex items-center justify-center mb-2 transition-colors">
-                {brand.name.substring(0, 2).toUpperCase()}
-              </div>
-              <h3 className="font-bold text-sm text-slate-900 group-hover:text-brand-600 transition-colors line-clamp-1">
-                {brand.name}
-              </h3>
-              <span className="text-[11px] font-medium text-slate-400 mt-0.5">
-                {brand.count.toLocaleString('sk-SK')} produktov
-              </span>
-            </Link>
-          ))}
+        <div className="manufacturer-marquee relative overflow-hidden rounded-2xl border border-slate-200 bg-white py-3 shadow-sm" aria-label="Výrobcovia a značky">
+          <div className="manufacturer-marquee-track flex w-max items-center gap-3 hover:[animation-play-state:paused]">
+            {[...manufacturers, ...manufacturers].map((brand, index) => (
+              <Link
+                key={`${brand.name}-${index}`}
+                href={`/vyhladavanie?vyrobca=${encodeURIComponent(brand.name)}`}
+                className="group flex h-16 w-40 shrink-0 items-center gap-3 rounded-xl border border-slate-100 bg-white px-4 transition-all hover:border-brand-400 hover:bg-brand-50"
+                title={`${brand.name} — ${brand.count.toLocaleString('sk-SK')} produktov`}
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 p-1.5 text-xs font-black text-slate-500 group-hover:bg-white group-hover:text-brand-600">
+                  {brand.logoUrl ? <Image src={brand.logoUrl} alt={`${brand.name} logo`} width={40} height={40} className="h-full w-full object-contain" /> : brand.name.substring(0, 2).toUpperCase()}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold text-slate-900 group-hover:text-brand-600">{brand.name}</span>
+                  <span className="block text-[10px] font-medium text-slate-400">{brand.count.toLocaleString('sk-SK')} produktov</span>
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
