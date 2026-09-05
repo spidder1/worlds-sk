@@ -62,6 +62,11 @@ test('full imports register manufacturers before products', () => {
   assert.match(upsert, /LEFT JOIN manufacturer_upsert ON manufacturer_upsert\.name = input\.brand/);
 });
 
+test('full imports do not reintroduce a manufacturer marked removed by admin', () => {
+  assert.match(upsert, /removed\.audit_class = 'REMOVED'/);
+  assert.match(upsert, /THEN '' ELSE item\.brand END AS brand/);
+});
+
 test('unchanged products are skipped but still stamped with the current batch', () => {
   assert.match(upsert, /products\.content_hash IS DISTINCT FROM EXCLUDED\.content_hash/);
   assert.match(upsert, /products\.price_hash IS DISTINCT FROM EXCLUDED\.price_hash/);

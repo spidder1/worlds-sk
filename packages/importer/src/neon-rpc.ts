@@ -121,7 +121,11 @@ WITH input AS (
     item.mpn,
     item.mpn2,
     item.ean,
-    item.brand,
+    CASE WHEN EXISTS (
+      SELECT 1 FROM manufacturers removed
+       WHERE removed.audit_class = 'REMOVED'
+         AND lower(trim(removed.name)) = lower(trim(item.brand))
+    ) THEN '' ELSE item.brand END AS brand,
     item.producer_code,
     item.category_slug,
     COALESCE(item.category_hierarchy, '[]'::jsonb)  AS category_hierarchy,
