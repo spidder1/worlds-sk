@@ -1,0 +1,33 @@
+name: eD premium catalogue audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ed-premium-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build
+      - run: pnpm premium:audit
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ED_LOGIN: ${{ secrets.ED_LOGIN }}
+          ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
+          ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx

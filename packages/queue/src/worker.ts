@@ -11,6 +11,7 @@ const commands: Record<string, string[]> = {
   'search-drain': ['search:drain'],
   'search-reindex': ['search:reindex'],
   'reference-data': ['sync:reference'],
+  'premium-audit': ['premium:audit'],
 };
 
 function runCommand(args: string[], data: Record<string, unknown>): Promise<void> {
