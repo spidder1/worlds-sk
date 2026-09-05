@@ -33,6 +33,11 @@ function configuredTargetBrands(): Set<string> {
   );
 }
 
+function targetBrandsLabel(): string {
+  const configured = [...configuredTargetBrands()];
+  return configured.includes('ALL') ? 'VŠETKY ZNAČKY' : configured.join(' & ');
+}
+
 function isTargetBrand(name: string, rawBrand: string | undefined, targetBrands: Set<string>): { isMatch: boolean; brandName: string | null } {
   const b = (rawBrand || '').toUpperCase().trim();
   const title = name.toUpperCase();
@@ -357,7 +362,7 @@ async function fetchLiveStockMap(): Promise<Map<string, any>> {
 
 export async function importAsusLenovoToNeon() {
   console.log('===========================================================');
-  console.log(' Worlds.sk - AKTUALIZÁCIA CIEN & OPRAVA OBRÁZKOV (ASUS & LENOVO)');
+  console.log(` Worlds.sk - AKTUALIZÁCIA CIEN & OPRAVA OBRÁZKOV (${targetBrandsLabel()})`);
   console.log('===========================================================\n');
 
   const pool = new Pool({
@@ -366,7 +371,7 @@ export async function importAsusLenovoToNeon() {
     max: 10,
   });
 
-  const batchNumber = `asus-lenovo-${Date.now()}`;
+  const batchNumber = `ed-catalog-${Date.now()}`;
   const batchResult = await pool.query<{ id: string }>(
     `INSERT INTO sync_batches (batch_number, mode, status)
      VALUES ($1, $2, 'RUNNING') RETURNING id`,
@@ -411,7 +416,7 @@ export async function importAsusLenovoToNeon() {
 
   console.log(`✓ Načítaný XML katalóg (${(xmlContent.length / 1024 / 1024).toFixed(2)} MB)`);
 
-  console.log('🔍 Filtrujem a spracovávam výhradne značky ASUS a Lenovo...');
+  console.log(`🔍 Filtrujem a spracovávam: ${targetBrandsLabel()}...`);
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '@_',
@@ -434,6 +439,7 @@ export async function importAsusLenovoToNeon() {
   const sampleLimit = Number.isFinite(sampleLimitRaw) && sampleLimitRaw > 0 ? sampleLimitRaw : 250;
   let asusCount = 0;
   let lenovoCount = 0;
+  const brandCounts = new Map<string, number>();
 
   for (const block of productBlocks) {
     const parsed = parser.parse(block);
@@ -453,6 +459,7 @@ export async function importAsusLenovoToNeon() {
       commodityName: p.CommodityName,
     });
     if (!scope.included) continue;
+    brandCounts.set(brandName, (brandCounts.get(brandName) || 0) + 1);
 
     const code = String(p.Code || p.ProId);
     const partNumber = String(p.PartNumber || p.PartNumber2 || code);
@@ -566,15 +573,24 @@ export async function importAsusLenovoToNeon() {
     });
 
     if (sampleOnly && targetProducts.length >= sampleLimit) {
-      console.log(`🧪 Sample režim: dosiahnutý limit ${sampleLimit} ASUS/Lenovo produktov.`);
+      console.log(`🧪 Sample režim: dosiahnutý limit ${sampleLimit} produktov (${targetBrandsLabel()}).`);
       break;
     }
   }
 
   console.log(`\n===========================================================`);
   console.log(` 🎉 Nájdené IT produkty target značiek:`);
-  console.log(` 🔹 ASUS: ${asusCount}`);
-  console.log(` 🔹 Lenovo: ${lenovoCount}`);
+  if (targetBrands.has('ALL')) {
+    const topBrands = [...brandCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([brand, count]) => `${brand}: ${count}`)
+      .join(' | ');
+    console.log(` 🔹 Top značky: ${topBrands || 'bez rozpoznanej značky'}`);
+  } else {
+    console.log(` 🔹 ASUS: ${asusCount}`);
+    console.log(` 🔹 Lenovo: ${lenovoCount}`);
+  }
   console.log(` 📦 Celkovo s aktualizovanými cenami a fotkami: ${targetProducts.length}`);
   console.log(`===========================================================\n`);
 
@@ -592,7 +608,7 @@ export async function importAsusLenovoToNeon() {
     return;
   }
 
-  console.log('🚀 Upsertujem ASUS & Lenovo produkty bez mazania existujúceho katalógu...');
+  console.log(`🚀 Upsertujem produkty (${targetBrandsLabel()}) bez mazania existujúceho katalógu...`);
   const batchSize = 100;
   let inserted = 0;
 
