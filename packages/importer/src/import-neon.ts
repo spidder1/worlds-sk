@@ -438,6 +438,10 @@ export async function importAsusLenovoToNeon() {
   let asusCount = 0;
   let lenovoCount = 0;
   const brandCounts = new Map<string, number>();
+  let pricedCount = 0;
+  let imageProductCount = 0;
+  let imageCount = 0;
+  let multiImageProductCount = 0;
 
   for (const block of productBlocks) {
     const parsed = parser.parse(block);
@@ -508,6 +512,10 @@ export async function importAsusLenovoToNeon() {
         });
       });
     }
+    if (finalPrice > 0) pricedCount++;
+    if (images.length > 0) imageProductCount++;
+    imageCount += images.length;
+    if (images.length > 1) multiImageProductCount++;
 
     const attributes: Record<string, any> = {
       brand: { code: 'brand', name: 'Výrobca', value: brandName, rawValue: brandName },
@@ -598,9 +606,9 @@ export async function importAsusLenovoToNeon() {
       await pool.query(
         `UPDATE sync_batches
             SET total_read = $1, imported_count = $2, filtered_count = $3,
-                status = 'COMPLETED', completed_at = NOW()
-          WHERE id = $4`,
-        [productBlocks.length, targetProducts.length, Math.max(0, productBlocks.length - targetProducts.length), batchId],
+                metrics = $4::jsonb, status = 'COMPLETED', completed_at = NOW()
+          WHERE id = $5`,
+        [productBlocks.length, targetProducts.length, Math.max(0, productBlocks.length - targetProducts.length), JSON.stringify({ priced_count: pricedCount, image_product_count: imageProductCount, image_count: imageCount, multi_image_product_count: multiImageProductCount }), batchId],
       );
     }
     return;
@@ -705,9 +713,9 @@ export async function importAsusLenovoToNeon() {
     await pool.query(
       `UPDATE sync_batches
           SET total_read = $1, imported_count = $2, filtered_count = $3,
-              status = 'COMPLETED', completed_at = NOW()
-        WHERE id = $4`,
-      [productBlocks.length, inserted, Math.max(0, productBlocks.length - targetProducts.length), batchId],
+              metrics = $4::jsonb, status = 'COMPLETED', completed_at = NOW()
+        WHERE id = $5`,
+      [productBlocks.length, inserted, Math.max(0, productBlocks.length - targetProducts.length), JSON.stringify({ priced_count: pricedCount, image_product_count: imageProductCount, image_count: imageCount, multi_image_product_count: multiImageProductCount }), batchId],
     );
   }
 
