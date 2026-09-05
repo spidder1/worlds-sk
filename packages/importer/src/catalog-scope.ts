@@ -51,6 +51,7 @@ const IT_PATTERNS: Array<[string, RegExp]> = [
   ['network', /\b(router|switch|access point|wi-?fi|ethernet|lan|wan|firewall|modem|mesh system|sietov|network|transceiver|sfp\+?|poe|patch panel|rack|optick[ay] kabel|fiber optic)\b/],
   ['printing', /\b(tlaciaren|printer|multifunk|laserjet|deskjet|ecotank|pixma|skener|scanner|toner|cartridge|atramentov[ay] napln|print server|plotter|etiketov[ay] tlaciaren)\b/],
   ['peripheral', /\b(klavesnic|keyboard|mys|mouse|trackball|touchpad|gamepad|joystick|headset|sluchadl|mikrofon|webkamera|webcam|pc reproduktor|dokovaci[ae]|docking station|usb hub|port replicator|grafick[y] tablet|citacka kariet|barcode scanner|citacka ciarovych kodov)\b/],
+  ['it-accessory', /\b(z[aá]ruk[ay]|warranty|care ?pack|battery|bat[eé]ri[ae]|nab[ií]ja[cč]k|charger|bra[sš]n[ay]|batoh|puzdro|pouzdro|sleeve|dvd writer|optick[aá] mechanika|usb dvd)\b/],
   ['storage', /\b(nas|diskstation|qnap|synology|datove ulozisko|storage|usb flash|flash disk|datatraveler|pamatova karta|microsd|sdhc|sdxc|card reader|tape drive)\b/],
   ['power-it', /\b(ups|zalozny zdroj|smart-ups|back-ups|prepatova ochrana|power bank|napajaci adapter|notebook adapter|pc zdroj|power supply|psu)\b/],
   ['cabling', /\b(usb(?:-[ac])?|thunderbolt|hdmi|displayport|dvi|vga kabel|patch kabel|rj45|sata kabel|pcie|kvm|redukcia|datovy kabel|komunikacny kabel)\b/],

@@ -23,6 +23,16 @@ test('keeps PC hardware that contains generic furniture-like words', () => {
   }
 });
 
+test('includes IT accessories while still excluding non-IT appliances', () => {
+  for (const title of [
+    'LENOVO ThinkPad 3Y On-Site warranty',
+    'AVACOM battery pre Asus notebook',
+    'USB DVD writer externá mechanika',
+  ]) {
+    assert.equal(assessCatalogScope({ title }).included, true, title);
+  }
+});
+
 test('excludes white goods and garden products even when they contain smart features', () => {
   for (const title of [
     'Smart Wi-Fi chladnicka s displejom',
