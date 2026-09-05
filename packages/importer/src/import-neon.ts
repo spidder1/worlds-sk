@@ -436,7 +436,9 @@ async function syncStockOnly(pool: pg.Pool, stockMap: Map<string, any>, batchId:
     const deactivated = await pool.query(
       `UPDATE products
           SET status = 'INACTIVE', updated_at = NOW()
-        WHERE status = 'ACTIVE' AND final_price > 0 AND final_price < $1`,
+        WHERE status = 'ACTIVE'
+          AND COALESCE(NULLIF(supplier_cost, 0), final_price) > 0
+          AND COALESCE(NULLIF(supplier_cost, 0), final_price) < $1`,
       [minimumCostEur],
     );
     if (deactivated.rowCount) {
@@ -830,7 +832,9 @@ export async function importAsusLenovoToNeon() {
     const deactivated = await pool.query(
       `UPDATE products
           SET status = 'INACTIVE', updated_at = NOW()
-        WHERE status = 'ACTIVE' AND final_price > 0 AND final_price < $1`,
+        WHERE status = 'ACTIVE'
+          AND COALESCE(NULLIF(supplier_cost, 0), final_price) > 0
+          AND COALESCE(NULLIF(supplier_cost, 0), final_price) < $1`,
       [minimumCostEur],
     );
     if (deactivated.rowCount) {
