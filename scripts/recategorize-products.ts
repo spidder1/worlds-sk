@@ -92,6 +92,112 @@ const NOTEBOOK_SIGNAL_RE = /\b(notebook|notebooky|laptop|ntb|macbook|thinkpad|id
 export function categorizeProductSmartly(title: string, currentSlug: string): { slug: string; hierarchy: string[] } {
   const t = title.toLowerCase();
 
+  // High-confidence product-family rules run first. Supplier titles frequently
+  // contain compatible-device words (for example "for Chromebook"), so these
+  // checks must win before the generic notebook/component rules below.
+  if (/\b(záruk|zaruk|warranty|care ?pack|carepack|onsite|on-site|premier support|support contract|service contract|pickup.{0,20}return|technical support|support service|std exch|ons pda|trv nb|\d+\s*(?:y|year|years) .*svc|prodloužen|prodlouzeni|rozšíren|rozsiren|predĺžen|predlzen|pws|nbd|subscription|licenc|license)\b/i.test(t)) {
+    return { slug: 'zaruky-a-sluzby', hierarchy: ['Príslušenstvo a periférie', 'Záruky, rozšírenia a služby'] };
+  }
+  if (/\b(toner|cartridge|ink cartridge|atrament|inkoust|kazeta|valec pre|drum unit|printhead|náplň|naplň)\b/i.test(t)) {
+    return { slug: 'tonery-a-naplne', hierarchy: ['Tlačiarne a kancelárska technika', 'Tonery a náplne'] };
+  }
+  if (/\b(printer|tlačiareň|tlaciaren|multifunk|laserjet|deskjet|officejet|imageprograf|plotter)\b/i.test(t)) {
+    return { slug: 'tlaciarne-a-multifunkcie', hierarchy: ['Tlačiarne a kancelárska technika', 'Tlačiarne a multifunkcie'] };
+  }
+  if (/(micro\s*sd|sdxc|sdhc|compactflash|cf card|pamäťová karta|pamatova karta|memory card)/i.test(t)) {
+    return { slug: 'pamatove-karty-sd', hierarchy: ['Úložiská a pamäte', 'Pamäťové karty (SD / microSD)'] };
+  }
+  if (/\b(flash disk|usb flash|thumb ?drive|pendrive|usb stick)\b/i.test(t)) {
+    return { slug: 'usb-flash-disky', hierarchy: ['Úložiská a pamäte', 'USB flash disky'] };
+  }
+  if (/(laptop lock|notebook lock|zámok na notebook|zamok na notebook|briefcase|laptop bag|laptop roller|aktovka na notebook|stolek na notebook|notebook table|powerbank|power bank)/i.test(t)) {
+    return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
+  }
+  if (/(notebook|laptop|\bntb\b)/i.test(t) && /(secret|filter|podstav|stojan|kábel|kabel|cable|držiak|drzak|napájací|napajaci|power cord)/i.test(t)) {
+    return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
+  }
+  if (/(batéri|bateri|battery|li-ion|li-pol|mah\b|\d+\s*wh\b|nabíjač|nabijac|charger|power adapter)/i.test(t)) {
+    return { slug: 'baterie-a-adaptery-k-notebookom', hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Batérie a adaptéry k notebookom'] };
+  }
+  if (/(ochrann[áaeé] fóli|ochrann[áaeé] foli|ochrann[ée] sk|screen protector|privacy filter|paper feeling|flexibleglass|bladeshield|lens protection|tempered glass|fólie|folie|folia pro)/i.test(t)) {
+    return { slug: 'ochranne-folie-a-skla', hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Ochranné fólie a sklá'] };
+  }
+  if (/\b(taška|taska|brašna|brasna|batoh|backpack|sleeve|topload|carry case|puzdro|pouzdro|kufrík|kufrik|bag pro)\b/i.test(t)) {
+    return { slug: 'tasky-a-puzdra-na-notebooky', hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Tašky, batohy a puzdrá na notebooky'] };
+  }
+  if (/\b(stojan na notebook|stojan pre notebook|laptop stand|chladiaca podložka|chladiaca|chladící podložka|chladicí podložka|cooling pad|podstavec pro notebook|držák na notebook|drzak na notebook)\b/i.test(t)) {
+    return { slug: 'chladenie-a-stojany-na-notebooky', hierarchy: ['Príslušenstvo a periférie', 'Príslušenstvo k notebookom', 'Chladiace podložky a stojany'] };
+  }
+  if (/(webcam|webkamera|microphone|mikrofón|mikrofon|lavalier|klopový mikrofón|klopovy mikrofon)/i.test(t)) {
+    return { slug: 'webkamery-a-mikrofony', hierarchy: ['Príslušenstvo a periférie', 'Webkamery a mikrofóny'] };
+  }
+  if (/(headset|headphones|slúchadlá|sluchátka|earbuds|tws)/i.test(t)) {
+    return { slug: 'sluchadla-a-headsety', hierarchy: ['Príslušenstvo a periférie', 'Slúchadlá a headsety'] };
+  }
+  if (/\b(ups|záložný zdroj|zalozny zdroj|uninterruptible|powerwalker|line-interactive)\b/i.test(t)) {
+    return { slug: 'ups-zalozne-zdroje', hierarchy: ['Napájanie a káble', 'UPS a záložné zdroje'] };
+  }
+  if (/\b(psu|napájací zdroj|napajaci zdroj|power supply|80\s*\+|80plus|zdroj pre pc|pc power)\b/i.test(t)) {
+    return { slug: 'pocitacove-zdroje', hierarchy: ['Počítačové komponenty', 'Počítačové zdroje'] };
+  }
+  if (/\b(motherboard|mainboard|základná doska|zakladna doska|b550|b650|b760|a620|z790|h610|x670|x870)\b/i.test(t)) {
+    return { slug: 'zakladne-dosky', hierarchy: ['Počítačové komponenty', 'Základné dosky'] };
+  }
+  if (/\b(usb hub|hub usb|docking station|dokovacia stanica|dokovacie zariadenie|port replicator)\b/i.test(t)) {
+    return { slug: 'dokovacie-stanice', hierarchy: ['Príslušenstvo a periférie', 'Dokovacie stanice a USB huby'] };
+  }
+  if (/\b(router|routery|wi-?fi|wireless router|mesh system|access point|lte router)\b/i.test(t)) {
+    return { slug: 'wifi-routere-a-mesh', hierarchy: ['Sieťové prvky', 'Wi-Fi routery a Mesh'] };
+  }
+  if (/\b(joystick|gamepad|cleaning kit|čistiaca sada|cistiaca sada|tool kit|nástrojová sada|nastrojova sada)\b/i.test(t)) {
+    return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
+  }
+  if (/\b(fan|ventilátor|ventilator|cpu cooler|chladic procesora|thermal paste|teplovodivá pasta|teplovodiva pasta)\b/i.test(t)) {
+    return { slug: 'chladenie-pc', hierarchy: ['Počítačové komponenty', 'Chladenie PC'] };
+  }
+  if (/\b(extension lead|predlžovačka|predlzovacka|power strip)\b/i.test(t)) {
+    return { slug: 'kable-a-redukcie', hierarchy: ['Napájanie a káble', 'Káble, redukcie a adaptéry'] };
+  }
+  if (/\b(phone case|iphone|ipad case|galaxy|pixel \d|mobil|smartphone|xiaomi .*case|realme .*case)\b/i.test(t)) {
+    return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
+  }
+  if (/\b(mb\s+sc|motherboard|mainboard|základná doska|zakladna doska|b450|b550|b660|b760|a620|z790|h610|h810|x670|x870)\b/i.test(t)) {
+    return { slug: 'zakladne-dosky', hierarchy: ['Počítačové komponenty', 'Základné dosky'] };
+  }
+  if (/\b(ssd nvme case|nvme case|m\.2.*box|externí box pro ssd|externy box pre ssd)\b/i.test(t)) {
+    return { slug: 'ssd-a-pevne-disky', hierarchy: ['Úložiská a pamäte', 'SSD a pevné disky'] };
+  }
+  if (/(vga splitter|vga rozbočovač|vga kábel|vga kabel|vga cable|vga holder|kvm prepínač|kvm prepinac|gpu .*cbl|gpu .*cable|gpu pwr|gpu support bracket)/i.test(t)) {
+    return { slug: 'kable-a-redukcie', hierarchy: ['Napájanie a káble', 'Káble, redukcie a adaptéry'] };
+  }
+  if (/(chladič|chladenie cpu|cpu cooler|thermal paste|teplovodivá pasta|teplovodiva pasta)/i.test(t)) {
+    return { slug: 'chladenie-pc', hierarchy: ['Počítačové komponenty', 'Chladenie PC'] };
+  }
+  if (/(routerboard|mikrotik router|thermal paste|tepelná pasta|vodné chladenie|vodni chlazení|heat sink)/i.test(t)) {
+    return { slug: t.includes('router') ? 'wifi-routere-a-mesh' : 'chladenie-pc', hierarchy: t.includes('router') ? ['Sieťové prvky', 'Wi-Fi routery a Mesh'] : ['Počítačové komponenty', 'Chladenie PC'] };
+  }
+  if (/\b(stojan monitoru|držák monitoru|držiak monitoru|monitor arm|mount monitor)\b/i.test(t)) {
+    return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
+  }
+  if (/(podstavec pod monitor|podstav.*monitor|soundbar|reproduktorová lišta|patch panel|rack|držiak na monitor|drzak na monitor)/i.test(t)) {
+    return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
+  }
+  if (/\b(kuchyňsk[áa] váha|kuchynsk[áa] vaha|digitáln[áa] váha|digitaln[áa] vaha|gps .*display|display .*váha)\b/i.test(t)) {
+    return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
+  }
+  if (/(čtečka|ctecka|reader|vesa plate|all-in-one video kit|externí box)/i.test(t)) {
+    return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
+  }
+  if (/(monitor|monitory|lcd monitor|gaming monitor|display panel|displej monitor|\d{2}["″])/i.test(t) && !/(ochrann|protector|fólia|folia|sklo|kuchyň|kuchyn|váha|vaha|gps|collar|patch panel|poe injektor|ventilační jednotka)/i.test(t)) {
+    return { slug: 'monitory-a-displeje', hierarchy: ['Monitory a displeje'] };
+  }
+  if (/\b(skriňa|skrinka|case|miditower|midi tower|mini tower|big tower|tower chassis|pc chassis)\b/i.test(t) && !/\b(laptop case|phone case|puzdro|ssd case|nvme case|external box|enclosure|galaxy|iphone|mobil)\b/i.test(t)) {
+    return { slug: 'pocitacove-skrinky', hierarchy: ['Počítačové komponenty', 'Počítačové skrinky (Case)'] };
+  }
+  if (/\b(hdmi|displayport|usb-c|usb hub|hub usb|prevodník|prevodnik|redukcia|redukce|adapter|adaptér|converter|switch)\b/i.test(t) && !/\b(router|switch\s+(?:cisco|hpe|tp-link)|motherboard|základná doska)\b/i.test(t)) {
+    return { slug: 'kable-a-redukcie', hierarchy: ['Napájanie a káble', 'Káble, redukcie a adaptéry'] };
+  }
+
   // --- Rule 1: Laptop Accessories (Batteries, Chargers, Docks, Bags, Warranties, Covers, Pens, Stands) ---
   if (
     t.includes('bateria') ||
@@ -280,6 +386,12 @@ export function categorizeProductSmartly(title: string, currentSlug: string): { 
       slug: 'servery-a-workstation',
       hierarchy: ['Počítače a notebooky', 'Servery a pracovné stanice'],
     };
+  }
+
+  // Gaming brand names also occur on peripherals, games and power supplies;
+  // keep those out of the notebook branches unless the title describes a PC.
+  if (!/(notebook|laptop|ntb|macbook)/i.test(t) && /(digital|steam|soundtrack|artbook|skin|wrist rest|podložka na zem|cosmic mat|sada osvětlení|sada osvetleni|zdroj tuf gaming|headphones|in-ear)/i.test(t)) {
+    return { slug: 'prislusenstvo-a-periferie', hierarchy: ['Príslušenstvo a periférie'] };
   }
 
   // Genuine Laptops
