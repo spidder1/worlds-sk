@@ -174,6 +174,16 @@ WITH input AS (
     data_hash text, price_hash text, inventory_hash text
   )
 ),
+manufacturer_upsert AS (
+  INSERT INTO manufacturers (id, name, slug)
+  SELECT
+    'manufacturer-' || md5(lower(trim(brand))),
+    trim(brand),
+    regexp_replace(lower(trim(brand)), '[^a-z0-9]+', '-', 'g') || '-' || substr(md5(lower(trim(brand))), 1, 8)
+    FROM (SELECT DISTINCT brand FROM input WHERE brand IS NOT NULL AND trim(brand) <> '') AS brands
+  ON CONFLICT (name) DO UPDATE SET updated_at = now()
+  RETURNING name
+),
 before AS (
   SELECT p.supplier_code, p.content_hash, p.price_hash, p.inventory_hash
     FROM products p
@@ -181,7 +191,9 @@ before AS (
 ),
 upserted AS (
   INSERT INTO products (${columns}, last_import_batch, last_seen_at, last_synced_at, updated_at)
-  SELECT ${columns}, $1::uuid, now(), now(), now() FROM input
+  SELECT ${columns}, $1::uuid, now(), now(), now()
+    FROM input
+    LEFT JOIN manufacturer_upsert ON manufacturer_upsert.name = input.brand
   ON CONFLICT (supplier_code) DO UPDATE SET
         ${updates},
         last_import_batch = EXCLUDED.last_import_batch,
