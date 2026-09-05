@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getNeonPool } from '../../../lib/neon-client';
+import Stripe from 'stripe';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
     if (requiredAddressFields.some((field) => !shippingAddress[field]?.trim() || shippingAddress[field].trim().length > 200)) {
       return NextResponse.json({ error: 'Vyplňte úplnú dodaciu adresu.' }, { status: 400 });
     }
-    const paymentMethod = body.paymentMethod === 'COD' ? 'COD' : 'BANK_TRANSFER';
+    const paymentMethod = body.paymentMethod === 'CARD' ? 'CARD' : body.paymentMethod === 'COD' ? 'COD' : 'BANK_TRANSFER';
     const idempotencyKey = body.idempotencyKey?.trim() || randomUUID();
     if (!/^[a-zA-Z0-9-]{16,100}$/.test(idempotencyKey)) return NextResponse.json({ error: 'Neplatný idempotency kľúč.' }, { status: 400 });
     const client = await getNeonPool().connect();
@@ -71,10 +72,30 @@ export async function POST(request: Request) {
       const subtotal = items.rows.reduce((sum, item) => sum + Number(item.final_price) * item.quantity, 0);
       const orderId = randomUUID();
       const orderNumber = `W-${new Date().getFullYear()}-${orderId.slice(0, 8).toUpperCase()}`;
+      let stripeSessionId: string | null = null;
+      let checkoutUrl: string | null = null;
+      if (paymentMethod === 'CARD') {
+        const secret = process.env.STRIPE_SECRET_KEY?.trim();
+        if (!secret) {
+          await client.query('ROLLBACK');
+          return NextResponse.json({ error: 'Platba kartou nie je momentálne nakonfigurovaná.' }, { status: 503 });
+        }
+        const stripe = new Stripe(secret);
+        const session = await stripe.checkout.sessions.create({
+          mode: 'payment',
+          line_items: items.rows.map((item) => ({ price_data: { currency: item.currency.toLowerCase(), product_data: { name: item.title.slice(0, 500) }, unit_amount: Math.round(Number(item.final_price) * 100) }, quantity: item.quantity })),
+          customer_email: customerEmail,
+          success_url: `${process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin}/kosik?stripe=success&order=${encodeURIComponent(orderNumber)}`,
+          cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin}/kosik?stripe=cancelled`,
+          metadata: { orderId, orderNumber },
+        });
+        stripeSessionId = session.id;
+        checkoutUrl = session.url;
+      }
       await client.query(
-        `INSERT INTO orders (id, order_number, idempotency_key, session_token, customer_name, customer_email, customer_phone, customer_type, customer_ico, customer_dic, shipping_address, payment_method, subtotal, total)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $13)`,
-        [orderId, orderNumber, idempotencyKey, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, customerType, customerIco, customerDic, JSON.stringify(shippingAddress), paymentMethod, subtotal.toFixed(2)],
+        `INSERT INTO orders (id, order_number, idempotency_key, session_token, customer_name, customer_email, customer_phone, customer_type, customer_ico, customer_dic, shipping_address, payment_method, stripe_session_id, subtotal, total)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $14)`,
+        [orderId, orderNumber, idempotencyKey, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, customerType, customerIco, customerDic, JSON.stringify(shippingAddress), paymentMethod, stripeSessionId, subtotal.toFixed(2)],
       );
       for (const item of items.rows) {
         await client.query(
@@ -85,7 +106,7 @@ export async function POST(request: Request) {
       }
       await client.query('DELETE FROM cart_items WHERE cart_id = $1', [cart.rows[0].id]);
       await client.query('COMMIT');
-      return NextResponse.json({ orderId, orderNumber, status: 'NEW', paymentStatus: 'PENDING', paymentMethod, total: subtotal.toFixed(2), currency: 'EUR' }, { status: 201 });
+      return NextResponse.json({ orderId, orderNumber, status: 'NEW', paymentStatus: 'PENDING', paymentMethod, checkoutUrl, total: subtotal.toFixed(2), currency: 'EUR' }, { status: 201 });
     } catch (transactionError) {
       await client.query('ROLLBACK').catch(() => undefined);
       if (transactionError && typeof transactionError === 'object' && 'code' in transactionError && transactionError.code === '23505') {
