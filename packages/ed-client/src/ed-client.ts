@@ -480,7 +480,7 @@ export class EDSystemClient {
    * the test flag remain controlled by this client.
    */
   async createNewOrderXML(orderXml: string, options = '', isTest = true): Promise<EDResponseNewOrder> {
-    if (!orderXml.trim() || /<\/?(?:soap:)?(?:Envelope|Body|createNewOrderXML)\b/i.test(orderXml)) {
+    if (!orderXml.trim() || /<\/?(?:soap:)?(?:Envelope|Body|createNewOrderXML)\b|<!DOCTYPE\b|<!ENTITY\b/i.test(orderXml)) {
       throw new Error('createNewOrderXML expects only the inner order XML payload');
     }
     const action = `${this.getSoapNamespace()}createNewOrderXML`;
