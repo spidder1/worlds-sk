@@ -488,7 +488,7 @@ function mapDbRowToMasterProduct(row: any): MasterProduct {
     categoryHierarchy: Array.isArray(row.category_hierarchy) ? row.category_hierarchy : ['Počítače a IT'],
     commodityCode: row.commodity_code,
     commodityName: row.commodity_name,
-    title: row.title,
+    title: row.name_b2c || row.title,
     slug: row.slug,
     shortDescription: row.short_description || '',
     supplierDescription: row.supplier_description || '',
@@ -773,7 +773,7 @@ export async function getManufacturers(options: ManufacturerOptions = {}): Promi
       if (query) {
         const qClean = query.replace(/[%_]/g, '');
         whereConditions.push(
-          `(${foldSql('title')} LIKE $${paramIdx} OR ${foldSql('mpn')} LIKE $${paramIdx} OR ${foldSql('brand')} LIKE $${paramIdx} OR ${foldSql('ean')} LIKE $${paramIdx} OR ${foldSql('sku')} LIKE $${paramIdx})`
+          `(${foldSql('title')} LIKE $${paramIdx} OR ${foldSql('name_b2c')} LIKE $${paramIdx} OR ${foldSql('mpn')} LIKE $${paramIdx} OR ${foldSql('brand')} LIKE $${paramIdx} OR ${foldSql('ean')} LIKE $${paramIdx} OR ${foldSql('sku')} LIKE $${paramIdx})`
         );
         params.push(`%${qClean}%`);
         paramIdx++;

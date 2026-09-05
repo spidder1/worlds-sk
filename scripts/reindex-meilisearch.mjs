@@ -23,9 +23,9 @@ let offset = 0;
 let indexed = 0;
 try {
   while (true) {
-    const { rows } = await pool.query(`SELECT id, title, slug, brand, mpn, ean, sku, category_slug, final_price, currency, is_in_stock, stock_count, images FROM products WHERE status = 'ACTIVE' AND final_price > 0 ORDER BY id LIMIT $1 OFFSET $2`, [batchSize, offset]);
+    const { rows } = await pool.query(`SELECT id, title, name_b2c, slug, brand, mpn, ean, sku, category_slug, final_price, currency, is_in_stock, stock_count, images FROM products WHERE status = 'ACTIVE' AND final_price > 0 ORDER BY id LIMIT $1 OFFSET $2`, [batchSize, offset]);
     if (!rows.length) break;
-    await meili(`/indexes/${encodeURIComponent(indexUid)}/documents?primaryKey=id`, { method: 'POST', body: JSON.stringify(rows.map((row) => ({ ...row, title_folded: fold(row.title), brand_folded: fold(row.brand), mpn_folded: fold(row.mpn), ean_folded: fold(row.ean), sku_folded: fold(row.sku), final_price: Number(row.final_price), stock_count: Number(row.stock_count || 0), images: Array.isArray(row.images) ? row.images : [] }))) });
+    await meili(`/indexes/${encodeURIComponent(indexUid)}/documents?primaryKey=id`, { method: 'POST', body: JSON.stringify(rows.map((row) => ({ ...row, title_folded: fold([row.title, row.name_b2c].filter(Boolean).join(' ')), brand_folded: fold(row.brand), mpn_folded: fold(row.mpn), ean_folded: fold(row.ean), sku_folded: fold(row.sku), final_price: Number(row.final_price), stock_count: Number(row.stock_count || 0), images: Array.isArray(row.images) ? row.images : [] }))) });
     indexed += rows.length;
     offset += rows.length;
     console.log(`[meilisearch] indexed ${indexed}`);

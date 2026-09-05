@@ -18,7 +18,7 @@ async function meili(path, options = {}) {
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
 try {
-  const { rows } = await pool.query(`SELECT q.product_id, p.id, p.title, p.slug, p.brand, p.mpn, p.ean, p.sku,
+  const { rows } = await pool.query(`SELECT q.product_id, p.id, p.title, p.name_b2c, p.slug, p.brand, p.mpn, p.ean, p.sku,
       p.category_slug, p.final_price, p.currency, p.is_in_stock, p.stock_count, p.images,
       (p.id IS NULL OR p.status <> 'ACTIVE' OR p.final_price <= 0) AS should_remove
     FROM search_sync_queue q
@@ -31,7 +31,7 @@ try {
   } else {
     const documents = rows.filter((row) => !row.should_remove).map((row) => ({
       ...row,
-      title_folded: fold(row.title),
+      title_folded: fold([row.title, row.name_b2c].filter(Boolean).join(' ')),
       brand_folded: fold(row.brand),
       mpn_folded: fold(row.mpn),
       ean_folded: fold(row.ean),
