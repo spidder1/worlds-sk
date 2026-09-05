@@ -308,7 +308,7 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
   const valuePackQty = numberValue(product.ValuePackQty);
   const unit = normalizeIdentifier(product.Unit);
   const logisticData = asArray(product.LogisticDataList);
-  const extInfoCodes = product.ExtInfoCodes ?? null;
+  const extInfoCodes = asArray(product.ExtInfoCodes);
   const indexCode1 = normalizeIdentifier(product.IndexCode1);
   const indexCode2 = normalizeIdentifier(product.IndexCode2);
   const contentHash = hash([title, nameB2c, brand, mpn, mpn2, ean, currency, cleanHtml, category.slug, imageUrls, extracted.allAttributes, valuePack, valuePackQty, unit, logisticData, extInfoCodes, indexCode1, indexCode2]);

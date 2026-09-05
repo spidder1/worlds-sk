@@ -353,6 +353,47 @@ packaging_written AS (
     source_payload = EXCLUDED.source_payload, updated_at = now()
   RETURNING product_id
 ),
+marketing_cleared AS (
+  DELETE FROM supplier_product_marketing_flags existing
+   USING upserted changed
+   WHERE existing.product_id = 'ed-' || changed.supplier_code
+  RETURNING existing.product_id
+),
+marketing_written AS (
+  INSERT INTO supplier_product_marketing_flags
+    (product_id, flag_code, flag_name, flag_value, source_payload, updated_at)
+  SELECT
+    'ed-' || changed.supplier_code,
+    flag.flag_code,
+    flag.flag_name,
+    flag.flag_value,
+    flag.source_payload,
+    now()
+  FROM upserted changed
+  JOIN input source ON source.code = changed.supplier_code
+  CROSS JOIN LATERAL (
+    SELECT 'STATUS'::text AS flag_code, 'Stav produktu'::text AS flag_name,
+           COALESCE(source.source_extra->>'status', '') AS flag_value,
+           jsonb_build_object('value', source.source_extra->>'status') AS source_payload
+    UNION ALL
+    SELECT 'IS_TOP', 'TOP produkt', COALESCE(source.source_extra->>'isTop', ''),
+           jsonb_build_object('value', source.source_extra->>'isTop')
+    UNION ALL
+    SELECT 'INFO_CODE', 'Informačný kód', COALESCE(source.source_extra->>'infoCode', ''),
+           jsonb_build_object('value', source.source_extra->>'infoCode')
+    UNION ALL
+    SELECT 'EXT_' || COALESCE(ext.value->>'InfoCode', ext.value->>'infoCode', 'UNKNOWN'),
+           COALESCE(ext.value->>'InfoName', ext.value->>'infoName', 'eD informácia'),
+           COALESCE(ext.value->>'InfoCode', ext.value->>'infoCode', ''), ext.value
+      FROM jsonb_array_elements(COALESCE(source.ext_info_codes, '[]'::jsonb)) AS ext(value)
+  ) AS flag
+  CROSS JOIN (SELECT count(*) FROM marketing_cleared) AS barrier
+  WHERE flag.flag_value <> ''
+  ON CONFLICT (product_id, flag_code) DO UPDATE SET
+    flag_name = EXCLUDED.flag_name, flag_value = EXCLUDED.flag_value,
+    source_payload = EXCLUDED.source_payload, updated_at = now()
+  RETURNING product_id
+),
 search_queue AS (
   INSERT INTO search_sync_queue (product_id, reason, enqueued_at, processed_at, last_error)
   SELECT 'ed-' || supplier_code, 'catalog_sync', now(), NULL, NULL FROM upserted
