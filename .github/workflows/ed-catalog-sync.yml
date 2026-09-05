@@ -53,6 +53,10 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ED_LOGIN: ${{ secrets.ED_LOGIN }}
           ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
+      - name: Audit normalized projections
+        run: pnpm audit:normalized
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   full-catalog:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'full'
@@ -82,3 +86,7 @@ jobs:
           # Launch catalogue is ASUS + Lenovo. Widening this widens the shop;
           # products outside the list are never retired by a full run.
           ED_BRAND_SCOPE: ${{ vars.ED_BRAND_SCOPE || 'ASUS,Lenovo' }}
+      - name: Audit normalized projections
+        run: pnpm audit:normalized
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
