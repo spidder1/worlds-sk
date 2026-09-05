@@ -18,6 +18,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Link className="rounded-lg px-3 py-2 hover:bg-slate-800" href="/admin/kategorie">Kategórie</Link>
         <Link className="rounded-lg px-3 py-2 hover:bg-slate-800" href="/admin/vyrobcovia">Výrobcovia</Link>
         <Link className="rounded-lg px-3 py-2 hover:bg-slate-800" href="/admin/importy">Importy a kvalita</Link>
+        <Link className="rounded-lg px-3 py-2 hover:bg-slate-800" href="/admin/audit">Prevádzkový audit</Link>
         <Link className="rounded-lg px-3 py-2 hover:bg-slate-800" href="/admin/karantena">Karanténa</Link>
         <Link className="rounded-lg px-3 py-2 hover:bg-slate-800" href="/admin/kategorizacia">Kategorizácia</Link>
         <Link className="rounded-lg px-3 py-2 hover:bg-slate-800" href="/admin/kvalita">Audit katalógu</Link>
