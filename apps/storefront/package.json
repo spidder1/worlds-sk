@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "prebuild": "pnpm --filter @worlds/types run build",
+    "prebuild": "pnpm --filter @worlds/types run build && pnpm --filter @worlds/queue run build",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "eslint src",
