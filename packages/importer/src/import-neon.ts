@@ -271,10 +271,11 @@ async function syncCategoriesAndManufacturers(pool: pg.Pool) {
 
   async function insertCategoryNode(cat: TaxonomyCategory, parentSlug?: string) {
     await pool.query(
-      `INSERT INTO categories (id, slug, name, parent_slug, level, display_order)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO categories (id, slug, name, parent_id, parent_slug, level, display_order)
+       VALUES ($1, $2, $3, (SELECT id FROM categories WHERE slug = $4), $4, $5, $6)
        ON CONFLICT (slug) DO UPDATE SET
          name = EXCLUDED.name,
+         parent_id = EXCLUDED.parent_id,
          parent_slug = EXCLUDED.parent_slug,
          level = EXCLUDED.level,
          display_order = EXCLUDED.display_order`,
@@ -283,7 +284,7 @@ async function syncCategoriesAndManufacturers(pool: pg.Pool) {
 
     if (cat.subcategories && cat.subcategories.length > 0) {
       for (const sub of cat.subcategories) {
-      await insertCategoryNode(sub, sub.parentSlug ?? undefined);
+      await insertCategoryNode(sub, cat.slug);
       }
     }
   }
