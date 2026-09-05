@@ -89,6 +89,16 @@ SELECT COUNT(*) AS supplier_offers FROM supplier_products;
 SELECT COUNT(*) AS media_assets FROM media_assets;
 ```
 
+After a reference/full import and before publishing the catalogue, run the
+normalised read-model consistency gate:
+
+```bash
+DATABASE_URL='postgresql://...' pnpm audit:normalized
+```
+
+The command exits non-zero if required price, supplier-offer, localization,
+search, media or inventory projections are missing.
+
 The first production sequence is: apply migrations, run `reference-data`, run a
 limited full catalogue import, inspect `staging_products` and `import_issues`,
 then widen the import scope. The image loader and search drain may run only
