@@ -27,6 +27,14 @@ export interface EDImageItem {
   URL: string;
 }
 
+/** eD XML may emit one image as an object and several images as an array. */
+export interface EDImageList {
+  ProductImage?: EDImageItem | EDImageItem[];
+  Image?: EDImageItem | EDImageItem[];
+}
+
+export type EDImageInput = EDImageItem | EDImageItem[] | EDImageList;
+
 export interface EDNavigatorData {
   AttributeCode: number | string;
   ValueCode: number | string;
@@ -96,7 +104,7 @@ export interface EDRawProductDetail {
   ProducerCode?: string;
   ProducerName?: string;
   CategoryCode?: string;
-  ImageList?: EDImageItem[];
+  ImageList?: EDImageInput;
   ProductNavigatorDataList?: EDNavigatorData[];
   B2C?: boolean | string;
   LogisticDataList?: EDLogisticData[];
@@ -141,7 +149,7 @@ export interface EDCategory {
   CategoryCode: string | number;
   CategoryName: string;
   ProductAttributeList?: EDCategoryAttribute[];
-  ImageList?: EDImageItem[];
+  ImageList?: EDImageInput;
 }
 
 export interface EDCategoryAttribute {

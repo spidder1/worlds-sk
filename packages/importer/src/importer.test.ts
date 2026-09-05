@@ -49,6 +49,23 @@ test('ProductNormalizer transforms image URLs and extracts dimensions matching P
   assert.equal(dims?.weightKg, 1.5); // 150 / 100 = 1.5 kg
 });
 
+test('ProductNormalizer imports both singleton and nested multi-image eD shapes', () => {
+  const norm = new ProductNormalizer();
+  const singleton = norm.normalizeImages({ URL: 'https://cdn.example.test/one_3.jpg' }, 'Single');
+  const nested = norm.normalizeImages({
+    ProductImage: [
+      { URL: 'https://cdn.example.test/one_3.jpg' },
+      { URL: 'https://cdn.example.test/two_8.jpg' },
+    ],
+  }, 'Multi');
+
+  assert.equal(singleton.length, 1);
+  assert.equal(singleton[0]?.url, 'https://cdn.example.test/one.jpg');
+  assert.equal(nested.length, 2);
+  assert.equal(nested[1]?.position, 1);
+  assert.equal(nested[1]?.isPrimary, false);
+});
+
 test('ProductNormalizer calculates correct prices including fees and VAT according to PHP rules', () => {
   const norm = new ProductNormalizer();
   const pricing = norm.computePricing({
@@ -143,4 +160,3 @@ test('ImporterService executes full batch ingestion workflow with delta detectio
   assert.equal(secondRun.createdCount, 0);
   assert.equal(secondRun.unchangedCount, 5);
 });
-

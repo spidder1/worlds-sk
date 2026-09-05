@@ -65,7 +65,11 @@ export class AICategorizer {
 
     const hasLowConfidence = confidence < this.threshold;
     const missingEAN = !raw.EANCode || raw.EANCode.trim().length < 8;
-    const missingImages = !raw.ImageList || raw.ImageList.length === 0;
+    const rawImageList = raw.ImageList as any;
+    const imageList = rawImageList && typeof rawImageList === 'object' && !Array.isArray(rawImageList) && ('ProductImage' in rawImageList || 'Image' in rawImageList)
+      ? rawImageList.ProductImage ?? rawImageList.Image
+      : rawImageList;
+    const missingImages = !imageList || (Array.isArray(imageList) ? imageList.length === 0 : false);
 
     return {
       assignedCategorySlug: categorySlug,

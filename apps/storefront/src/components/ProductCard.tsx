@@ -11,23 +11,20 @@ export function ProductCard({ product }: { product: MasterProduct }) {
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group relative">
-      {/* Quality Badge for Admin/Diagnostics */}
-      <div className="absolute top-2 left-2 z-10">
-        <span className="bg-slate-900/80 backdrop-blur-sm text-slate-100 text-[10px] font-bold px-2 py-0.5 rounded-md">
-          {product.brand}
-        </span>
-      </div>
-      {product.manufacturerLogoUrl && (
-        <div className="absolute right-2 top-2 z-10 flex h-8 w-16 items-center justify-center rounded-md border border-slate-200 bg-white/95 px-2 shadow-sm backdrop-blur-sm">
+      {/* Manufacturer identity: show the verified logo, otherwise the name. */}
+      <div className="absolute left-2 top-2 z-10 flex min-h-8 max-w-[9rem] items-center justify-center rounded-md border border-slate-200 bg-white/95 px-2 shadow-sm backdrop-blur-sm">
+        {product.manufacturerLogoUrl ? (
           <Image
             src={product.manufacturerLogoUrl}
             alt={`${product.brand} logo`}
             width={56}
             height={24}
-            className="max-h-6 w-full object-contain"
+            className="max-h-6 max-w-[7rem] object-contain"
           />
-        </div>
-      )}
+        ) : (
+          <span className="truncate text-[10px] font-bold text-slate-700">{product.brand}</span>
+        )}
+      </div>
 
       {/* Product Image */}
       <Link href={`/produkt/${product.slug}`} className="block relative w-full h-48 bg-slate-50 overflow-hidden">

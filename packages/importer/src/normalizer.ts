@@ -1,5 +1,5 @@
 import slugify from 'slugify';
-import { EDRawProductDetail, MasterProduct, PricingBreakdown, ProductImage, ProductDimensions } from '@worlds/types';
+import { EDRawProductDetail, EDImageInput, MasterProduct, PricingBreakdown, ProductImage, ProductDimensions } from '@worlds/types';
 
 // Normalization mappings for brands
 const BRAND_MAP: Record<string, string> = {
@@ -213,19 +213,25 @@ export class ProductNormalizer {
    * Normalizes images array matching PHP Feed_ED rule:
    * Replaces _3. and _8. with . and converts http:// to https://
    */
-  normalizeImages(rawImages?: Array<{ URL: string }>, title?: string): ProductImage[] {
-    if (!rawImages || rawImages.length === 0) return [];
-    return rawImages.map((img, idx) => {
-      let url = img.URL.trim();
+  normalizeImages(rawImages?: EDImageInput, title?: string): ProductImage[] {
+    if (!rawImages) return [];
+    const imageList = !Array.isArray(rawImages) && typeof rawImages === 'object' && ('ProductImage' in rawImages || 'Image' in rawImages)
+      ? rawImages.ProductImage ?? rawImages.Image
+      : rawImages;
+    const images = Array.isArray(imageList) ? imageList : [imageList];
+    return images.flatMap((img, idx) => {
+      const rawUrl = typeof img === 'object' && img !== null && 'URL' in img ? String(img.URL || '') : '';
+      if (!rawUrl.trim()) return [];
+      let url = rawUrl.trim();
       url = url.replace(/_3\./g, '.').replace(/_8\./g, '.');
       url = url.replace(/^http:\/\//i, 'https://');
-      return {
+      return [{
         id: `img-${idx + 1}`,
         url,
         position: idx,
         altText: title ? `${title} - obrázok ${idx + 1}` : undefined,
         isPrimary: idx === 0,
-      };
+      }];
     });
   }
 
@@ -248,4 +254,3 @@ export class ProductNormalizer {
     return undefined;
   }
 }
-

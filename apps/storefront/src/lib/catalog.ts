@@ -669,10 +669,21 @@ function collectCategorySlugs(category: TaxonomyCategory): string[] {
 
 function normalizeSearchQuery(query: string): string {
   return query
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
     .trim()
     .replace(/[^\p{L}\p{N}\s._-]/gu, ' ')
     .replace(/\s+/g, ' ')
     .slice(0, 80);
+}
+
+// Keep search accent-insensitive without requiring the optional PostgreSQL
+// unaccent extension on every Neon branch.
+const ACCENT_SOURCE = 'áäčďéěíĺľňóôŕřšťúůýž';
+const ACCENT_TARGET = 'aacdeeillnoorrstuuyz';
+function foldSql(column: string): string {
+  return `translate(lower(${column}), '${ACCENT_SOURCE}', '${ACCENT_TARGET}')`;
 }
 
 function appendMultiFilterConditions(
@@ -687,8 +698,8 @@ function appendMultiFilterConditions(
   if (brand) {
     const brands = brand.split(',').map((s) => s.trim()).filter(Boolean);
     if (brands.length > 0) {
-      const escaped = brands.map((b) => b.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
-      whereConditions.push(`brand ~* $${getNextIdx()}`);
+      const escaped = brands.map((b) => normalizeSearchQuery(b).replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
+      whereConditions.push(`${foldSql('brand')} ~ $${getNextIdx()}`);
       params.push(`^(${escaped.join('|')})$`);
     }
   }
@@ -769,7 +780,7 @@ export async function getManufacturers(options: ManufacturerOptions = {}): Promi
       if (query) {
         const qClean = query.replace(/[%_]/g, '');
         whereConditions.push(
-          `(title ILIKE $${paramIdx} OR mpn ILIKE $${paramIdx} OR brand ILIKE $${paramIdx} OR ean ILIKE $${paramIdx} OR sku ILIKE $${paramIdx})`
+          `(${foldSql('title')} LIKE $${paramIdx} OR ${foldSql('mpn')} LIKE $${paramIdx} OR ${foldSql('brand')} LIKE $${paramIdx} OR ${foldSql('ean')} LIKE $${paramIdx} OR ${foldSql('sku')} LIKE $${paramIdx})`
         );
         params.push(`%${qClean}%`);
         paramIdx++;
@@ -783,7 +794,7 @@ export async function getManufacturers(options: ManufacturerOptions = {}): Promi
         MAX(CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END) AS logo_url,
         MAX(m.logo_status) AS logo_status
       FROM storefront_products p
-      LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand)
+      LEFT JOIN manufacturers m ON ${foldSql('m.name')} = ${foldSql('p.brand')}
       ${whereClause}
       GROUP BY p.brand
       ORDER BY count DESC
@@ -828,7 +839,7 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
   if (query) {
     const qClean = query.replace(/[%_]/g, '');
     baseConditions.push(
-      `(title ILIKE $${baseParamIdx} OR mpn ILIKE $${baseParamIdx} OR brand ILIKE $${baseParamIdx} OR ean ILIKE $${baseParamIdx} OR sku ILIKE $${baseParamIdx})`
+      `(${foldSql('title')} LIKE $${baseParamIdx} OR ${foldSql('mpn')} LIKE $${baseParamIdx} OR ${foldSql('brand')} LIKE $${baseParamIdx} OR ${foldSql('ean')} LIKE $${baseParamIdx} OR ${foldSql('sku')} LIKE $${baseParamIdx})`
     );
     baseParams.push(`%${qClean}%`);
     baseParamIdx++;
@@ -871,7 +882,7 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
 
     const pageSql = `SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url
       FROM storefront_products p
-      LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand)
+      LEFT JOIN manufacturers m ON ${foldSql('m.name')} = ${foldSql('p.brand')}
       ${filteredWhereClause}
       ORDER BY ${orderBy.replace(/\bid\b/g, 'p.id')} LIMIT $${filteredParamIdx++} OFFSET $${filteredParamIdx++}`;
     const pageRows = await queryNeon(pageSql, [...filteredParams, pageSize, offset]);
@@ -943,23 +954,23 @@ export async function getProductBySlug(slug: string): Promise<MasterProduct | nu
     if (!/^[a-zA-Z0-9-]{1,200}$/.test(cleanSlug)) return null;
 
     // 1. Exact match on slug
-    const directRows = await queryNeon(`SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand) WHERE p.slug = $1 LIMIT 1`, [cleanSlug]);
+    const directRows = await queryNeon(`SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON ${foldSql('m.name')} = ${foldSql('p.brand')} WHERE p.slug = $1 LIMIT 1`, [cleanSlug]);
     if (directRows.length > 0) return mapDbRowToMasterProduct(directRows[0]);
 
     // 2. Trailing SKU match
     const trailingMatch = cleanSlug.match(/-([0-9a-zA-Z]+)$/);
     if (trailingMatch && trailingMatch[1]) {
       const sku = trailingMatch[1];
-      const skuRows = await queryNeon(`SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand) WHERE (p.sku = $1 OR p.supplier_code = $1) LIMIT 1`, [sku]);
+      const skuRows = await queryNeon(`SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON ${foldSql('m.name')} = ${foldSql('p.brand')} WHERE (p.sku = $1 OR p.supplier_code = $1) LIMIT 1`, [sku]);
       if (skuRows.length > 0) return mapDbRowToMasterProduct(skuRows[0]);
     }
 
     // 3. Direct SKU / MPN / ID
-    const idRows = await queryNeon(`SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand) WHERE (p.sku = $1 OR p.supplier_code = $1 OR p.mpn = $1 OR p.id = $1) LIMIT 1`, [cleanSlug]);
+    const idRows = await queryNeon(`SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON ${foldSql('m.name')} = ${foldSql('p.brand')} WHERE (p.sku = $1 OR p.supplier_code = $1 OR p.mpn = $1 OR p.id = $1) LIMIT 1`, [cleanSlug]);
     if (idRows.length > 0) return mapDbRowToMasterProduct(idRows[0]);
 
     // 4. Fuzzy slug match
-    const fuzzyRows = await queryNeon(`SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand) WHERE p.slug ILIKE $1 LIMIT 1`, [`%${cleanSlug}%`]);
+    const fuzzyRows = await queryNeon(`SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON ${foldSql('m.name')} = ${foldSql('p.brand')} WHERE p.slug ILIKE $1 LIMIT 1`, [`%${cleanSlug}%`]);
     if (fuzzyRows.length > 0) return mapDbRowToMasterProduct(fuzzyRows[0]);
 
     return null;
@@ -977,7 +988,7 @@ export async function getProductsByCategory(categorySlug: string): Promise<Maste
 export async function getFeaturedProducts(limit = 8): Promise<MasterProduct[]> {
   try {
     const rows = await queryNeon(
-      `SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand) WHERE p.is_in_stock = true ORDER BY p.final_price ASC LIMIT $1`,
+      `SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON ${foldSql('m.name')} = ${foldSql('p.brand')} WHERE p.is_in_stock = true ORDER BY p.final_price ASC LIMIT $1`,
       [limit]
     );
     return rows.map(mapDbRowToMasterProduct);

@@ -1,5 +1,17 @@
 import crypto from 'node:crypto';
-import { EDRawProductDetail, EDRawProductStock } from '@worlds/types';
+import { EDImageInput, EDRawProductDetail, EDRawProductStock } from '@worlds/types';
+
+function imageUrls(input?: EDImageInput): string[] {
+  if (!input) return [];
+  const list = !Array.isArray(input) && typeof input === 'object' && ('ProductImage' in input || 'Image' in input)
+    ? input.ProductImage ?? input.Image
+    : input;
+  const items = Array.isArray(list) ? list : [list];
+  return items
+    .map((item) => (item && typeof item === 'object' && 'URL' in item ? String(item.URL || '') : ''))
+    .filter(Boolean)
+    .sort();
+}
 
 export class DeltaEngine {
   /**
@@ -20,7 +32,7 @@ export class DeltaEngine {
       OnStockCount: raw.OnStockCount,
       Warranty: raw.Warranty,
       Description: raw.Description,
-      ImageList: (raw.ImageList || []).map((i) => i.URL).sort(),
+      ImageList: imageUrls(raw.ImageList),
       ProductNavigatorDataList: (raw.ProductNavigatorDataList || [])
         .map((n) => `${n.AttributeCode}:${n.ValueCode}`)
         .sort(),
