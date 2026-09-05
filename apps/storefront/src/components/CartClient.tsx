@@ -24,11 +24,16 @@ export function CartClient() {
     const form = new FormData(event.currentTarget);
     const idempotencyKey = idempotencyKeyRef.current || globalThis.crypto.randomUUID();
     idempotencyKeyRef.current = idempotencyKey;
-    const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionToken, idempotencyKey, customerName: form.get('customerName'), customerEmail: form.get('customerEmail'), customerPhone: form.get('customerPhone'), paymentMethod: form.get('paymentMethod'), shippingAddress: { street: form.get('street'), city: form.get('city'), postalCode: form.get('postalCode'), country: form.get('country') } }) });
-    const data = await response.json();
-    if (!response.ok) setError(data.error || 'Objednávku sa nepodarilo vytvoriť.');
-    else { setOrderNumber(data.orderNumber); setItems([]); idempotencyKeyRef.current = null; }
-    setSubmitting(false);
+    try {
+      const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionToken, idempotencyKey, customerName: form.get('customerName'), customerEmail: form.get('customerEmail'), customerPhone: form.get('customerPhone'), paymentMethod: form.get('paymentMethod'), shippingAddress: { street: form.get('street'), city: form.get('city'), postalCode: form.get('postalCode'), country: form.get('country') } }) });
+      const data = await response.json();
+      if (!response.ok) setError(data.error || 'Objednávku sa nepodarilo vytvoriť.');
+      else { setOrderNumber(data.orderNumber); setItems([]); idempotencyKeyRef.current = null; }
+    } catch {
+      setError('Nepodarilo sa spojiť so serverom. Skontrolujte pripojenie a skúste to znova.');
+    } finally {
+      setSubmitting(false);
+    }
   }
   if (loading) return <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-500">Načítavam košík…</div>;
   if (orderNumber) return <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-10 text-center space-y-4"><h1 className="text-2xl font-black text-emerald-900">Objednávka prijatá</h1><p className="text-sm text-emerald-800">Číslo objednávky: <strong>{orderNumber}</strong></p><p className="text-sm text-emerald-800">Platba je zatiaľ v stave čaká na spracovanie.</p><Link href="/produkty" className="inline-block rounded-xl bg-brand-600 px-5 py-3 font-bold text-white">Späť do katalógu</Link></div>;
