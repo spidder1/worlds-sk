@@ -249,6 +249,8 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
   const eanDigits = sourceEan?.replace(/[^0-9]/g, '') ?? '';
   const ean = eanDigits.length >= 8 && eanDigits.length <= 14 ? sourceEan : null;
   const warrantyMonths = parseWarrantyMonths(product.WarrantyTerm ?? product.Warranty);
+  const warrantyUnit = normalizeIdentifier(product.WarrantyUnit) || 'M';
+  const warrantyRaw = value(product.Warranty ?? product.WarrantyTerm);
   const rawDescription = value(product.Description ?? product.DescriptionShort);
   const { cleanHtml, plainText, specs } = sanitizeAndFormatHtml(rawDescription);
   const category = classifyProductIndependently({
@@ -305,7 +307,7 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
   const valuePack = numberValue(product.ValuePack);
   const valuePackQty = numberValue(product.ValuePackQty);
   const unit = normalizeIdentifier(product.Unit);
-  const logisticData = product.LogisticDataList ?? null;
+  const logisticData = asArray(product.LogisticDataList);
   const extInfoCodes = product.ExtInfoCodes ?? null;
   const indexCode1 = normalizeIdentifier(product.IndexCode1);
   const indexCode2 = normalizeIdentifier(product.IndexCode2);
@@ -352,6 +354,7 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
     stock_text: stockText,
     expected_at: expectedAt,
     warranty_months: warrantyMonths,
+    warranty_unit: warrantyUnit,
     category_source: 'HEURISTIC',
     category_confidence: 0.75,
     category_reasoning: 'Lokálna kategorizácia podľa názvu, popisu a CommodityName.',
@@ -377,11 +380,16 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
       valuePack: numberValue(product.ValuePack),
       valuePackQty: numberValue(product.ValuePackQty),
       unit: normalizeIdentifier(product.Unit),
-      logisticData: product.LogisticDataList ?? null,
+      logisticData,
       extInfoCodes: product.ExtInfoCodes ?? null,
       rateOfDutyCode: normalizeIdentifier(product.RateOfDutyCode),
       rcStatus: normalizeIdentifier(product.RCStatus),
       rcCode: normalizeIdentifier(product.RCCode),
+      warrantyRaw,
+      warrantyUnit,
+      status: normalizeIdentifier(product.Status) || 'ACTIVE',
+      isTop: booleanValue(product.IsTop),
+      infoCode: normalizeIdentifier(product.InfoCode),
       index: [1, 2].map((position) => ({
         code: normalizeIdentifier(product[`IndexCode${position}`]),
         sort: normalizeIdentifier(product[`IndexSort${position}`]),

@@ -69,6 +69,7 @@ const FULL_COLUMNS = [
   'b2c_eligible',
   'is_premium',
   'warranty_months',
+  'warranty_unit',
   'attributes',
   'source_extra',
   'images',
@@ -153,8 +154,8 @@ WITH input AS (
     item.value_pack,
     item.value_pack_qty,
     item.unit,
-    COALESCE(item.logistic_data, 'null'::jsonb),
-    COALESCE(item.ext_info_codes, 'null'::jsonb),
+    COALESCE(item.logistic_data, '[]'::jsonb) AS logistic_data,
+    COALESCE(item.ext_info_codes, '[]'::jsonb) AS ext_info_codes,
     item.index_code_1,
     item.index_code_2,
     item.has_commercial_data,
@@ -167,6 +168,7 @@ WITH input AS (
     item.b2c_eligible,
     item.is_premium,
     item.warranty_months,
+    item.warranty_unit,
     COALESCE(item.attributes, '{}'::jsonb)          AS attributes,
     COALESCE(item.source_extra, '{}'::jsonb)        AS source_extra,
     COALESCE(item.images, '[]'::jsonb)              AS images,
@@ -191,7 +193,7 @@ WITH input AS (
     index_code_1 text, index_code_2 text,
     has_commercial_data boolean, stock_count numeric, is_in_stock boolean, stock_text text,
     expected_at text, order_multiple integer, b2c_eligible boolean, is_premium boolean,
-    warranty_months integer, attributes jsonb, source_extra jsonb, images jsonb, quality_score integer,
+    warranty_months integer, warranty_unit text, attributes jsonb, source_extra jsonb, images jsonb, quality_score integer,
     scope_reason text, scope_signal text, identity_hash text, content_hash text,
     data_hash text, price_hash text, inventory_hash text
   )
@@ -295,6 +297,60 @@ media_written AS (
     is_primary = EXCLUDED.is_primary,
     alt_text = EXCLUDED.alt_text,
     updated_at = now()
+  RETURNING product_id
+),
+warranty_cleared AS (
+  DELETE FROM product_warranties existing
+   USING upserted changed
+   WHERE existing.product_id = 'ed-' || changed.supplier_code
+  RETURNING existing.product_id
+),
+warranty_written AS (
+  INSERT INTO product_warranties (product_id, raw_term, term, unit, source_payload, updated_at)
+  SELECT
+    'ed-' || changed.supplier_code,
+    COALESCE(source.source_extra->>'warrantyRaw', ''),
+    changed_warranty.warranty_months,
+    COALESCE(NULLIF(changed_warranty.warranty_unit, ''), 'M'),
+    jsonb_build_object('raw', source.source_extra->>'warrantyRaw', 'unit', changed_warranty.warranty_unit),
+    now()
+  FROM upserted changed
+  JOIN input source ON source.code = changed.supplier_code
+  JOIN products changed_warranty ON changed_warranty.supplier_code = changed.supplier_code
+  CROSS JOIN (SELECT count(*) FROM warranty_cleared) AS barrier
+  ON CONFLICT (product_id) DO UPDATE SET
+    raw_term = EXCLUDED.raw_term, term = EXCLUDED.term, unit = EXCLUDED.unit,
+    source_payload = EXCLUDED.source_payload, updated_at = now()
+  RETURNING product_id
+),
+packaging_cleared AS (
+  DELETE FROM supplier_packaging existing
+   USING upserted changed
+   WHERE existing.product_id = 'ed-' || changed.supplier_code
+  RETURNING existing.product_id
+),
+packaging_written AS (
+  INSERT INTO supplier_packaging
+    (product_id, package_type, package_index, item_count, weight_kg, length_cm, width_cm, height_cm, source_payload, updated_at)
+  SELECT
+    'ed-' || changed.supplier_code,
+    COALESCE(item.value->>'typ', item.value->>'type', 'UNKNOWN'),
+    item.ordinality::integer - 1,
+    NULLIF(item.value->>'count', '')::numeric,
+    NULLIF(item.value->>'weight', '')::numeric,
+    NULLIF(item.value->>'length', '')::numeric,
+    NULLIF(item.value->>'width', '')::numeric,
+    NULLIF(item.value->>'height', '')::numeric,
+    item.value,
+    now()
+  FROM upserted changed
+  JOIN input source ON source.code = changed.supplier_code
+  CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.logistic_data, '[]'::jsonb)) WITH ORDINALITY AS item(value, ordinality)
+  CROSS JOIN (SELECT count(*) FROM packaging_cleared) AS barrier
+  ON CONFLICT (product_id, package_type, package_index) DO UPDATE SET
+    item_count = EXCLUDED.item_count, weight_kg = EXCLUDED.weight_kg,
+    length_cm = EXCLUDED.length_cm, width_cm = EXCLUDED.width_cm, height_cm = EXCLUDED.height_cm,
+    source_payload = EXCLUDED.source_payload, updated_at = now()
   RETURNING product_id
 ),
 search_queue AS (
