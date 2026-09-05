@@ -5,6 +5,14 @@ import { queryNeon } from '../../lib/neon-client';
 import { adminPasswordMatches, clearAdminSession, isAdminAuthenticated, setAdminSession } from './auth';
 import type { SyncJobName } from '@worlds/queue';
 
+async function recordAdminAudit(action: string, entityType: string, entityId: string | null, afterData: Record<string, unknown> = {}, metadata: Record<string, unknown> = {}) {
+  await queryNeon(
+    `INSERT INTO admin_audit_log (actor, action, entity_type, entity_id, after_data, metadata)
+     VALUES ('admin', $1, $2, $3, $4::jsonb, $5::jsonb)`,
+    [action, entityType, entityId, JSON.stringify(afterData), JSON.stringify(metadata)],
+  );
+}
+
 export async function loginAdmin(formData: FormData) {
   const password = String(formData.get('password') || '');
   if (!adminPasswordMatches(password)) redirect('/admin?error=1');
@@ -39,6 +47,7 @@ export async function updateProductCategory(formData: FormData) {
          updated_at = NOW()
    WHERE id = $2
      AND EXISTS (SELECT 1 FROM categories WHERE slug = $1)`, [category, id]);
+  await recordAdminAudit('PRODUCT_CATEGORY_UPDATED', 'product', id, { category });
   redirect('/admin/produkty?saved=1');
 }
 
@@ -78,7 +87,8 @@ export async function updateCategoryPresentation(formData: FormData) {
     FROM subtree, canonical_paths paths, categories category
    WHERE p.category_slug = subtree.slug
      AND category.slug = p.category_slug
-     AND paths.category_id = category.id`, [slug]);
+    AND paths.category_id = category.id`, [slug]);
+  await recordAdminAudit('CATEGORY_PRESENTATION_UPDATED', 'category', slug, { name, displayOrder, active });
   redirect('/admin/kategorie?saved=1');
 }
 
@@ -104,6 +114,7 @@ export async function approveCategoryReview(formData: FormData) {
          updated_at = NOW()
    WHERE id = $2
      AND EXISTS (SELECT 1 FROM categories WHERE slug = $1)`, [category, id]);
+  await recordAdminAudit('CATEGORY_REVIEW_APPROVED', 'product', id, { category });
   redirect('/admin/kategorizacia?saved=1');
 }
 
@@ -113,6 +124,7 @@ export async function resolveQuarantine(formData: FormData) {
   const note = String(formData.get('note') || '').trim().slice(0, 500) || null;
   if (!id) return;
   await queryNeon('UPDATE product_quarantine SET resolved = true, resolution_note = $1, resolved_at = NOW() WHERE id = $2', [note, id]);
+  await recordAdminAudit('QUARANTINE_RESOLVED', 'product_quarantine', id, { note });
   redirect('/admin/karantena?saved=1');
 }
 
@@ -123,6 +135,7 @@ export async function updateOrderStatus(formData: FormData) {
   const paymentStatus = String(formData.get('payment_status') || '').trim();
   if (!id || !['NEW', 'PROCESSING', 'SHIPPED', 'COMPLETED', 'CANCELLED'].includes(status) || !['PENDING', 'PAID', 'FAILED', 'REFUNDED'].includes(paymentStatus)) return;
   await queryNeon('UPDATE orders SET status = $1, payment_status = $2, updated_at = NOW() WHERE id = $3', [status, paymentStatus, id]);
+  await recordAdminAudit('ORDER_STATUS_UPDATED', 'order', id, { status, paymentStatus });
   redirect('/admin/objednavky?saved=1');
 }
 
@@ -132,6 +145,7 @@ export async function queueSupplierOrder(formData: FormData) {
   if (!id) return;
   await queryNeon(`UPDATE orders SET supplier_order_status = 'QUEUED', supplier_order_error = NULL, updated_at = NOW()
     WHERE id = $1 AND payment_status = 'PAID' AND supplier_order_status IN ('NOT_SENT', 'FAILED')`, [id]);
+  await recordAdminAudit('SUPPLIER_ORDER_QUEUED', 'order', id);
   redirect('/admin/objednavky?saved=1');
 }
 
@@ -173,6 +187,7 @@ export async function updateManufacturerReview(formData: FormData) {
      RETURNING product_id
    )
    SELECT count(*)::int AS reassigned_count, (SELECT count(*)::int FROM queued) AS queued_count FROM reassigned`, [auditClass, id]);
+  await recordAdminAudit('MANUFACTURER_REVIEW_UPDATED', 'manufacturer', id, { auditClass });
   redirect('/admin/vyrobcovia?saved=1');
 }
 
@@ -183,6 +198,7 @@ export async function saveSyncJobSettings(formData: FormData) {
   const enabled = String(formData.get('enabled') || '') === 'true';
   if (!jobKey || (scheduleCron && !/^\S+(?:\s+\S+){4}$/.test(scheduleCron))) return;
   await queryNeon('UPDATE sync_job_settings SET schedule_cron = $1, enabled = $2, updated_at = NOW() WHERE job_key = $3', [scheduleCron || null, enabled, jobKey]);
+  await recordAdminAudit('SYNC_JOB_SETTINGS_UPDATED', 'sync_job', jobKey, { scheduleCron: scheduleCron || null, enabled });
   redirect('/admin/importy?saved=1');
 }
 
@@ -275,6 +291,7 @@ export async function updatePricingSettings(formData: FormData) {
   for (const [index, row] of rows.entries()) {
     await queryNeon('INSERT INTO pricing_rules (min_cost, max_cost, margin_percent, display_order, updated_at) VALUES ($1, $2, $3, $4, NOW())', [row.min, row.max, row.percent, index + 1]);
   }
+  await recordAdminAudit('PRICING_SETTINGS_UPDATED', 'store_settings', 'pricing', { vatRate, minimumCostEur, allowPrivatePurchase, transportCode, marginBands: rows });
   redirect('/admin/nastavenia?saved=1');
 }
 
@@ -290,5 +307,6 @@ export async function upsertContentPage(formData: FormData) {
     VALUES ($1, $2, $3, $4, $5, NOW())
     ON CONFLICT (slug) DO UPDATE SET title = EXCLUDED.title, body = EXCLUDED.body, seo_title = EXCLUDED.seo_title, seo_description = EXCLUDED.seo_description, updated_at = NOW()`,
     [slug, title, body, seoTitle, seoDescription]);
+  await recordAdminAudit('CONTENT_PAGE_UPDATED', 'content_page', slug, { title, seoTitle, seoDescription });
   redirect(`/admin/obsah?slug=${encodeURIComponent(slug)}&saved=1`);
 }

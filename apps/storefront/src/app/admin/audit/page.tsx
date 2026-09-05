@@ -20,9 +20,10 @@ type IssueRow = {
 };
 
 type OutboxRow = { status: string; count: string };
+type AdminAuditRow = { action: string; entity_type: string; entity_id: string | null; created_at: string };
 
 export default async function AdminAuditPage() {
-  const [lifecycle, issues, outbox] = await Promise.all([
+  const [lifecycle, issues, outbox, adminAudit] = await Promise.all([
     queryNeon<LifecycleRow>(
       `SELECT h.product_id, COALESCE(p.name, p.name_b2c) AS product_name,
               h.old_status, h.new_status, h.reason, h.changed_at
@@ -42,7 +43,13 @@ export default async function AdminAuditPage() {
       `SELECT status, COUNT(*)::text AS count
          FROM outbox_events
         GROUP BY status
-        ORDER BY status`,
+       ORDER BY status`,
+    ),
+    queryNeon<AdminAuditRow>(
+      `SELECT action, entity_type, entity_id, created_at
+         FROM admin_audit_log
+        ORDER BY created_at DESC, id DESC
+        LIMIT 50`,
     ),
   ]);
 
@@ -59,6 +66,19 @@ export default async function AdminAuditPage() {
           {outbox.length ? outbox.map((row) => (
             <span key={row.status} className="rounded-full bg-slate-100 px-3 py-1 text-sm">{row.status}: {row.count}</span>
           )) : <span className="text-sm text-slate-500">Žiadne udalosti.</span>}
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+        <h3 className="font-semibold">Administrátorské rozhodnutia</h3>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="border-b border-slate-200 text-xs uppercase text-slate-500"><tr><th className="py-2">Akcia</th><th>Typ</th><th>Objekt</th><th>Čas</th></tr></thead>
+            <tbody className="divide-y divide-slate-100">
+              {adminAudit.map((row, index) => <tr key={`${row.action}-${row.entity_id}-${row.created_at}-${index}`}><td className="py-2 font-medium">{row.action}</td><td>{row.entity_type}</td><td>{row.entity_id || '—'}</td><td className="text-slate-500">{new Date(row.created_at).toLocaleString('sk-SK')}</td></tr>)}
+            </tbody>
+          </table>
+          {!adminAudit.length ? <p className="py-4 text-sm text-slate-500">Zatiaľ bez administrátorských zmien.</p> : null}
         </div>
       </section>
 
