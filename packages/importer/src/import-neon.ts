@@ -9,6 +9,7 @@ import { classifyProductIndependently } from './taxonomy-definition.js';
 import { sanitizeAndFormatHtml } from './html-sanitizer.js';
 import { WORLDS_IT_CATEGORIES } from './taxonomy-definition.js';
 import { TaxonomyCategory } from '@worlds/types';
+import { assessCatalogScope } from './catalog-scope.js';
 
 const { Pool } = pg;
 
@@ -423,6 +424,13 @@ export async function importAsusLenovoToNeon() {
     const rawBrand = String(p.ProducerName || p.ProducerCode || '');
     const { isMatch, brandName } = isTargetBrand(name, rawBrand);
     if (!isMatch || !brandName) continue;
+    const scope = assessCatalogScope({
+      title: name,
+      description: p.Description,
+      descriptionShort: p.DescriptionShort,
+      commodityName: p.CommodityName,
+    });
+    if (!scope.included) continue;
 
     const code = String(p.Code || p.ProId);
     const partNumber = String(p.PartNumber || p.PartNumber2 || code);
