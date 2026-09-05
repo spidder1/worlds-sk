@@ -88,7 +88,16 @@ function jsonParameter(value: unknown): string {
 
 export function buildFullUpsertSql(): string {
   const columns = FULL_COLUMNS.join(', ');
-  const updates = FULL_UPDATE_COLUMNS.map((column) => `${column} = EXCLUDED.${column}`).join(',\n        ');
+  const adminOwnedCategoryColumns = new Set([
+    'category_slug',
+    'category_hierarchy',
+    'category_source',
+    'category_confidence',
+    'category_reasoning',
+  ]);
+  const updates = FULL_UPDATE_COLUMNS.map((column) => adminOwnedCategoryColumns.has(column)
+    ? `${column} = CASE WHEN products.category_source = 'ADMIN' THEN products.${column} ELSE EXCLUDED.${column} END`
+    : `${column} = EXCLUDED.${column}`).join(',\n        ');
 
   return `
 WITH input AS (

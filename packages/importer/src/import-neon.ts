@@ -775,8 +775,8 @@ export async function importAsusLenovoToNeon() {
       ) VALUES ${valueRows.join(', ')}
       ON CONFLICT (id) DO UPDATE SET
         title = EXCLUDED.title,
-        category_slug = EXCLUDED.category_slug,
-        category_hierarchy = EXCLUDED.category_hierarchy,
+        category_slug = CASE WHEN products.category_source = 'ADMIN' THEN products.category_slug ELSE EXCLUDED.category_slug END,
+        category_hierarchy = CASE WHEN products.category_source = 'ADMIN' THEN products.category_hierarchy ELSE EXCLUDED.category_hierarchy END,
         base_price = EXCLUDED.base_price,
         final_price = EXCLUDED.final_price,
         stock_count = EXCLUDED.stock_count,
@@ -785,9 +785,9 @@ export async function importAsusLenovoToNeon() {
         attributes = EXCLUDED.attributes,
         status = EXCLUDED.status,
         data_hash = EXCLUDED.data_hash,
-        category_source = EXCLUDED.category_source,
-        category_confidence = EXCLUDED.category_confidence,
-        category_reasoning = EXCLUDED.category_reasoning,
+        category_source = CASE WHEN products.category_source = 'ADMIN' THEN products.category_source ELSE EXCLUDED.category_source END,
+        category_confidence = CASE WHEN products.category_source = 'ADMIN' THEN products.category_confidence ELSE EXCLUDED.category_confidence END,
+        category_reasoning = CASE WHEN products.category_source = 'ADMIN' THEN products.category_reasoning ELSE EXCLUDED.category_reasoning END,
         updated_at = NOW();
     `;
 
