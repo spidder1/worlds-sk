@@ -6,6 +6,7 @@ const commands: Record<string, string[]> = {
   'stock-price': ['--filter', '@worlds/importer', 'run', 'sync:stock-price'],
   'image-loader': ['--filter', '@worlds/importer', 'run', 'sync:images'],
   'manufacturer-cleanup': ['manufacturers:clean'],
+  'transport-dictionary': ['transport:sync'],
   'search-drain': ['search:drain'],
 };
 

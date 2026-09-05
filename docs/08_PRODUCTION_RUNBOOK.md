@@ -135,5 +135,10 @@ SELECT mode, status, total_read, created_count, changed_count, missing_count, me
   fallback until the worker is deployed.
   The repository also includes `Dockerfile.queue-worker` for a reproducible
   Node 22 deployment on Railway, Fly.io, Hetzner or another persistent host.
+- Refresh the eD B2C transport dictionary nightly with `pnpm transport:sync`.
+  Set `ED_TRANSPORT_CODE` (or `orders.default_transport_code` in the admin
+  settings) to the selected active eD carrier code before enabling live order
+  submission. The worker validates the cached dictionary and falls back to
+  code `0` only when no selection exists.
 - Verify `/kosik`, Stripe/Comgate payment webhooks and the eD supplier-order worker in a
   production-like environment before switching DNS.

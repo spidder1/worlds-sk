@@ -1,0 +1,28 @@
+name: eD transport dictionary sync
+
+on:
+  schedule:
+    - cron: '15 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build
+      - run: pnpm transport:sync
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ED_ENDPOINT_URL: ${{ secrets.ED_ENDPOINT_URL }}
+          ED_LOGIN: ${{ secrets.ED_LOGIN }}
+          ED_PASSWORD: ${{ secrets.ED_PASSWORD }}

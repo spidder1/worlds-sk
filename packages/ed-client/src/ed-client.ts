@@ -335,7 +335,10 @@ export class EDSystemClient {
     });
 
     const result = response?.getTransportationListCustomerResponse?.getTransportationListCustomerResult;
-    const items = result?.TransportationList?.Transportation;
+    const status = result?.Status as Record<string, unknown> | undefined;
+    const statusCode = xmlString(status?.StatusCode);
+    if (statusCode && statusCode !== 'DONE') throw new Error(`eD transport list failed: ${xmlString(status?.ErrorText) ?? statusCode}`);
+    const items = result?.TransportationList?.Transportation ?? result?.Transportation ?? result?.TransportationList;
     if (!items) return [];
     return Array.isArray(items) ? items : [items];
   }

@@ -89,7 +89,7 @@ export async function runSyncJob(formData: FormData) {
   const jobKey = String(formData.get('job_key') || '').trim();
   const rows = await queryNeon<{ workflow_file: string }>('SELECT workflow_file FROM sync_job_settings WHERE job_key = $1 AND enabled = true LIMIT 1', [jobKey]);
   const workflow = rows[0]?.workflow_file;
-  const queueJob: SyncJobName | null = jobKey === 'stock-price' ? 'stock-price' : jobKey === 'catalog-full' ? 'catalog-full' : jobKey === 'manufacturer-cleanup' ? 'manufacturer-cleanup' : null;
+  const queueJob: SyncJobName | null = jobKey === 'stock-price' ? 'stock-price' : jobKey === 'catalog-full' ? 'catalog-full' : jobKey === 'manufacturer-cleanup' ? 'manufacturer-cleanup' : jobKey === 'transport-dictionary' ? 'transport-dictionary' : null;
   if (process.env.REDIS_URL?.trim() && queueJob) {
     try {
       const { enqueueSyncJob } = await import(/* webpackIgnore: true */ '@worlds/queue');
@@ -123,6 +123,8 @@ export async function updatePricingSettings(formData: FormData) {
   const vatRate = boundedNumber(formData.get('vat_rate'), 20, 0, 100);
   const minimumCostEur = boundedNumber(formData.get('minimum_cost_eur'), 0, 0, 1_000_000);
   const allowPrivatePurchase = String(formData.get('allow_private_purchase') || '') === 'true';
+  const transportCodeRaw = String(formData.get('transport_code') || '').trim();
+  const transportCode = /^\d+$/.test(transportCodeRaw) ? transportCodeRaw : '';
   const rows = [1, 2, 3, 4, 5, 6].map((index) => {
     const min = Number(String(formData.get(`margin_${index}_min`) ?? ''));
     const maxRaw = String(formData.get(`margin_${index}_max`) ?? '').trim();
@@ -131,8 +133,8 @@ export async function updatePricingSettings(formData: FormData) {
   }).filter((row) => Number.isFinite(row.min) && row.min >= 0 && Number.isFinite(row.percent) && row.percent >= -100 && row.percent <= 1000 && (row.max === null || (Number.isFinite(row.max) && row.max > row.min)))
     .sort((a, b) => a.min - b.min);
   if (rows.length === 0) return;
-  await queryNeon(`INSERT INTO store_settings (key, value, updated_at) VALUES ('pricing.vat_rate', $1::jsonb, NOW()), ('feed.minimum_cost_eur', $2::jsonb, NOW()), ('checkout.allow_private_purchase', $3::jsonb, NOW())
-    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`, [JSON.stringify({ value: vatRate }), JSON.stringify({ value: minimumCostEur }), JSON.stringify({ value: allowPrivatePurchase })]);
+  await queryNeon(`INSERT INTO store_settings (key, value, updated_at) VALUES ('pricing.vat_rate', $1::jsonb, NOW()), ('feed.minimum_cost_eur', $2::jsonb, NOW()), ('checkout.allow_private_purchase', $3::jsonb, NOW()), ('orders.default_transport_code', $4::jsonb, NOW())
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`, [JSON.stringify({ value: vatRate }), JSON.stringify({ value: minimumCostEur }), JSON.stringify({ value: allowPrivatePurchase }), JSON.stringify({ value: transportCode || null })]);
   await queryNeon('DELETE FROM pricing_rules');
   for (const [index, row] of rows.entries()) {
     await queryNeon('INSERT INTO pricing_rules (min_cost, max_cost, margin_percent, display_order, updated_at) VALUES ($1, $2, $3, $4, NOW())', [row.min, row.max, row.percent, index + 1]);
