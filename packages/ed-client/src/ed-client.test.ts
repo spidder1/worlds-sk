@@ -109,3 +109,17 @@ test('catalogue recovery endpoint sends URL parameters and parses readiness', as
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
+
+test('SOAP navigator recovery rejects envelopes and parses status', async () => {
+  await withSoapServer((body, action) => {
+    assert.match(action, /getProductCatalogueFullNavFilterSOAPDownloadXML$/);
+    assert.match(body, /<filter><category>NOTEBOOKY<\/category><\/filter>/);
+    return `<?xml version="1.0"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><getProductCatalogueFullNavFilterSOAPDownloadXMLResponse><getProductCatalogueFullNavFilterSOAPDownloadXMLResult><Status><StatusCode>DONE</StatusCode></Status><ProductListStatus><IsReady>true</IsReady><Url>https://feed.example/filter.xml</Url></ProductListStatus></getProductCatalogueFullNavFilterSOAPDownloadXMLResult></getProductCatalogueFullNavFilterSOAPDownloadXMLResponse></soap:Body></soap:Envelope>`;
+  }, async (url) => {
+    const client = new EDSystemClient({ endpointUrl: url, login: 'login', password: 'secret' });
+    const result = await client.getProductCatalogueFullNavFilterSOAPDownloadXML('<category>NOTEBOOKY</category>');
+    assert.equal(result.IsReady, true);
+    assert.equal(result.Url, 'https://feed.example/filter.xml');
+    await assert.rejects(() => client.getProductCatalogueFullNavFilterSOAPDownloadXML('<soap:Envelope />'), /inner filter XML payload/);
+  });
+});

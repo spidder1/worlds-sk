@@ -501,6 +501,28 @@ export class EDSystemClient {
     });
   }
 
+  /** Low-level SOAP navigator filter for targeted recovery; not the master import path. */
+  async getProductCatalogueFullNavFilterSOAPDownloadXML(filterXml = '', onStock = false): Promise<EDProductListStatus> {
+    if (/<\/?(?:soap:)?(?:Envelope|Body|filter)\b|<!DOCTYPE\b|<!ENTITY\b/i.test(filterXml)) {
+      throw new Error('Navigator filter expects only the inner filter XML payload');
+    }
+    const action = `${this.getSoapNamespace()}getProductCatalogueFullNavFilterSOAPDownloadXML`;
+    const bodyXml = `<getProductCatalogueFullNavFilterSOAPDownloadXML xmlns="${this.getSoapNamespace()}">
+      <login>${escapeXml(this.login)}</login>
+      <password>${escapeXml(this.pass)}</password>
+      <onStock>${onStock}</onStock>
+      <filter>${filterXml}</filter>
+    </getProductCatalogueFullNavFilterSOAPDownloadXML>`;
+    const response = await executeSoapCall<{ getProductCatalogueFullNavFilterSOAPDownloadXMLResponse?: { getProductCatalogueFullNavFilterSOAPDownloadXMLResult?: any } }>({ endpoint: this.endpoint, action, bodyXml });
+    const result = response?.getProductCatalogueFullNavFilterSOAPDownloadXMLResponse?.getProductCatalogueFullNavFilterSOAPDownloadXMLResult;
+    return {
+      Status: { StatusCode: result?.Status?.StatusCode || 'ERROR', ErrorText: result?.Status?.ErrorText },
+      Url: result?.ProductListStatus?.Url || result?.ProductListStatus?.url,
+      FileName: result?.ProductListStatus?.FileName || result?.ProductListStatus?.fileName,
+      IsReady: xmlBoolean(result?.ProductListStatus?.IsReady ?? result?.ProductListStatus?.isReady),
+    };
+  }
+
   /**
    * 3.14. getProductDetail
    * Returns complete details for a single product code.
