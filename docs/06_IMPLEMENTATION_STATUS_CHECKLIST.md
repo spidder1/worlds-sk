@@ -1,8 +1,6 @@
 # Stav implementácie (skutočný stav kódu)
 
-> **Pozor:** Predchádzajúca verzia tohto dokumentu uvádzala 100 % dokončenie pre
-> košík, B2B pokladňu a `/admin` dashboard. Nič z toho v repozitári neexistuje.
-> Tento dokument je prepísaný tak, aby zodpovedal tomu, čo je naozaj v kóde.
+> Tento dokument zachytáva aktuálny stav implementácie e-shopu na Neone.
 > Kontrolovateľné tvrdenie = odkaz na súbor.
 
 Posledná revízia: 2026-09-04.
@@ -31,18 +29,18 @@ Posledná revízia: 2026-09-04.
 
 | Oblasť | Stav | Poznámka |
 | :--- | :---: | :--- |
-| Košík so stavom | ❌ | `/kosik` je statická stránka „objednávanie sa pripravuje“ |
-| Pokladňa (B2C aj B2B) | ❌ | Žiadny formulár, žiadna validácia IČO/DIČ/IČ DPH |
-| Ukladanie objednávok | ❌ | Typy v `packages/types/src/orders.ts` existujú, tabuľka ani API nie |
-| Platobná brána | ❌ | Žiadna integrácia (cieľ: Stripe) |
-| `createNewOrderCustomer` dropshipping | ⚠️ | Metóda v SOAP klientovi je, nikto ju nevolá |
-| PDF fakturácia | ❌ | — |
-| EU VAT reverse charge / VIES | ❌ | — |
-| `/admin` dashboard, AI approval queue, karanténa | ❌ | Žiadna `/admin` route v `apps/storefront` |
+| Košík so stavom | ✅ | Session košík cez Neon API, aktualizácia a mazanie položiek |
+| Pokladňa (B2C aj B2B) | ✅ | Formulár, režim súkromná/právnická osoba, IČO/DIČ/IČ DPH validácia |
+| Ukladanie objednávok | ✅ | Neon tabuľky `orders`/`order_items`, idempotentné API |
+| Platobná brána | ✅ | Stripe Checkout + podpisovaný webhook, bankový prevod a dobierka |
+| `createNewOrderCustomer` dropshipping | ✅ | Platené objednávky sa zaraďujú do eD fronty a odosielajú workerom |
+| PDF fakturácia | ✅ | Chránený endpoint s položkami, DPH a identifikátormi zákazníka |
+| EU VAT reverse charge / VIES | 🟡 | `/api/vat/validate` volá oficiálnu VIES službu; reverse-charge účtovanie ešte treba zapojiť do fakturačnej logiky |
+| `/admin` dashboard, AI approval queue, karanténa | 🟡 | Admin obsahuje objednávky, importy, kategórie, výrobcov, produkty, nastavenia a kvalitu; AI karanténa je mimo aktuálneho scope |
 | AI konverzačný asistent (`/api/chat`) | ❌ | V `apps/storefront` neexistuje adresár `api/` |
 | Meilisearch | ❌ | Vyhľadávanie ide cez Postgres `ILIKE` + `pg_trgm` |
 | Google / Heureka / NajNakup feedy | ❌ | — |
-| GDPR cookie lišta | ❌ | Stránka o ochrane údajov áno, banner nie |
+| GDPR cookie lišta | ✅ | Súhlas v localStorage a odkazy na právne stránky |
 | 301 mapa zo starého worlds.sk | ❌ | — |
 | Testy storefrontu, E2E (Playwright) | ❌ | Testy má iba `packages/importer` |
 | Redis / BullMQ | ❌ | Plánovanie rieši GitHub Actions cron |
@@ -64,11 +62,6 @@ Posledná revízia: 2026-09-04.
 
 ## Ďalšie kroky (poradie)
 
-1. Košík so stavom + pokladňa (B2C a B2B) + ukladanie objednávok.
-2. Stripe: platba, webhook s overením podpisu, idempotentný prechod `PENDING → PAID`.
-3. Odoslanie zaplatenej objednávky do eD cez `createNewOrderCustomer`.
-4. PDF faktúra s rozpisom DPH, SNC a AO.
-5. Validácia IČO/DIČ cez FinStat/ARES, reverse charge cez VIES.
-6. GDPR cookie lišta.
-7. Produktové feedy (Google Merchant, Heureka, NajNakup) a 301 mapa.
-8. E2E testy pokladne (Playwright) predtým, než sa spustia platby naostro.
+1. Zapojenie overeného VIES výsledku do B2B reverse-charge režimu a fakturácie.
+2. E2E testy pokladne (Playwright) pred ostrým zapnutím platieb.
+3. Priebežná QA a rozšírenie automatizovaných testov importu/katalógu.
