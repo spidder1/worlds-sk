@@ -171,6 +171,10 @@ function extractImageUrls(p: any): string[] {
 
   const addUrl = (raw: any) => {
     if (!raw) return;
+    if (Array.isArray(raw)) {
+      raw.forEach(addUrl);
+      return;
+    }
     let u = typeof raw === 'object' ? String(raw.URL || raw.Url || raw['#text'] || '') : String(raw);
     u = u.trim();
     if (!u || u.length < 5) return;
@@ -181,8 +185,8 @@ function extractImageUrls(p: any): string[] {
       u = u.replace(/^http:\/\//i, 'https://');
     }
 
-    // Replace thumbnail suffix _3 with original full-res .jpg/.png
-    u = u.replace(/_3(?=\.[a-z0-9]+(?:\?|$))/i, '');
+    // Replace eD thumbnail suffixes with original full-res image names.
+    u = u.replace(/_(?:3|8)(?=\.[a-z0-9]+(?:\?|$))/i, '');
 
     if (!urls.includes(u)) {
       urls.push(u);
@@ -192,6 +196,8 @@ function extractImageUrls(p: any): string[] {
   // Direct ImageUrl / ImgUrl
   addUrl(p.ImageUrl);
   addUrl(p.ImgUrl);
+  addUrl(p.ProductImage);
+  addUrl(p.Images);
 
   // ImageList structure
   if (p.ImageList) {
