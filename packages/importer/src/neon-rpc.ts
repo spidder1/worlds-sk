@@ -609,11 +609,19 @@ export function createNeonRpcClient(options: { brandScope?: string[] } = {}): Rp
       case 'record_raw_records': {
         await pool.query(
           `INSERT INTO raw_records
-             (batch_id, record_number, source_key, payload, payload_sha256)
-           SELECT $1::uuid, item.record_number, item.source_key, item.payload, item.payload_sha256
+             (batch_id, raw_document_id, record_number, source_key, payload, payload_sha256, source_name)
+           SELECT $1::uuid, document.id, item.record_number, item.source_key,
+                  item.payload, item.payload_sha256, item.source_name
              FROM jsonb_to_recordset($2::jsonb) AS item(
-               record_number bigint, source_key text, payload jsonb, payload_sha256 text
+               record_number bigint, source_key text, payload jsonb, payload_sha256 text, source_name text
              )
+             LEFT JOIN LATERAL (
+               SELECT id
+                 FROM raw_documents
+                WHERE batch_id = $1::uuid AND source_name = item.source_name
+                ORDER BY captured_at DESC, id DESC
+                LIMIT 1
+             ) AS document ON true
            ON CONFLICT (batch_id, record_number) DO NOTHING`,
           [parameters.p_batch_id, jsonParameter(parameters.p_items)],
         );

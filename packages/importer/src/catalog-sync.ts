@@ -695,7 +695,7 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
   const filteredByReason: Record<string, number> = {};
   let lastHeartbeatAt = Date.now();
   let payload: Record<string, unknown>[] = [];
-  let rawRecords: Array<{ record_number: number; source_key: string | null; payload: Record<string, unknown>; payload_sha256: string }> = [];
+  let rawRecords: Array<{ record_number: number; source_key: string | null; payload: Record<string, unknown>; payload_sha256: string; source_name: string }> = [];
   const quarantinePayload: Record<string, unknown>[] = [];
   const rpcName = options.mode === 'full' ? 'stage_ed_catalog_batch' : 'sync_ed_stock_price_batch';
 
@@ -761,6 +761,7 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
           source_key: rawSourceKey,
           payload: rawProduct,
           payload_sha256: crypto.createHash('sha256').update(JSON.stringify(rawProduct)).digest('hex'),
+          source_name: path.basename(source.filePath),
         });
         if (rawRecords.length >= options.batchSize) await flushRawRecords();
         if (options.mode === 'full' && options.scope === 'it-only') {
