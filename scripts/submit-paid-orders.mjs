@@ -31,6 +31,11 @@ try {
     );
     const attemptId = attemptRows[0]?.id;
     try {
+      await pool.query(
+        `INSERT INTO supplier_order_events (order_id, attempt_id, event_type, payload)
+         VALUES ($1, $2, 'ATTEMPT_STARTED', $3::jsonb)`,
+        [order.id, attemptId || null, JSON.stringify({ testMode: isTest })],
+      );
       const { rows: items } = await pool.query(`SELECT oi.sku, oi.quantity, oi.unit_price,
           COALESCE(p.vat_rate, 20) AS vat_rate,
           COALESCE(o.reverse_charge, false) AS reverse_charge
@@ -47,9 +52,17 @@ try {
         return { ProductCode: item.sku, Qty: Number(item.quantity), Price: Number(price.toFixed(2)), PriceVat: Number(priceVat.toFixed(2)), VatRate: Number(vatMultiplier.toFixed(4)) };
       });
       if (attemptId) {
+        const safeRequest = { itemCodes: edItems.map((item) => ({ code: item.ProductCode, qty: item.Qty })), transportCode: defaultTransportCode, testMode: isTest };
         await pool.query(
           `UPDATE supplier_order_attempts SET request_payload = $1::jsonb WHERE id = $2`,
-          [JSON.stringify({ itemCodes: edItems.map((item) => ({ code: item.ProductCode, qty: item.Qty })), transportCode: defaultTransportCode, testMode: isTest }), attemptId],
+          [JSON.stringify(safeRequest), attemptId],
+        );
+        await pool.query(
+          `INSERT INTO supplier_order_requests (order_id, attempt_id, request_payload, status, submitted_at)
+           VALUES ($1, $2, $3::jsonb, 'SUBMITTED', NOW())
+           ON CONFLICT (attempt_id) DO UPDATE SET request_payload = EXCLUDED.request_payload,
+             status = EXCLUDED.status, submitted_at = EXCLUDED.submitted_at, updated_at = NOW()`,
+          [order.id, attemptId, JSON.stringify(safeRequest)],
         );
       }
       const priceVat = Number(order.total);
@@ -73,6 +86,15 @@ try {
              response_payload = $2::jsonb, completed_at = NOW() WHERE id = $3`,
           [result.OrderSymbol || null, JSON.stringify({ statusCode: result.Status.StatusCode, orderSymbol: result.OrderSymbol || null }), attemptId],
         );
+        await pool.query(
+          `UPDATE supplier_order_requests SET status = 'SUCCEEDED', response_received_at = NOW(), updated_at = NOW() WHERE attempt_id = $1`,
+          [attemptId],
+        );
+        await pool.query(
+          `INSERT INTO supplier_order_events (order_id, attempt_id, event_type, payload)
+           VALUES ($1, $2, 'SUBMITTED', $3::jsonb)`,
+          [order.id, attemptId, JSON.stringify({ statusCode: result.Status.StatusCode, orderSymbol: result.OrderSymbol || null })],
+        );
       }
       await pool.query(`UPDATE orders SET supplier_order_status = 'SENT', supplier_order_symbol = $1, supplier_order_sent_at = NOW(), updated_at = NOW() WHERE id = $2`, [result.OrderSymbol || null, order.id]);
       console.log(`[supplier-orders] ${order.order_number} sent${isTest ? ' (test)' : ''}`);
@@ -82,6 +104,15 @@ try {
         await pool.query(
           `UPDATE supplier_order_attempts SET status = 'FAILED', error_message = $1, completed_at = NOW() WHERE id = $2`,
           [message.slice(0, 2000), attemptId],
+        );
+        await pool.query(
+          `UPDATE supplier_order_requests SET status = 'FAILED', response_received_at = NOW(), updated_at = NOW() WHERE attempt_id = $1`,
+          [attemptId],
+        );
+        await pool.query(
+          `INSERT INTO supplier_order_events (order_id, attempt_id, event_type, payload)
+           VALUES ($1, $2, 'FAILED', $3::jsonb)`,
+          [order.id, attemptId, JSON.stringify({ message: message.slice(0, 2000) })],
         );
       }
       await pool.query(`UPDATE orders SET supplier_order_status = 'FAILED', supplier_order_error = $1, updated_at = NOW() WHERE id = $2`, [message.slice(0, 2000), order.id]);
