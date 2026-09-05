@@ -18,7 +18,7 @@ body {
 }
 
 .manufacturer-marquee-track {
-  animation: manufacturer-marquee 55s linear infinite;
+  animation: manufacturer-marquee 150s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

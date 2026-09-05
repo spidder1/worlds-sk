@@ -14,6 +14,7 @@ export default async function HomePage() {
     getProductCount(),
     getManufacturers(),
   ]);
+  const logoManufacturers = manufacturers.filter((brand) => Boolean(brand.logoUrl));
 
   return (
     <div className="space-y-12">
@@ -57,15 +58,15 @@ export default async function HomePage() {
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">Vyberte si svojho obľúbeného výrobcu a prezrite si jeho kompletné portfolio</p>
           </div>
-          <Link href="/vyhladavanie" className="text-xs text-brand-600 hover:underline font-semibold flex items-center gap-1">
-            Všetci výrobcovia
+          <Link href="/vyrobcovia" className="text-xs text-brand-600 hover:underline font-semibold flex items-center gap-1">
+            Zobraziť všetkých výrobcov
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
         <div className="manufacturer-marquee relative overflow-hidden rounded-2xl border border-slate-200 bg-white py-3 shadow-sm" aria-label="Výrobcovia a značky">
           <div className="manufacturer-marquee-track flex w-max items-center gap-3 hover:[animation-play-state:paused]">
-            {[...manufacturers, ...manufacturers].map((brand, index) => (
+            {[...logoManufacturers, ...logoManufacturers].map((brand, index) => (
               <Link
                 key={`${brand.name}-${index}`}
                 href={`/vyhladavanie?vyrobca=${encodeURIComponent(brand.name)}`}
