@@ -12,6 +12,7 @@
     "dev:importer": "pnpm --filter @worlds/importer dev",
     "import:sample-neon": "pnpm --filter @worlds/importer run import:sample-neon",
     "import:neon": "pnpm --filter @worlds/importer run import:neon",
+    "import:neon:stock": "pnpm --filter @worlds/importer run import:neon:stock",
     "import:neon:dry-run": "pnpm --filter @worlds/importer run import:neon:dry-run",
     "db:migrate": "node scripts/migrate-neon.mjs",
     "report:classification": "node scripts/report-classification.mjs",

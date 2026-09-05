@@ -16,6 +16,7 @@
     "dev": "tsc --watch",
     "import:sample-neon": "node dist/import-neon.js",
     "import:neon": "node dist/import-neon.js",
+    "import:neon:stock": "node dist/import-stock-only.js",
     "import:neon:dry-run": "node dist/import-neon.js --dry-run",
     "import:sample": "node dist/cli.js --sample",
     "test": "node --test dist/**/*.test.js"

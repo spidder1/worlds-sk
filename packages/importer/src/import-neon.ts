@@ -34,6 +34,7 @@ function configuredTargetBrands(): Set<string> {
 }
 
 function targetBrandsLabel(): string {
+  if (process.env.ED_STOCK_ONLY === 'true') return 'SKLAD & CENY';
   const configured = [...configuredTargetBrands()];
   return configured.includes('ALL') ? 'VŠETKY ZNAČKY' : configured.join(' & ');
 }
@@ -360,6 +361,56 @@ async function fetchLiveStockMap(): Promise<Map<string, any>> {
   return stockMap;
 }
 
+function retailPriceFromCost(cost: number, vatRate: number): { basePrice: number; finalPrice: number } {
+  if (!Number.isFinite(cost) || cost <= 0) return { basePrice: 0, finalPrice: 0 };
+  const marginPct = cost < 50 ? 18 : cost > 1000 ? 10 : 12;
+  const basePrice = Number((cost * (1 + marginPct / 100)).toFixed(2));
+  return { basePrice, finalPrice: Number((basePrice * (1 + vatRate / 100)).toFixed(2)) };
+}
+
+async function syncStockOnly(pool: pg.Pool, stockMap: Map<string, any>, batchId: string | undefined): Promise<void> {
+  if (stockMap.size === 0) throw new Error('Stock feed neobsahuje žiadne položky.');
+  const products = await pool.query<{ id: string; supplier_code: string; supplier_pro_id: string | null; mpn: string | null; vat_rate: string | number }>(
+    `SELECT id, supplier_code, supplier_pro_id, mpn, vat_rate
+       FROM products WHERE status = 'ACTIVE'`,
+  );
+  let matched = 0;
+  let priced = 0;
+  let inStock = 0;
+  for (const product of products.rows) {
+    const info = stockMap.get(product.supplier_code) || stockMap.get(product.supplier_pro_id || '') || stockMap.get(product.mpn || '');
+    if (!info) continue;
+    matched++;
+    const stockCount = Math.max(0, Number(info.stockCount) || 0);
+    const pricing = retailPriceFromCost(Number(info.price), Number(product.vat_rate || 20));
+    if (pricing.finalPrice > 0) priced++;
+    if (stockCount > 0) inStock++;
+    await pool.query(
+      `UPDATE products
+          SET stock_count = $2::numeric,
+              is_in_stock = $3::boolean,
+              stock_text = $4::text,
+              base_price = CASE WHEN $5::numeric > 0 THEN $6::numeric ELSE base_price END,
+              final_price = CASE WHEN $5::numeric > 0 THEN $7::numeric ELSE final_price END,
+              data_hash = CONCAT('stock_', $2::text, '_', COALESCE($5::text, '0')),
+              updated_at = NOW()
+        WHERE id = $1`,
+      [product.id, stockCount, stockCount > 0, stockCount > 0 ? `Skladom > ${stockCount} ks` : 'Na objednávku', Number(info.price) || 0, pricing.basePrice, pricing.finalPrice],
+    );
+  }
+  if (matched === 0) throw new Error('Stock feed sa nezhoduje so žiadnym aktívnym produktom.');
+  if (batchId) {
+    await pool.query(
+      `UPDATE sync_batches
+          SET total_read = $1, imported_count = $2, filtered_count = $3,
+              metrics = $4::jsonb, status = 'COMPLETED', completed_at = NOW()
+        WHERE id = $5`,
+      [stockMap.size, matched, Math.max(0, stockMap.size - matched), JSON.stringify({ matched_products: matched, priced_count: priced, in_stock_count: inStock, stock_only: true }), batchId],
+    );
+  }
+  console.log(`✅ Stock-only synchronizácia: ${matched} produktov, ${priced} cien, ${inStock} skladom.`);
+}
+
 export async function importAsusLenovoToNeon() {
   console.log('===========================================================');
   console.log(` Worlds.sk - AKTUALIZÁCIA CIEN & OPRAVA OBRÁZKOV (${targetBrandsLabel()})`);
@@ -380,6 +431,12 @@ export async function importAsusLenovoToNeon() {
   const batchId = batchResult.rows[0]?.id;
 
   try {
+    const stockOnly = process.env.ED_STOCK_ONLY === 'true';
+    if (stockOnly) {
+      const stockMap = await fetchLiveStockMap();
+      await syncStockOnly(pool, stockMap, batchId);
+      return;
+    }
     await syncCategoriesAndManufacturers(pool);
   const classificationConfig = await loadClassificationConfig(pool);
 
@@ -747,7 +804,8 @@ function sampleOnlyLabel(): string {
   const brands = (process.env.ED_SAMPLE_BRANDS || 'ASUS,Lenovo').replace(/\s+/g, '').replace(/,/g, '_').toUpperCase();
   const scope = process.env.ED_SAMPLE_ONLY === 'true' ? `SAMPLE_${brands}` : `FULL_${brands}`;
   const dryRun = process.argv.includes('--dry-run') || process.env.ED_DRY_RUN === 'true';
-  return dryRun ? `DRY_RUN_${scope}` : scope;
+  const mode = process.env.ED_STOCK_ONLY === 'true' ? `STOCK_ONLY_${scope}` : scope;
+  return dryRun ? `DRY_RUN_${mode}` : mode;
 }
 
 if (process.argv[1]?.endsWith('import-neon.ts') || process.argv[1]?.endsWith('import-neon.js')) {

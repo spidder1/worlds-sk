@@ -12,6 +12,7 @@ on:
           - sample
           - full
   schedule:
+    - cron: '7 * * * *'
     - cron: '17 */2 * * *'
     - cron: '43 2 * * 0'
 
@@ -23,6 +24,29 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  stock-price-sync:
+    if: github.event_name == 'schedule' && github.event.schedule == '7 * * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
+      - run: pnpm import:neon:stock
+        env:
+          ED_STOCK_ONLY: true
+          ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
+          ED_LOGIN: ${{ secrets.ED_LOGIN }}
+          ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
   sample-catalog:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'sample' || github.event.schedule == '17 */2 * * *'
     runs-on: ubuntu-latest
