@@ -11,7 +11,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">Worlds.sk</p><h1 className="text-xl font-bold">Administrácia</h1></div>
         <form action={logoutAdmin}><button className="rounded-lg border border-slate-700 px-3 py-2 text-sm hover:bg-slate-800">Odhlásiť</button></form>
       </div>
-      <nav className="border-b border-slate-800 bg-black px-6 py-4 text-sm" aria-label="Administrátorské menu">
+      <nav className="border-b border-slate-800 bg-black px-6 py-4 text-sm" aria-label="Hlavne kategorie">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <AdminMenuGroup title="Prehľad" links={[
             ['/admin', 'Prehľad'],
