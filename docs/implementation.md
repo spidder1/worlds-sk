@@ -515,7 +515,7 @@ Workflow:
 4. Revalidate current stock, currency, price variance and transport code.
 5. Allocate a unique Worlds correlation and, for B2C, unique customer invoice code.
 6. Persist the exact outbound request with secrets removed.
-7. Call eD once and record the response atomically.
+7. Route legal customers through `createNewOrder` and private customers through `createNewOrderCustomer`; call eD once and record the response atomically.
 8. On `DONE`, persist supplier `OrderSymbol`; on explicit `ERROR`, expose a retryable/non-retryable failure classification.
 9. On timeout/connection loss after dispatch, use `SUBMISSION_UNKNOWN`; do not blindly retry because the PDF documents no idempotency key or order lookup method.
 10. Reconcile unknown submissions through an additional supplier interface/portal or support-approved procedure before retry.
