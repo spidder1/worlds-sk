@@ -1,16 +1,20 @@
 # Manufacturer normalization report
 
-Generated: 2026-09-05T03:43:37.773Z
+Generated: 2026-09-05T05:13:01.446Z
 
 | Metric | Count |
 | --- | ---: |
 | Active priced products scanned | 67572 |
-| Raw manufacturer values | 1199 |
-| Canonical manufacturers retained | 1198 |
-| Changed mappings | 0 |
+| Raw manufacturer values | 453 |
+| Canonical manufacturers retained | 452 |
+| Changed products | 0 |
+| Reviewed CSV rows | 1198 |
+| Verified brands | 86 |
+| Unverified candidates | 366 |
+| Junk CSV rows removed | 746 |
 | Invalid raw values | 0 |
 | Recovered from product title | 0 |
-| Products assigned to Unbranded | 1 |
+| Products assigned to Unbranded | 8628 |
 
 ## Changed examples
 

@@ -1,11 +1,15 @@
 {
-  "generatedAt": "2026-09-05T03:43:37.773Z",
+  "generatedAt": "2026-09-05T05:13:01.446Z",
   "productsScanned": 67572,
-  "rawManufacturers": 1199,
-  "canonicalManufacturers": 1198,
-  "changedMappings": 0,
+  "reviewedRows": 1198,
+  "verifiedBrands": 86,
+  "unverifiedCandidates": 366,
+  "junkRowsRemoved": 746,
+  "rawManufacturers": 453,
+  "canonicalManufacturers": 452,
+  "changedProducts": 0,
   "invalidRawManufacturers": 0,
   "recoveredFromTitle": 0,
-  "unbrandedProducts": 1,
+  "unbrandedProducts": 8628,
   "examples": []
 }
