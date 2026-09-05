@@ -86,3 +86,26 @@ test('createNewOrderCustomer serializes the live WSDL orderHead and invoice fiel
     assert.equal(result.OrderSymbol, 'B2C-42');
   });
 });
+
+test('catalogue recovery endpoint sends URL parameters and parses readiness', async () => {
+  const server = createServer((request, response) => {
+    assert.equal(request.method, 'GET');
+    const url = new URL(request.url || '/', 'http://127.0.0.1');
+    assert.equal(url.pathname, '/service.asmx/getProductCatalogueFullDownloadXMLv1');
+    assert.equal(url.searchParams.get('login'), 'login');
+    assert.equal(url.searchParams.get('password'), 'secret');
+    assert.equal(url.searchParams.get('ComoditiesTree'), 'IT');
+    response.writeHead(200, { 'content-type': 'text/xml' });
+    response.end('<ResponseProductListStatus><Status><StatusCode>DONE</StatusCode></Status><ProductListStatus><Url>https://feed.example/catalog.xml</Url><FileName>catalog.xml</FileName><IsReady>true</IsReady></ProductListStatus></ResponseProductListStatus>');
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  try {
+    const result = await new EDSystemClient({ endpointUrl: `http://127.0.0.1:${address.port}/service.asmx`, login: 'login', password: 'secret' }).getProductCatalogueFullDownloadXMLv1({ commoditiesTree: 'IT' });
+    assert.equal(result.IsReady, true);
+    assert.equal(result.Url, 'https://feed.example/catalog.xml');
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
