@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const body = await request.json() as {
       sessionToken?: string; customerName?: string; customerEmail?: string;
       customerPhone?: string; shippingAddress?: Record<string, string>; idempotencyKey?: string;
-      paymentMethod?: string; customerType?: 'PRIVATE' | 'LEGAL'; customerIco?: string; customerDic?: string;
+      paymentMethod?: string; customerType?: 'PRIVATE' | 'LEGAL'; customerIco?: string; customerDic?: string; customerIcDph?: string;
     };
     if (!body.sessionToken || !/^[a-zA-Z0-9-]{16,100}$/.test(body.sessionToken)) return NextResponse.json({ error: 'Neplatná relácia košíka.' }, { status: 400 });
     if (!body.customerName?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.customerEmail || '')) return NextResponse.json({ error: 'Vyplňte meno a platný e-mail.' }, { status: 400 });
@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     const customerType = body.customerType === 'LEGAL' ? 'LEGAL' : 'PRIVATE';
     const customerIco = body.customerIco?.trim() || null;
     const customerDic = body.customerDic?.trim() || null;
+    const customerIcDph = body.customerIcDph?.trim().toUpperCase() || null;
     const shippingAddress = body.shippingAddress && typeof body.shippingAddress === 'object' ? body.shippingAddress : {};
     const requiredAddressFields = ['street', 'city', 'postalCode', 'country'] as const;
     if (requiredAddressFields.some((field) => !shippingAddress[field]?.trim() || shippingAddress[field].trim().length > 200)) {
@@ -57,6 +58,10 @@ export async function POST(request: Request) {
       if (customerType === 'LEGAL' && (!validIco(customerIco) || !validDic(customerDic))) {
         await client.query('ROLLBACK');
         return NextResponse.json({ error: 'IČO musí byť platné 8-miestne slovenské IČO a DIČ 10-miestne číslo.' }, { status: 400 });
+      }
+      if (customerIcDph && !/^[A-Z]{2}\d{8,12}$/.test(customerIcDph)) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: 'IČ DPH musí mať formát krajiny a 8 až 12 číslic, napríklad SK2022595311.' }, { status: 400 });
       }
       const existing = await client.query<{ id: string; order_number: string; total: string; payment_status: string; payment_method: string }>(
         'SELECT id, order_number, total, payment_status, payment_method FROM orders WHERE idempotency_key = $1 LIMIT 1', [idempotencyKey]);
@@ -110,9 +115,9 @@ export async function POST(request: Request) {
         checkoutUrl = session.url;
       }
       await client.query(
-        `INSERT INTO orders (id, order_number, idempotency_key, session_token, customer_name, customer_email, customer_phone, customer_type, customer_ico, customer_dic, shipping_address, payment_method, stripe_session_id, subtotal, total)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $14)`,
-        [orderId, orderNumber, idempotencyKey, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, customerType, customerIco, customerDic, JSON.stringify(shippingAddress), paymentMethod, stripeSessionId, subtotal.toFixed(2)],
+        `INSERT INTO orders (id, order_number, idempotency_key, session_token, customer_name, customer_email, customer_phone, customer_type, customer_ico, customer_dic, customer_ic_dph, shipping_address, payment_method, stripe_session_id, subtotal, total)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $15)`,
+        [orderId, orderNumber, idempotencyKey, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, customerType, customerIco, customerDic, customerIcDph, JSON.stringify(shippingAddress), paymentMethod, stripeSessionId, subtotal.toFixed(2)],
       );
       for (const item of items.rows) {
         await client.query(

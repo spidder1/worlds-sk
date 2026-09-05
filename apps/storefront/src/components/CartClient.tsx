@@ -27,7 +27,7 @@ export function CartClient({ allowPrivatePurchase = true }: { allowPrivatePurcha
     const form = new FormData(event.currentTarget);
     const idempotencyKey = idempotencyKeyRef.current || globalThis.crypto.randomUUID(); idempotencyKeyRef.current = idempotencyKey;
     try {
-      const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionToken, idempotencyKey, customerName: form.get('customerName'), customerEmail: form.get('customerEmail'), customerPhone: form.get('customerPhone'), customerType: form.get('customerType'), customerIco: form.get('customerIco'), customerDic: form.get('customerDic'), paymentMethod: form.get('paymentMethod'), shippingAddress: { street: form.get('street'), city: form.get('city'), postalCode: form.get('postalCode'), country: form.get('country') } }) });
+      const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionToken, idempotencyKey, customerName: form.get('customerName'), customerEmail: form.get('customerEmail'), customerPhone: form.get('customerPhone'), customerType: form.get('customerType'), customerIco: form.get('customerIco'), customerDic: form.get('customerDic'), customerIcDph: form.get('customerIcDph'), paymentMethod: form.get('paymentMethod'), shippingAddress: { street: form.get('street'), city: form.get('city'), postalCode: form.get('postalCode'), country: form.get('country') } }) });
       const data = await response.json();
       if (!response.ok) setError(data.error || 'Objednávku sa nepodarilo vytvoriť.');
       else if (data.checkoutUrl) window.location.assign(data.checkoutUrl);
