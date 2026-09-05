@@ -428,6 +428,7 @@ export async function importAsusLenovoToNeon() {
 
   const targetProducts: any[] = [];
   const sampleOnly = process.env.ED_SAMPLE_ONLY === 'true';
+  const dryRun = process.argv.includes('--dry-run') || process.env.ED_DRY_RUN === 'true';
   const targetBrands = configuredTargetBrands();
   const sampleLimitRaw = Number.parseInt(process.env.ED_SAMPLE_LIMIT || '250', 10);
   const sampleLimit = Number.isFinite(sampleLimitRaw) && sampleLimitRaw > 0 ? sampleLimitRaw : 250;
@@ -576,6 +577,20 @@ export async function importAsusLenovoToNeon() {
   console.log(` 🔹 Lenovo: ${lenovoCount}`);
   console.log(` 📦 Celkovo s aktualizovanými cenami a fotkami: ${targetProducts.length}`);
   console.log(`===========================================================\n`);
+
+  if (dryRun) {
+    console.log('🧪 Dry-run: produkty sa nezapisujú do Neonu.');
+    if (batchId) {
+      await pool.query(
+        `UPDATE sync_batches
+            SET total_read = $1, imported_count = $2, filtered_count = $3,
+                status = 'COMPLETED', completed_at = NOW()
+          WHERE id = $4`,
+        [productBlocks.length, targetProducts.length, Math.max(0, productBlocks.length - targetProducts.length), batchId],
+      );
+    }
+    return;
+  }
 
   console.log('🚀 Upsertujem ASUS & Lenovo produkty bez mazania existujúceho katalógu...');
   const batchSize = 100;
