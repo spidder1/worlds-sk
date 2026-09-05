@@ -10,6 +10,7 @@ const commands: Record<string, string[]> = {
   'supplier-orders': ['orders:submit'],
   'search-drain': ['search:drain'],
   'search-reindex': ['search:reindex'],
+  'reference-data': ['sync:reference'],
 };
 
 function runCommand(args: string[], data: Record<string, unknown>): Promise<void> {

@@ -12,6 +12,7 @@
     "dev:importer": "pnpm --filter @worlds/importer dev",
     "sync:catalog": "pnpm --filter @worlds/importer run sync:catalog --",
     "sync:stock-price": "pnpm --filter @worlds/importer run sync:stock-price --",
+    "sync:reference": "pnpm --filter @worlds/ed-client run build && node scripts/sync-reference-data.mjs",
     "manufacturers:clean": "node scripts/normalize-manufacturers.mjs",
     "transport:sync": "node scripts/sync-transport-methods.mjs",
     "orders:submit": "node scripts/submit-paid-orders.mjs",

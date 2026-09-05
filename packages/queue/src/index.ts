@@ -3,7 +3,7 @@ import { Redis } from 'ioredis';
 
 export const SYNC_QUEUE_NAME = 'worlds-sync';
 
-export type SyncJobName = 'catalog-full' | 'stock-price' | 'image-loader' | 'manufacturer-cleanup' | 'transport-dictionary' | 'supplier-orders' | 'search-drain' | 'search-reindex';
+export type SyncJobName = 'catalog-full' | 'stock-price' | 'image-loader' | 'manufacturer-cleanup' | 'transport-dictionary' | 'supplier-orders' | 'search-drain' | 'search-reindex' | 'reference-data';
 
 export type SyncJobData = {
   requestedBy?: string;

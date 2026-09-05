@@ -8,6 +8,8 @@ import {
   EDProducer,
   EDCommodity,
   EDIndexTreeItem,
+  EDProductRelation,
+  EDProductRelationChild,
   EDRawProductDetail,
   EDNewOrderCustomerRequest,
   EDResponseNewOrder,
@@ -264,6 +266,71 @@ export class EDSystemClient {
     const items = result?.ProductIndexItem;
     if (!items) return [];
     return Array.isArray(items) ? items : [items];
+  }
+
+  /**
+   * 3.9. getProductIndexTree2
+   * Returns the second independent eD product index tree.
+   */
+  async getProductIndexTree2(): Promise<EDIndexTreeItem[]> {
+    const action = `${this.getSoapNamespace()}getProductIndexTree2`;
+    const bodyXml = `<getProductIndexTree2 xmlns="${this.getSoapNamespace()}">
+      <login>${escapeXml(this.login)}</login>
+      <password>${escapeXml(this.pass)}</password>
+    </getProductIndexTree2>`;
+
+    const response = await executeSoapCall<{ getProductIndexTree2Response?: { getProductIndexTree2Result?: any } }>({
+      endpoint: this.endpoint,
+      action,
+      bodyXml,
+    });
+
+    const result = response?.getProductIndexTree2Response?.getProductIndexTree2Result;
+    const items = result?.ProductIndexItem ?? result?.ProductIndexTree?.ProductIndexItem;
+    if (!items) return [];
+    return Array.isArray(items) ? items : [items];
+  }
+
+  /**
+   * 3.18. getProductRelationList
+   * Returns directed parent/child product relations. The supplier may wrap
+   * singleton values differently from arrays, so both forms are normalized.
+   */
+  async getProductRelationList(): Promise<EDProductRelation[]> {
+    const action = `${this.getSoapNamespace()}getProductRelationList`;
+    const bodyXml = `<getProductRelationList xmlns="${this.getSoapNamespace()}">
+      <login>${escapeXml(this.login)}</login>
+      <password>${escapeXml(this.pass)}</password>
+    </getProductRelationList>`;
+
+    const response = await executeSoapCall<{ getProductRelationListResponse?: { getProductRelationListResult?: any } }>({
+      endpoint: this.endpoint,
+      action,
+      bodyXml,
+    });
+    const result = response?.getProductRelationListResponse?.getProductRelationListResult;
+    const list = result?.ProductRelationList ?? result;
+    const rawRelations = list?.ProductRelation ?? list?.Relation ?? list?.ProductRelationItem;
+    const relations = rawRelations ? (Array.isArray(rawRelations) ? rawRelations : [rawRelations]) : [];
+
+    return relations.map((raw: Record<string, any>) => {
+      const rawChildren = raw.Childs?.ProductRelationChild
+        ?? raw.Children?.ProductRelationChild
+        ?? raw.Child
+        ?? raw.ProductRelationChild;
+      const children = rawChildren ? (Array.isArray(rawChildren) ? rawChildren : [rawChildren]) : [];
+      return {
+        ParentProId: xmlString(raw.ParentProId ?? raw.ParentProductId) ?? '',
+        ParentCode: xmlString(raw.ParentCode ?? raw.ParentProductCode) ?? '',
+        Childs: children.map((child: Record<string, any>): EDProductRelationChild => ({
+          ProId: xmlString(child.ProId ?? child.ProductProId) ?? '',
+          Code: xmlString(child.Code ?? child.ProductCode) ?? '',
+          Qty: Number(xmlScalar(child.Qty ?? child.Quantity) ?? 0),
+          RelTypeId: xmlString(child.RelTypeId ?? child.RelationTypeId) ?? '',
+          RelTypeName: xmlString(child.RelTypeName ?? child.RelationTypeName) ?? '',
+        })),
+      };
+    });
   }
 
   /**

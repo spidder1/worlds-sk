@@ -211,6 +211,8 @@ export async function runSyncJob(formData: FormData) {
               ? 'search-drain'
             : jobKey === 'search-reindex'
               ? 'search-reindex'
+            : jobKey === 'reference-data'
+              ? 'reference-data'
             : null;
   if (process.env.REDIS_URL?.trim() && queueJob) {
     try {
