@@ -28,12 +28,27 @@ function configuredTargetBrands(): Set<string> {
   );
 }
 
-function configuredMinimumCostEur(): number {
+function configuredMinimumCostEur(): number | null {
   const raw = process.env.ED_MIN_COST_EUR?.trim();
-  if (!raw) return 0;
+  if (!raw) return null;
   const value = Number(raw.replace(',', '.'));
   if (!Number.isFinite(value) || value < 0) throw new Error('ED_MIN_COST_EUR musí byť nezáporné číslo.');
   return value;
+}
+
+async function loadMinimumCostEur(pool: pg.Pool): Promise<number> {
+  const override = configuredMinimumCostEur();
+  if (override !== null) return override;
+  try {
+    const result = await pool.query<{ value: { value?: unknown } | null }>(
+      `SELECT value FROM store_settings WHERE key = 'feed.minimum_cost_eur' LIMIT 1`,
+    );
+    const configured = Number(result.rows[0]?.value?.value);
+    return Number.isFinite(configured) && configured >= 0 ? configured : 0;
+  } catch (error) {
+    console.warn(`[import] minimálna cena nie je dostupná v store_settings; použijem 0 €: ${error instanceof Error ? error.message : String(error)}`);
+    return 0;
+  }
 }
 
 function targetBrandsLabel(): string {
@@ -508,7 +523,7 @@ export async function importAsusLenovoToNeon() {
   const targetProducts: any[] = [];
   const sampleOnly = process.env.ED_SAMPLE_ONLY === 'true';
   const dryRun = process.argv.includes('--dry-run') || process.env.ED_DRY_RUN === 'true';
-  const minimumCostEur = configuredMinimumCostEur();
+  const minimumCostEur = await loadMinimumCostEur(pool);
   const targetBrands = configuredTargetBrands();
   const sampleLimitRaw = Number.parseInt(process.env.ED_SAMPLE_LIMIT || '250', 10);
   const sampleLimit = Number.isFinite(sampleLimitRaw) && sampleLimitRaw > 0 ? sampleLimitRaw : 250;
