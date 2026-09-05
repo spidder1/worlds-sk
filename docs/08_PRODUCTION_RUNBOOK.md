@@ -114,5 +114,8 @@ SELECT mode, status, total_read, created_count, changed_count, missing_count, me
   `https://worlds.sk/api/payments/comgate/notify` as the Comgate status URL;
   the webhook is accepted only after the transaction is verified against the
   Comgate status API.
+- If Gemini intent extraction is desired, configure `GEMINI_API_KEY` and
+  optionally `GEMINI_MODEL` (the assistant keeps its deterministic fallback
+  when the key is absent or the provider is unavailable).
 - Verify `/kosik`, Stripe/Comgate payment webhooks and the eD supplier-order worker in a
   production-like environment before switching DNS.

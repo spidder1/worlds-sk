@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getProductsPage } from '../../../lib/catalog';
+import { parseShoppingIntentWithGemini } from '../../../lib/gemini';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,7 +19,9 @@ export async function POST(request: Request) {
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const latest = messages.at(-1)?.content;
   if (typeof latest !== 'string' || latest.trim().length < 2) return NextResponse.json({ error: 'Napíšte, čo hľadáte.' }, { status: 400 });
-  const filters = parseRequest(latest.trim());
+  const fallbackFilters = parseRequest(latest.trim());
+  const aiFilters = await parseShoppingIntentWithGemini(latest.trim()).catch(() => null);
+  const filters = { ...fallbackFilters, ...(aiFilters || {}) };
   const result = await getProductsPage({ ...filters, page: 1, pageSize: 8, sort: 'price_asc', inStockOnly: true });
   const message = result.products.length
     ? `Našiel som ${result.total} vhodných produktov. Zobrazujem prvých ${result.products.length} podľa ceny.`
