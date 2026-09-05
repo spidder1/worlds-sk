@@ -48,6 +48,17 @@ the old string, and `old/` contains a copy of the previous Magento import stack.
 Import-only variables (GitHub Actions secrets): `ED_LOGIN`, `ED_PASSWORD`.
 Optional repository variable: `ED_BRAND_SCOPE` (defaults to `ASUS,Lenovo`).
 
+Before the first live import, archive and fingerprint the supplier contract:
+
+```bash
+ED_ENDPOINT_URL='https://private-ws-sk.elinkx.biz/service.asmx' pnpm verify:ed-contract
+```
+
+The verifier requires HTTPS, restricts the WSDL request to the configured eD
+host, rejects non-WSDL/error responses and refuses to archive apparent
+credentials. It writes the ignored contract snapshot and SHA-256 metadata under
+`downloads/contracts/` for the deployment record.
+
 ---
 
 ## 3. Database migrations

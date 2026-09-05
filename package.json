@@ -13,6 +13,7 @@
     "sync:catalog": "pnpm --filter @worlds/importer run sync:catalog --",
     "sync:stock-price": "pnpm --filter @worlds/importer run sync:stock-price --",
     "sync:reference": "pnpm --filter @worlds/ed-client run build && node scripts/sync-reference-data.mjs",
+    "verify:ed-contract": "node scripts/verify-ed-contract.mjs",
     "premium:audit": "node scripts/audit-premium-feed.mjs",
     "validate:migrations": "node scripts/validate-migrations.mjs",
     "manufacturers:clean": "node scripts/normalize-manufacturers.mjs",
