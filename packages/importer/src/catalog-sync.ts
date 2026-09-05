@@ -221,6 +221,8 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
   const code = value(product.Code ?? product.ProId);
   const title = value(product.Name ?? product.ProductName);
   if (!code || title.length < 3) return null;
+  const nameB2c = value(product.NameB2C ?? product.NameB2c ?? product.NameB2cTitle) || title;
+  const currency = normalizeIdentifier(product.PriceCurrency ?? product.Currency) || 'EUR';
 
   const supplierCost = Math.max(0, numberValue(product.YourPrice));
   const garbageFee = Math.max(0, numberValue(product.GarbageFee));
@@ -294,13 +296,17 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
       marginPercentage,
       basePrice,
       finalPrice,
-      currency: 'EUR',
+      currency,
     },
     stockCount,
   }).total;
-  const contentHash = hash([title, brand, mpn, mpn2, ean, cleanHtml, category.slug, imageUrls, extracted.allAttributes]);
+  const contentHash = hash([title, nameB2c, brand, mpn, mpn2, ean, currency, cleanHtml, category.slug, imageUrls, extracted.allAttributes]);
   const priceHash = hash([supplierCost, garbageFee, authorFee, totalCostWithFees, vatRate, basePrice, finalPrice]);
-  const inventoryHash = hash([stockCount, isInStock, value(product.DateOfDelivery)]);
+  const expectedAt = normalizeIdentifier(product.DateAvailible ?? product.DateAvailable ?? product.DateOfDelivery);
+  const stockText = normalizeIdentifier(product.OnStockText) || (isInStock
+    ? (Number.isFinite(stockCountRaw) ? `Skladom ${stockCount} ks` : 'Skladom')
+    : 'Na objednávku');
+  const inventoryHash = hash([stockCount, isInStock, stockText, expectedAt]);
 
   return {
     code,
@@ -333,8 +339,8 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
     margin_percentage: marginPercentage,
     stock_count: stockCount,
     is_in_stock: isInStock,
-    stock_text: isInStock ? (Number.isFinite(stockCountRaw) ? `Skladom ${stockCount} ks` : 'Skladom') : 'Na objednávku',
-    expected_at: normalizeIdentifier(product.DateOfDelivery),
+    stock_text: stockText,
+    expected_at: expectedAt,
     warranty_months: warrantyMonths,
     category_source: 'HEURISTIC',
     category_confidence: 0.75,
@@ -343,6 +349,8 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
     category_hierarchy: category.hierarchy,
     commodity_code: normalizeIdentifier(product.CommodityCode),
     commodity_name: normalizeIdentifier(product.CommodityName),
+    name_b2c: nameB2c,
+    currency,
     order_multiple: Math.max(1, numberValue(product.MultipleQuantity, 1)),
     b2c_eligible: booleanValue(product.B2C ?? true),
     is_premium: booleanValue(product.IsPremium ?? product.Premium) || finalPrice > 1500,
@@ -412,10 +420,17 @@ function transformStockProduct(product: Record<string, unknown>, pricing: Pricin
     margin_percentage: marginPercentage,
     stock_count: stockCount,
     is_in_stock: isInStock,
-    stock_text: isInStock ? (Number.isFinite(stockCountRaw) ? `Skladom ${stockCount} ks` : 'Skladom') : 'Na objednávku',
-    expected_at: normalizeIdentifier(product.DateOfDelivery),
+    stock_text: normalizeIdentifier(product.OnStockText) || (isInStock
+      ? (Number.isFinite(stockCountRaw) ? `Skladom ${stockCount} ks` : 'Skladom')
+      : 'Na objednávku'),
+    expected_at: normalizeIdentifier(product.DateAvailible ?? product.DateAvailable ?? product.DateOfDelivery),
     price_hash: hash([supplierCost, garbageFee, authorFee, totalCostWithFees, vatRate, basePrice, finalPrice]),
-    inventory_hash: hash([stockCount, isInStock, value(product.DateOfDelivery)]),
+    inventory_hash: hash([
+      stockCount,
+      isInStock,
+      normalizeIdentifier(product.OnStockText),
+      normalizeIdentifier(product.DateAvailible ?? product.DateAvailable ?? product.DateOfDelivery),
+    ]),
   };
 }
 

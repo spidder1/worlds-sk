@@ -30,6 +30,13 @@ test('full imports persist the extensible source payload', () => {
   assert.match(upsert, /source_extra jsonb/);
 });
 
+test('full imports persist B2C naming and feed currency', () => {
+  assert.match(upsert, /name_b2c/);
+  assert.match(upsert, /currency/);
+  assert.match(upsert, /name_b2c text/);
+  assert.match(upsert, /currency text/);
+});
+
 test('full imports register manufacturers before products', () => {
   assert.match(upsert, /manufacturer_upsert AS \(/);
   assert.match(upsert, /INSERT INTO manufacturers \(id, name, slug\)/);
