@@ -54,6 +54,11 @@ export interface EDExtInfoCode {
   InfoName: string;
 }
 
+export interface EDProductInformation {
+  InfoCode: string;
+  InfoName: string;
+}
+
 /**
  * Full product detail returned by getProductCatalogueFullDownloadXML / ZIP or getProductDetail
  */

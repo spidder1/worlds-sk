@@ -10,6 +10,7 @@ import {
   EDIndexTreeItem,
   EDProductRelation,
   EDProductRelationChild,
+  EDProductInformation,
   EDRawProductDetail,
   EDNewOrderCustomerRequest,
   EDResponseNewOrder,
@@ -333,6 +334,31 @@ export class EDSystemClient {
         })),
       };
     });
+  }
+
+  /**
+   * 3.11. getProductInformationList
+   * Returns the supplier dictionary for product marketing/status codes.
+   */
+  async getProductInformationList(): Promise<EDProductInformation[]> {
+    const action = `${this.getSoapNamespace()}getProductInformationList`;
+    const bodyXml = `<getProductInformationList xmlns="${this.getSoapNamespace()}">
+      <login>${escapeXml(this.login)}</login>
+      <password>${escapeXml(this.pass)}</password>
+    </getProductInformationList>`;
+    const response = await executeSoapCall<{ getProductInformationListResponse?: { getProductInformationListResult?: any } }>({
+      endpoint: this.endpoint,
+      action,
+      bodyXml,
+    });
+    const result = response?.getProductInformationListResponse?.getProductInformationListResult;
+    const list = result?.ProductInformationList ?? result;
+    const rawItems = list?.ProductInformation ?? list?.Information ?? list?.ProductInformationItem;
+    const items = rawItems ? (Array.isArray(rawItems) ? rawItems : [rawItems]) : [];
+    return items.map((item: Record<string, unknown>) => ({
+      InfoCode: xmlString(item.InfoCode ?? item.Code) ?? '',
+      InfoName: xmlString(item.InfoName ?? item.Name) ?? '',
+    })).filter((item: EDProductInformation) => item.InfoCode !== '');
   }
 
   /**

@@ -53,10 +53,11 @@ async function main() {
     password: required('ED_PASSWORD'),
     endpointUrl: process.env.ED_ENDPOINT_URL?.trim(),
   });
-  const [index1, index2, relations] = await Promise.all([
+  const [index1, index2, relations, informationCodes] = await Promise.all([
     client.getProductIndexTree1(),
     client.getProductIndexTree2(),
     client.getProductRelationList(),
+    client.getProductInformationList(),
   ]);
   const indexRows = [
     ...flattenIndexTree(index1, 'INDEX_1'),
@@ -81,10 +82,21 @@ async function main() {
           row.indexSortCode, row.indexLevel, row.indexOrder, row.codeName, JSON.stringify(row.payload)],
       );
     }
+    if (informationCodes.length > 0) {
+      for (const item of informationCodes) {
+        await db.query(
+          `INSERT INTO supplier_information_codes (info_code, info_name, source_payload, updated_at)
+           VALUES ($1,$2,$3::jsonb,NOW())
+           ON CONFLICT (info_code) DO UPDATE SET info_name = EXCLUDED.info_name,
+             source_payload = EXCLUDED.source_payload, updated_at = NOW()`,
+          [item.InfoCode, item.InfoName, JSON.stringify(item)],
+        );
+      }
+    }
 
     const batch = await db.query(
       `INSERT INTO sync_batches (batch_number, mode, status, source_method, started_at)
-       VALUES ($1, 'reference', 'RUNNING', 'getProductRelationList/getProductIndexTree1/getProductIndexTree2', NOW())
+       VALUES ($1, 'reference', 'RUNNING', 'getProductInformationList/getProductRelationList/getProductIndexTree1/getProductIndexTree2', NOW())
        RETURNING id`,
       [`reference-${new Date().toISOString()}`],
     );
@@ -147,10 +159,10 @@ async function main() {
     await db.query(
       `UPDATE sync_batches SET status = 'COMPLETED', completed_at = NOW(), total_read = $1,
          imported_count = $2, filtered_count = $3, metrics = $4::jsonb WHERE id = $5`,
-      [relations.length, resolved, unresolved, JSON.stringify({ indexNodes: indexRows.length, relations: relations.length, resolved, unresolved }), batchId],
+      [relations.length, resolved, unresolved, JSON.stringify({ indexNodes: indexRows.length, informationCodes: informationCodes.length, relations: relations.length, resolved, unresolved }), batchId],
     );
     await db.query('COMMIT');
-    console.log(JSON.stringify({ indexNodes: indexRows.length, relationGroups: relations.length, resolved, unresolved }));
+    console.log(JSON.stringify({ indexNodes: indexRows.length, informationCodes: informationCodes.length, relationGroups: relations.length, resolved, unresolved }));
   } catch (error) {
     await db.query('ROLLBACK');
     throw error;
