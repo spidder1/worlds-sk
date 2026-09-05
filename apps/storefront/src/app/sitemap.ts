@@ -39,6 +39,42 @@ export default async function sitemap({ id }: { id: number | string }): Promise<
       changeFrequency: 'monthly',
       priority: 0.7,
     },
+    {
+      url: `${baseUrl}/produkty`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/vyrobcovia`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/doprava-a-platba`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/obchodne-podmienky`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.4,
+    },
+    {
+      url: `${baseUrl}/reklamacny-poriadok`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.4,
+    },
+    {
+      url: `${baseUrl}/ochrana-osobnych-udajov`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.4,
+    },
   ] : [];
 
   // 2. Categories
