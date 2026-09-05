@@ -23,15 +23,16 @@ export async function updateProductCategory(formData: FormData) {
   const category = String(formData.get('category') || '').trim();
   if (!id || !category) return;
   await queryNeon(`WITH RECURSIVE category_path AS (
-    SELECT c.slug, c.parent_slug, ARRAY[c.name]::text[] AS names
+    SELECT c.id, c.slug, c.parent_id, c.parent_slug, ARRAY[c.name]::text[] AS names
       FROM categories c WHERE c.slug = $1
     UNION ALL
-    SELECT parent.slug, parent.parent_slug, ARRAY[parent.name] || path.names
-      FROM categories parent JOIN category_path path ON parent.slug = path.parent_slug
+    SELECT parent.id, parent.slug, parent.parent_id, parent.parent_slug, ARRAY[parent.name] || path.names
+      FROM categories parent JOIN category_path path
+        ON parent.slug = path.parent_slug OR parent.id = path.parent_id
   )
   UPDATE products
      SET category_slug = $1,
-         category_hierarchy = COALESCE((SELECT to_jsonb(names) FROM category_path WHERE parent_slug IS NULL LIMIT 1), category_hierarchy),
+         category_hierarchy = COALESCE((SELECT to_jsonb(names) FROM category_path WHERE parent_slug IS NULL AND parent_id IS NULL LIMIT 1), category_hierarchy),
          category_source = 'ADMIN',
          category_confidence = 1,
          category_reasoning = 'Manuálne upravené administrátorom',
@@ -52,14 +53,15 @@ export async function updateCategoryPresentation(formData: FormData) {
     SET name = $1, display_order = $2, active = $3, updated_at = NOW()
     WHERE slug = $4`, [name, displayOrder, active, slug]);
   await queryNeon(`WITH RECURSIVE category_path AS (
-    SELECT c.slug, c.parent_slug, ARRAY[c.name]::text[] AS names
+    SELECT c.id, c.slug, c.parent_id, c.parent_slug, ARRAY[c.name]::text[] AS names
       FROM categories c WHERE c.slug = $1
     UNION ALL
-    SELECT parent.slug, parent.parent_slug, ARRAY[parent.name] || path.names
-      FROM categories parent JOIN category_path path ON parent.slug = path.parent_slug
+    SELECT parent.id, parent.slug, parent.parent_id, parent.parent_slug, ARRAY[parent.name] || path.names
+      FROM categories parent JOIN category_path path
+        ON parent.slug = path.parent_slug OR parent.id = path.parent_id
   )
   UPDATE products
-     SET category_hierarchy = COALESCE((SELECT to_jsonb(names) FROM category_path WHERE parent_slug IS NULL LIMIT 1), category_hierarchy),
+     SET category_hierarchy = COALESCE((SELECT to_jsonb(names) FROM category_path WHERE parent_slug IS NULL AND parent_id IS NULL LIMIT 1), category_hierarchy),
          updated_at = NOW()
    WHERE category_slug = $1`, [slug]);
   redirect('/admin/kategorie?saved=1');
@@ -71,15 +73,16 @@ export async function approveCategoryReview(formData: FormData) {
   const category = String(formData.get('category') || '').trim();
   if (!id || !category) return;
   await queryNeon(`WITH RECURSIVE category_path AS (
-    SELECT c.slug, c.parent_slug, ARRAY[c.name]::text[] AS names
+    SELECT c.id, c.slug, c.parent_id, c.parent_slug, ARRAY[c.name]::text[] AS names
       FROM categories c WHERE c.slug = $1
     UNION ALL
-    SELECT parent.slug, parent.parent_slug, ARRAY[parent.name] || path.names
-      FROM categories parent JOIN category_path path ON parent.slug = path.parent_slug
+    SELECT parent.id, parent.slug, parent.parent_id, parent.parent_slug, ARRAY[parent.name] || path.names
+      FROM categories parent JOIN category_path path
+        ON parent.slug = path.parent_slug OR parent.id = path.parent_id
   )
   UPDATE products
      SET category_slug = $1,
-         category_hierarchy = COALESCE((SELECT to_jsonb(names) FROM category_path WHERE parent_slug IS NULL LIMIT 1), category_hierarchy),
+         category_hierarchy = COALESCE((SELECT to_jsonb(names) FROM category_path WHERE parent_slug IS NULL AND parent_id IS NULL LIMIT 1), category_hierarchy),
          category_source = 'ADMIN',
          category_confidence = 1,
          category_reasoning = 'Schválené administrátorom',
