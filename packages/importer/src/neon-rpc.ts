@@ -306,6 +306,19 @@ export function createNeonRpcClient(options: { brandScope?: string[] } = {}): Rp
         return rows[0] as unknown as T;
       }
 
+      case 'record_product_quarantine': {
+        await pool.query(
+          `INSERT INTO product_quarantine (batch_id, supplier_code, pro_id, reason, error_details, raw_payload)
+           SELECT $1::uuid, COALESCE(item.supplier_code, 'UNKNOWN'), item.pro_id, item.reason,
+                  item.error_details, COALESCE(item.raw_payload, '{}'::jsonb)
+             FROM jsonb_to_recordset($2::jsonb) AS item(
+               supplier_code text, pro_id text, reason text, error_details text, raw_payload jsonb
+             )`,
+          [parameters.p_batch_id, jsonParameter(parameters.p_items)],
+        );
+        return true as unknown as T;
+      }
+
       case 'complete_ed_import': {
         const metrics = (parameters.p_metrics ?? {}) as Record<string, unknown>;
         let missing = 0;

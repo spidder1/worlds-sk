@@ -25,6 +25,15 @@ export async function updateProductCategory(formData: FormData) {
   redirect('/admin/produkty?saved=1');
 }
 
+export async function resolveQuarantine(formData: FormData) {
+  if (!(await isAdminAuthenticated())) redirect('/admin');
+  const id = String(formData.get('id') || '').trim();
+  const note = String(formData.get('note') || '').trim().slice(0, 500) || null;
+  if (!id) return;
+  await queryNeon('UPDATE product_quarantine SET resolved = true, resolution_note = $1, resolved_at = NOW() WHERE id = $2', [note, id]);
+  redirect('/admin/karantena?saved=1');
+}
+
 export async function updateOrderStatus(formData: FormData) {
   if (!(await isAdminAuthenticated())) redirect('/admin');
   const id = String(formData.get('id') || '').trim();

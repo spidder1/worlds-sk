@@ -573,6 +573,7 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
   const filteredByReason: Record<string, number> = {};
   let lastHeartbeatAt = Date.now();
   let payload: Record<string, unknown>[] = [];
+  const quarantinePayload: Record<string, unknown>[] = [];
   const rpcName = options.mode === 'full' ? 'stage_ed_catalog_batch' : 'sync_ed_stock_price_batch';
 
   const sendItems = async (items: Record<string, unknown>[]): Promise<RpcBatchResult> => {
@@ -669,7 +670,22 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
           transformed.scope_signal = scope.matchedTerm ?? null;
         }
         if (transformed) payload.push(transformed);
-        else skipped += 1;
+        else {
+          skipped += 1;
+          if (options.mode === 'full') {
+            const supplierCode = value(rawProduct.Code ?? rawProduct.ProId);
+            const title = value(rawProduct.Name ?? rawProduct.ProductName);
+            quarantinePayload.push({
+              supplier_code: supplierCode || 'UNKNOWN',
+              pro_id: value(rawProduct.ProId) || null,
+              reason: !supplierCode ? 'MISSING_SUPPLIER_CODE' : 'MALFORMED_DATA',
+              error_details: !supplierCode
+                ? 'Chýba kód produktu alebo ProId.'
+                : `Neplatný názov produktu (${title.length} znakov).`,
+              raw_payload: rawProduct,
+            });
+          }
+        }
         if (payload.length >= options.batchSize) await flush();
         if (options.limit && result.processed + payload.length >= options.limit) {
           limitReached = true;
@@ -679,6 +695,14 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
       if (limitReached) break;
     }
     await flush();
+    if (rpc && quarantinePayload.length > 0) {
+      for (let offset = 0; offset < quarantinePayload.length; offset += options.batchSize) {
+        await rpc<boolean>('record_product_quarantine', {
+          p_batch_id: batchId,
+          p_items: quarantinePayload.slice(offset, offset + options.batchSize),
+        });
+      }
+    }
     if (options.mode === 'full' && parsed === 0) {
       throw new Error('Full catalogue contained no Product or ProductComplete records; refusing to mark existing products missing.');
     }
