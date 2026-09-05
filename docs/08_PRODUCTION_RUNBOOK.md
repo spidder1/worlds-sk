@@ -109,6 +109,8 @@ SELECT mode, status, total_read, created_count, changed_count, missing_count, me
   loaded 747 active candidates into Neon; regenerate the CSV with
   `node scripts/build-legacy-redirect-candidates.mjs` when a newer legacy URL
   export is available, then load it with `node scripts/import-legacy-redirects.mjs`.
+  A local CSV can be used without Wayback by setting
+  `LEGACY_URLS_FILE=path/to/legacy-urls.csv`.
 - If Comgate is enabled, configure `COMGATE_MERCHANT`, `COMGATE_SECRET` and
   `COMGATE_TEST` in Vercel. Register
   `https://worlds.sk/api/payments/comgate/notify` as the Comgate status URL;

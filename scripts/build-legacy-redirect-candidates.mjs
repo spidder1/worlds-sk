@@ -2,10 +2,23 @@ import fs from 'node:fs/promises';
 import pg from 'pg';
 
 const cdxUrl = process.env.WAYBACK_CDX_URL || 'https://web.archive.org/cdx/search/cdx?url=*.worlds.sk/*&output=json&fl=original&filter=statuscode:200&collapse=urlkey&limit=5000';
-const response = await fetch(cdxUrl);
-if (!response.ok) throw new Error(`Wayback CDX failed: ${response.status}`);
-const rows = await response.json();
-const archivedUrls = [...new Set(rows.slice(1).map((row) => String(row[0] || '').trim()).filter((url) => url.startsWith('http')))].map((value) => new URL(value));
+const exportFile = process.env.LEGACY_URLS_FILE?.trim();
+let archivedValues;
+if (exportFile) {
+  const text = await fs.readFile(exportFile, 'utf8');
+  archivedValues = text.split(/\r?\n/).map((line) => {
+    const first = line.split(',')[0]?.trim().replace(/^"|"$/g, '').replaceAll('""', '"');
+    return first || '';
+  }).filter((value) => value.startsWith('http'));
+  console.log(`[redirects] source=file:${exportFile}`);
+} else {
+  const response = await fetch(cdxUrl);
+  if (!response.ok) throw new Error(`Wayback CDX failed: ${response.status}`);
+  const rows = await response.json();
+  archivedValues = rows.slice(1).map((row) => String(row[0] || '').trim()).filter((url) => url.startsWith('http'));
+  console.log(`[redirects] source=wayback`);
+}
+const archivedUrls = [...new Set(archivedValues)].map((value) => new URL(value));
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 try {
