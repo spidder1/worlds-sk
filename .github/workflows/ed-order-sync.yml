@@ -1,0 +1,36 @@
+name: eD supplier order queue
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ed-supplier-orders
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build
+      - run: node scripts/submit-paid-orders.mjs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
+          ED_LOGIN: ${{ secrets.ED_LOGIN }}
+          ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
+          ED_ORDER_TEST: ${{ vars.ED_ORDER_TEST || 'true' }}

@@ -35,6 +35,15 @@ export async function updateOrderStatus(formData: FormData) {
   redirect('/admin/objednavky?saved=1');
 }
 
+export async function queueSupplierOrder(formData: FormData) {
+  if (!(await isAdminAuthenticated())) redirect('/admin');
+  const id = String(formData.get('id') || '').trim();
+  if (!id) return;
+  await queryNeon(`UPDATE orders SET supplier_order_status = 'QUEUED', supplier_order_error = NULL, updated_at = NOW()
+    WHERE id = $1 AND payment_status = 'PAID' AND supplier_order_status IN ('NOT_SENT', 'FAILED')`, [id]);
+  redirect('/admin/objednavky?saved=1');
+}
+
 export async function updateManufacturerReview(formData: FormData) {
   if (!(await isAdminAuthenticated())) redirect('/admin');
   const id = String(formData.get('id') || '');
