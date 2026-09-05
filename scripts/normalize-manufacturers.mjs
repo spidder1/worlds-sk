@@ -9,6 +9,7 @@ if (!databaseUrl) throw new Error('DATABASE_URL is required');
 const dryRun = process.argv.includes('--dry-run');
 const noDownload = process.argv.includes('--no-download');
 const logoDir = path.resolve(process.env.MANUFACTURER_LOGO_DIR || 'apps/storefront/public/manufacturers');
+const reviewCsvPath = path.resolve(process.env.MANUFACTURER_REVIEW_CSV || 'manufacturers.csv');
 
 const KNOWN_BRANDS = [
   'ASUS', 'Lenovo', 'HP', 'HPE', 'Dell', 'Acer', 'Apple', 'Samsung', 'Intel', 'AMD', 'Kingston',
@@ -46,6 +47,50 @@ const NOISE = new Set([
 ]);
 
 const TITLE_NOISE = new Set([...NOISE, 'laserová', 'laserova', 'inkoustová', 'inkoustova', 'herný', 'herny', 'pracovný', 'pracovny']);
+const TITLE_BRAND_EXCLUDE = new Set(['pro', 'one', 'in', 'it', 'go', 'home', 'power', 'plus', 'max', 'mini', 'air', 'box', 'kit', 'set', 'line', 'basic', 'universal', 'smart', 'color', 'mobile']);
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (quoted) {
+      if (char === '"' && next === '"') { field += '"'; i += 1; }
+      else if (char === '"') quoted = false;
+      else field += char;
+    } else if (char === '"') quoted = true;
+    else if (char === ',') { row.push(field); field = ''; }
+    else if (char === '\n') { row.push(field.replace(/\r$/, '')); rows.push(row); row = []; field = ''; }
+    else field += char;
+  }
+  if (field || row.length) { row.push(field); rows.push(row); }
+  const headers = rows.shift()?.map((header) => header.trim()) || [];
+  return rows.filter((values) => values.some(Boolean)).map((values) => Object.fromEntries(headers.map((header, index) => [header, (values[index] || '').trim()])));
+}
+
+async function loadReviewedManufacturers() {
+  const csv = await fs.readFile(reviewCsvPath, 'utf8');
+  const rows = parseCsv(csv);
+  const allowedRows = rows.filter((row) => row.audit_class === 'VERIFIED_BRAND' || row.audit_class === 'UNVERIFIED_CANDIDATE');
+  const byName = new Map();
+  for (const row of allowedRows) {
+    const name = stripMarkup(row.name);
+    if (!name) continue;
+    byName.set(name.toLowerCase(), {
+      name,
+      slug: manufacturerSlug(name),
+      id: manufacturerId(name),
+      auditClass: row.audit_class,
+      auditConfidence: row.audit_confidence ? Number(row.audit_confidence) : null,
+      auditReason: row.audit_reason || null,
+      auditSource: row.audit_source || null,
+    });
+  }
+  return { rows, allowedRows: [...byName.values()], byName };
+}
 
 function slugify(value) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -150,34 +195,53 @@ const { Client } = pg;
 const client = new Client({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } });
 await client.connect();
 try {
-  const result = await client.query(`SELECT brand, title FROM products WHERE status = 'ACTIVE' AND final_price > 0 AND brand IS NOT NULL`);
-  // Use a curated brand dictionary for title recovery. Raw supplier values are
-  // deliberately not added here because values such as "Monitor" or "Dotykový"
-  // are product descriptors, not manufacturers.
-  const knownBrands = [...new Set(KNOWN_BRANDS)].sort((a, b) => b.length - a.length);
+  const review = await loadReviewedManufacturers();
+  if (review.allowedRows.length === 0) throw new Error(`No VERIFIED_BRAND or UNVERIFIED_CANDIDATE rows found in ${reviewCsvPath}`);
+  const allowedNames = review.allowedRows.map((row) => row.name);
+  const titleBrands = [...review.allowedRows]
+    .filter((candidate) => (candidate.name.length >= 4 || /[A-Z0-9]/.test(candidate.name)) && !TITLE_BRAND_EXCLUDE.has(candidate.name.toLowerCase()))
+    .sort((a, b) => b.name.length - a.name.length);
+  const result = await client.query(`SELECT id, brand, title FROM products WHERE status = 'ACTIVE' AND final_price > 0`);
+  const changes = [];
   const mappings = new Map();
+  let exactMatches = 0;
+  let recoveredFromTitle = 0;
+  let unbranded = 0;
   for (const row of result.rows) {
-    const canonical = cleanBrand(row.brand, row.title, knownBrands);
     const raw = String(row.brand || '').trim();
-    if (!mappings.has(raw)) mappings.set(raw, { canonical, titles: [] });
-    mappings.get(raw).titles.push(row.title);
+    const exact = review.byName.get(stripMarkup(raw).toLowerCase());
+    const title = stripMarkup(row.title);
+    const relationStart = title.search(/\b(?:pre|pro|for|compatible|kompatibil|vhodn|určen)\b/i);
+    const titlePrefix = relationStart > 0 ? title.slice(0, relationStart) : title.split(/\s+/).slice(0, 5).join(' ');
+    const fromTitle = !exact && titleBrands.find((candidate) => new RegExp(`(^|[^A-Za-z0-9])${candidate.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[^A-Za-z0-9])`, 'i').test(titlePrefix));
+    const canonical = exact?.name || fromTitle?.name || 'Unbranded';
+    if (exact) exactMatches += 1;
+    else if (fromTitle) recoveredFromTitle += 1;
+    else unbranded += 1;
+    if (raw !== canonical) changes.push({ id: row.id, raw, canonical, title: row.title || '' });
+    const key = raw || '(empty)';
+    if (!mappings.has(key)) mappings.set(key, { canonical, titles: [] });
+    mappings.get(key).titles.push(row.title);
   }
-  const canonicalNames = [...new Set([...mappings.values()].map((mapping) => mapping.canonical))]
-    .filter((name) => name && name !== 'Unbranded');
-  console.log(`[manufacturers] products=${result.rowCount} raw=${mappings.size} canonical=${canonicalNames.length}`);
-  const changedMappings = [...mappings].filter(([raw, mapping]) => raw !== mapping.canonical);
-  const invalidMappings = [...mappings].filter(([raw]) => isInvalidBrand(raw));
-  const recoveredMappings = invalidMappings.filter(([, mapping]) => mapping.canonical !== 'Unbranded');
+  const canonicalNames = allowedNames;
+  console.log(`[manufacturers] products=${result.rowCount} reviewed=${review.rows.length} allowed=${canonicalNames.length} exact=${exactMatches} title=${recoveredFromTitle} unbranded=${unbranded}`);
+  const changedMappings = changes.filter((change) => change.raw !== change.canonical);
+  const invalidMappings = changes.filter((change) => isInvalidBrand(change.raw));
+  const recoveredMappings = changes.filter((change) => change.canonical !== 'Unbranded' && change.raw !== change.canonical);
   const report = {
     generatedAt: new Date().toISOString(),
     productsScanned: result.rowCount,
+    reviewedRows: review.rows.length,
+    verifiedBrands: review.allowedRows.filter((row) => row.auditClass === 'VERIFIED_BRAND').length,
+    unverifiedCandidates: review.allowedRows.filter((row) => row.auditClass === 'UNVERIFIED_CANDIDATE').length,
+    junkRowsRemoved: review.rows.filter((row) => row.audit_class === 'JUNK_DATA').length,
     rawManufacturers: mappings.size,
     canonicalManufacturers: canonicalNames.length,
-    changedMappings: changedMappings.length,
+    changedProducts: changes.length,
     invalidRawManufacturers: invalidMappings.length,
     recoveredFromTitle: recoveredMappings.length,
-    unbrandedProducts: [...mappings.values()].filter((mapping) => mapping.canonical === 'Unbranded').length,
-    examples: changedMappings.slice(0, 100).map(([raw, mapping]) => ({ raw, canonical: mapping.canonical, sampleTitle: mapping.titles[0] || '' })),
+    unbrandedProducts: unbranded,
+    examples: changes.slice(0, 100).map((change) => ({ raw: change.raw, canonical: change.canonical, sampleTitle: change.title })),
   };
   const reportPath = path.resolve(process.env.MANUFACTURER_REPORT_PATH || 'reports/manufacturer-normalization-report.json');
   await fs.mkdir(path.dirname(reportPath), { recursive: true });
@@ -192,7 +256,11 @@ try {
     `| Active priced products scanned | ${report.productsScanned} |`,
     `| Raw manufacturer values | ${report.rawManufacturers} |`,
     `| Canonical manufacturers retained | ${report.canonicalManufacturers} |`,
-    `| Changed mappings | ${report.changedMappings} |`,
+    `| Changed products | ${report.changedProducts} |`,
+    `| Reviewed CSV rows | ${report.reviewedRows} |`,
+    `| Verified brands | ${report.verifiedBrands} |`,
+    `| Unverified candidates | ${report.unverifiedCandidates} |`,
+    `| Junk CSV rows removed | ${report.junkRowsRemoved} |`,
     `| Invalid raw values | ${report.invalidRawManufacturers} |`,
     `| Recovered from product title | ${report.recoveredFromTitle} |`,
     `| Products assigned to Unbranded | ${report.unbrandedProducts} |`,
@@ -206,7 +274,7 @@ try {
   ].join('\n');
   await fs.writeFile(reportPath.replace(/\.json$/i, '.md'), `${markdownReport}\n`, 'utf8');
   console.log(`[manufacturers] report=${reportPath}`);
-  for (const [raw, mapping] of changedMappings.slice(0, 40)) console.log(`[manufacturers] ${raw || '(empty)'} -> ${mapping.canonical}`);
+  for (const change of changedMappings.slice(0, 40)) console.log(`[manufacturers] ${change.raw || '(empty)'} -> ${change.canonical}`);
   if (changedMappings.length > 40) console.log(`[manufacturers] ... plus ${changedMappings.length - 40} additional name changes`);
   if (dryRun) {
     await client.end();
@@ -216,21 +284,21 @@ try {
   // Keep the write transaction short. Logo providers are external and must
   // never hold a Neon transaction open while they respond.
   await client.query('BEGIN');
-  const changed = [...mappings]
-    .filter(([raw, mapping]) => raw !== mapping.canonical)
-    .map(([raw, mapping]) => ({ raw, canonical: mapping.canonical }));
+  const changed = changes.map(({ id, canonical }) => ({ id, canonical }));
   if (changed.length > 0) {
     await client.query(`UPDATE products AS p
       SET brand = m.canonical, updated_at = NOW()
-      FROM jsonb_to_recordset($1::jsonb) AS m(raw text, canonical text)
-      WHERE p.brand = m.raw`, [JSON.stringify(changed)]);
+      FROM jsonb_to_recordset($1::jsonb) AS m(id text, canonical text)
+      WHERE p.id = m.id`, [JSON.stringify(changed)]);
   }
   await client.query(`DELETE FROM manufacturers WHERE name <> ALL($1::text[])`, [canonicalNames]);
-  await client.query(`INSERT INTO manufacturers (id, name, slug, logo_status)
-    SELECT id, name, slug, 'PENDING'
-    FROM jsonb_to_recordset($1::jsonb) AS m(id text, name text, slug text)
-    ON CONFLICT (name) DO UPDATE SET slug = EXCLUDED.slug, updated_at = NOW()`,
-    [JSON.stringify(canonicalNames.map((name) => ({ id: manufacturerId(name), name, slug: manufacturerSlug(name) })))]);
+  await client.query(`INSERT INTO manufacturers (id, name, slug, audit_class, audit_confidence, audit_reason, audit_source, logo_status)
+    SELECT id, name, slug, audit_class, audit_confidence, audit_reason, audit_source, 'PENDING'
+    FROM jsonb_to_recordset($1::jsonb) AS m(id text, name text, slug text, audit_class text, audit_confidence integer, audit_reason text, audit_source text)
+    ON CONFLICT (name) DO UPDATE SET slug = EXCLUDED.slug, audit_class = EXCLUDED.audit_class,
+      audit_confidence = EXCLUDED.audit_confidence, audit_reason = EXCLUDED.audit_reason,
+      audit_source = EXCLUDED.audit_source, updated_at = NOW()`,
+    [JSON.stringify(review.allowedRows.map((row) => ({ id: row.id, name: row.name, slug: row.slug, audit_class: row.auditClass, audit_confidence: row.auditConfidence, audit_reason: row.auditReason, audit_source: row.auditSource })))]);
   await client.query('COMMIT');
   if (noDownload) {
     console.log(`[manufacturers] synchronized ${canonicalNames.length} manufacturers; logos=skipped`);

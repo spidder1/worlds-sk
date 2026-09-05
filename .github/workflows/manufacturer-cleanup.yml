@@ -42,6 +42,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           MANUFACTURER_LOGO_DIR: apps/storefront/public/manufacturers
           MANUFACTURER_REPORT_PATH: reports/manufacturer-normalization-report.json
+          MANUFACTURER_REVIEW_CSV: manufacturers.csv
       - name: Dry-run manufacturer audit
         if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
         run: pnpm manufacturers:clean -- --dry-run --no-download
