@@ -42,7 +42,7 @@ Posledná revízia: 2026-09-04.
 | Google / Heureka / NajNakup feedy | ❌ | — |
 | GDPR cookie lišta | ✅ | Súhlas v localStorage a odkazy na právne stránky |
 | 301 mapa zo starého worlds.sk | ❌ | — |
-| Testy storefrontu, E2E (Playwright) | ❌ | Testy má iba `packages/importer` |
+| Testy storefrontu, E2E (Playwright) | ✅ | Smoke testy katalógu, košíka a VIES endpointu v `apps/storefront/tests/e2e/`, spúšťané v CI |
 | Redis / BullMQ | ❌ | Plánovanie rieši GitHub Actions cron |
 
 ---
@@ -62,5 +62,4 @@ Posledná revízia: 2026-09-04.
 
 ## Ďalšie kroky (poradie)
 
-1. E2E testy pokladne (Playwright) pred ostrým zapnutím platieb.
-2. Priebežná QA a rozšírenie automatizovaných testov importu/katalógu.
+1. Priebežná QA a rozšírenie automatizovaných testov importu/katalógu.

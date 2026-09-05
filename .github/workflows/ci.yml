@@ -41,3 +41,11 @@ jobs:
       # `pnpm test` runs the compiled output in dist/, so it must follow build.
       - run: pnpm test
       - run: pnpm lint
+
+      - name: Install Chromium for storefront E2E
+        run: pnpm --filter storefront exec playwright install --with-deps chromium
+
+      - name: Run storefront E2E smoke tests
+        run: pnpm --filter storefront test:e2e
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?sslmode=disable # scan-secrets-allow: loopback placeholder, not a credential
