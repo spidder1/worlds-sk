@@ -97,14 +97,25 @@ async function main() {
           );
           await pool.query('DELETE FROM product_media WHERE product_id = $1', [product.id]);
           await pool.query(
-            `INSERT INTO product_media (product_id, source_url, position, is_primary, alt_text, provenance, updated_at)
-             SELECT $1, item.value->>'url', COALESCE((item.value->>'position')::integer, 0),
-                    COALESCE((item.value->>'isPrimary')::boolean, false), COALESCE(item.value->>'altText', ''),
-                    'UNKNOWN_ED', NOW()
-               FROM jsonb_array_elements($2::jsonb) AS item
-              WHERE NULLIF(item.value->>'url', '') IS NOT NULL
+            `WITH incoming AS (
+              SELECT item.value->>'url' AS source_url,
+                     COALESCE((item.value->>'position')::integer, 0) AS position,
+                     COALESCE((item.value->>'isPrimary')::boolean, false) AS is_primary,
+                     COALESCE(item.value->>'altText', '') AS alt_text
+                FROM jsonb_array_elements($2::jsonb) AS item
+               WHERE NULLIF(item.value->>'url', '') IS NOT NULL
+            ), assets AS (
+              INSERT INTO media_assets (source_url, status, last_checked_at, updated_at)
+              SELECT source_url, 'DISCOVERED', NOW(), NOW() FROM incoming
+              ON CONFLICT (source_url) DO UPDATE SET last_checked_at = NOW(), updated_at = NOW()
+              RETURNING id, source_url
+            )
+            INSERT INTO product_media (product_id, source_url, media_asset_id, position, is_primary, alt_text, provenance, updated_at)
+            SELECT $1, incoming.source_url, assets.id, incoming.position, incoming.is_primary,
+                   incoming.alt_text, 'UNKNOWN_ED', NOW()
+              FROM incoming JOIN assets USING (source_url)
              ON CONFLICT (product_id, source_url) DO UPDATE SET
-               position = EXCLUDED.position, is_primary = EXCLUDED.is_primary,
+               media_asset_id = EXCLUDED.media_asset_id, position = EXCLUDED.position, is_primary = EXCLUDED.is_primary,
                alt_text = EXCLUDED.alt_text, updated_at = NOW()`,
             [product.id, JSON.stringify(merged)],
           );
