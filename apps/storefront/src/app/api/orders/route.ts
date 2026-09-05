@@ -6,6 +6,19 @@ import Stripe from 'stripe';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function validIco(value: string | null): boolean {
+  if (!value || !/^\d{8}$/.test(value)) return false;
+  const digits = value.split('').map(Number);
+  const weighted = digits.slice(0, 7).reduce((sum, digit, index) => sum + digit * (8 - index), 0);
+  const remainder = weighted % 11;
+  const check = remainder === 0 ? 1 : remainder === 1 ? 0 : 11 - remainder;
+  return check === digits[7];
+}
+
+function validDic(value: string | null): boolean {
+  return Boolean(value && /^\d{10}$/.test(value));
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json() as {
@@ -40,6 +53,10 @@ export async function POST(request: Request) {
       if (customerType === 'LEGAL' && (!customerIco || !customerDic)) {
         await client.query('ROLLBACK');
         return NextResponse.json({ error: 'Pre právnickú osobu vyplňte IČO a DIČ.' }, { status: 400 });
+      }
+      if (customerType === 'LEGAL' && (!validIco(customerIco) || !validDic(customerDic))) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: 'IČO musí byť platné 8-miestne slovenské IČO a DIČ 10-miestne číslo.' }, { status: 400 });
       }
       const existing = await client.query<{ id: string; order_number: string; total: string; payment_status: string; payment_method: string }>(
         'SELECT id, order_number, total, payment_status, payment_method FROM orders WHERE idempotency_key = $1 LIMIT 1', [idempotencyKey]);
