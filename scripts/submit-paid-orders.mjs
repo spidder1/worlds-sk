@@ -22,6 +22,14 @@ try {
   for (const order of orders) {
     const claimed = await pool.query(`UPDATE orders SET supplier_order_status = 'PROCESSING', supplier_order_error = NULL, updated_at = NOW() WHERE id = $1 AND supplier_order_status = 'QUEUED'`, [order.id]);
     if (!claimed.rowCount) continue;
+    const { rows: attemptRows } = await pool.query(
+      `INSERT INTO supplier_order_attempts (order_id, attempt_no, status, test_mode, request_payload)
+       SELECT $1, COALESCE(MAX(attempt_no), 0) + 1, 'RUNNING', $2, '{}'::jsonb
+         FROM supplier_order_attempts WHERE order_id = $1
+       RETURNING id, attempt_no`,
+      [order.id, isTest],
+    );
+    const attemptId = attemptRows[0]?.id;
     try {
       const { rows: items } = await pool.query(`SELECT oi.sku, oi.quantity, oi.unit_price,
           COALESCE(p.vat_rate, 20) AS vat_rate,
@@ -38,6 +46,12 @@ try {
         const price = priceVat / vatMultiplier;
         return { ProductCode: item.sku, Qty: Number(item.quantity), Price: Number(price.toFixed(2)), PriceVat: Number(priceVat.toFixed(2)), VatRate: Number(vatMultiplier.toFixed(4)) };
       });
+      if (attemptId) {
+        await pool.query(
+          `UPDATE supplier_order_attempts SET request_payload = $1::jsonb WHERE id = $2`,
+          [JSON.stringify({ itemCodes: edItems.map((item) => ({ code: item.ProductCode, qty: item.Qty })), transportCode: defaultTransportCode, testMode: isTest }), attemptId],
+        );
+      }
       const priceVat = Number(order.total);
       const result = await client.createNewOrderCustomer({
         NewOrderCustomerItems: edItems,
@@ -53,10 +67,23 @@ try {
         TransportCode: defaultTransportCode ? Number(defaultTransportCode) : 0,
       }, isTest);
       if (result.Status.StatusCode !== 'DONE') throw new Error(result.Status.ErrorText || 'eD objednávka bola odmietnutá');
+      if (attemptId) {
+        await pool.query(
+          `UPDATE supplier_order_attempts SET status = 'SENT', supplier_order_symbol = $1,
+             response_payload = $2::jsonb, completed_at = NOW() WHERE id = $3`,
+          [result.OrderSymbol || null, JSON.stringify({ statusCode: result.Status.StatusCode, orderSymbol: result.OrderSymbol || null }), attemptId],
+        );
+      }
       await pool.query(`UPDATE orders SET supplier_order_status = 'SENT', supplier_order_symbol = $1, supplier_order_sent_at = NOW(), updated_at = NOW() WHERE id = $2`, [result.OrderSymbol || null, order.id]);
       console.log(`[supplier-orders] ${order.order_number} sent${isTest ? ' (test)' : ''}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      if (attemptId) {
+        await pool.query(
+          `UPDATE supplier_order_attempts SET status = 'FAILED', error_message = $1, completed_at = NOW() WHERE id = $2`,
+          [message.slice(0, 2000), attemptId],
+        );
+      }
       await pool.query(`UPDATE orders SET supplier_order_status = 'FAILED', supplier_order_error = $1, updated_at = NOW() WHERE id = $2`, [message.slice(0, 2000), order.id]);
       console.error(`[supplier-orders] ${order.order_number} failed: ${message}`);
     }
