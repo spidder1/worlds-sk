@@ -8,17 +8,28 @@ export const dynamic = 'force-dynamic';
 export default async function AdminCategories({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
   if (!(await isAdminAuthenticated())) redirect('/admin');
   const params = await searchParams;
-  const categories = await queryNeon<{ slug: string; name: string; parent_slug: string | null; level: number; active: boolean; display_order: number; count: string }>(`WITH RECURSIVE category_tree AS (
-    SELECT c.id, c.slug, c.name, COALESCE(c.parent_slug, parent.slug) AS parent_slug, c.level, c.active, c.display_order,
-           ARRAY[LPAD(c.display_order::text, 6, '0') || ':' || c.name]::text[] AS sort_path
-      FROM categories c LEFT JOIN categories parent ON parent.id = c.parent_id
-     WHERE c.parent_slug IS NULL AND c.parent_id IS NULL
+  const categories = await queryNeon<{ slug: string; name: string; parent_slug: string | null; level: number; active: boolean; display_order: number; count: string }>(`WITH RECURSIVE category_source AS (
+    SELECT c.id, c.slug, c.name,
+           COALESCE(NULLIF(c.parent_slug, ''), parent.slug) AS resolved_parent_slug,
+           c.level, c.active, c.display_order
+      FROM categories c
+      LEFT JOIN categories parent ON parent.id = c.parent_id
+  ), category_tree AS (
+    SELECT source.id, source.slug, source.name, source.resolved_parent_slug AS parent_slug,
+           source.level, source.active, source.display_order,
+           ARRAY[LPAD(COALESCE(source.display_order, 0)::text, 6, '0') || ':' || LOWER(source.name) || ':' || source.slug]::text[] AS sort_path,
+           ARRAY[source.slug]::text[] AS visited
+      FROM category_source source
+     WHERE source.resolved_parent_slug IS NULL
+        OR NOT EXISTS (SELECT 1 FROM category_source parent WHERE parent.slug = source.resolved_parent_slug)
     UNION ALL
-    SELECT child.id, child.slug, child.name, COALESCE(child.parent_slug, parent.slug) AS parent_slug, child.level, child.active, child.display_order,
-           tree.sort_path || (LPAD(child.display_order::text, 6, '0') || ':' || child.name)
-      FROM categories child
-      LEFT JOIN categories parent ON parent.id = child.parent_id
-      JOIN category_tree tree ON child.parent_slug = tree.slug OR child.parent_id = tree.id
+    SELECT child.id, child.slug, child.name, child.resolved_parent_slug AS parent_slug,
+           child.level, child.active, child.display_order,
+           tree.sort_path || (LPAD(COALESCE(child.display_order, 0)::text, 6, '0') || ':' || LOWER(child.name) || ':' || child.slug),
+           tree.visited || child.slug
+      FROM category_source child
+      JOIN category_tree tree ON child.resolved_parent_slug = tree.slug
+     WHERE NOT child.slug = ANY(tree.visited)
   )
   SELECT tree.slug, tree.name, tree.parent_slug, tree.level, tree.active, tree.display_order, COUNT(p.id)::text AS count
     FROM category_tree tree LEFT JOIN products p ON p.category_slug = tree.slug
