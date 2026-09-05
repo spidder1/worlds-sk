@@ -538,31 +538,34 @@ export class EDSystemClient {
     }
 
     const ship = order.ShippingAddress;
+    const invoice = order.InvoiceAddress;
+    const addressXml = (address: typeof ship | undefined, tag: string) => address ? `<${tag}><City>${escapeXml(address.city)}</City><ZipCode>${escapeXml(address.zipCode)}</ZipCode><Street>${escapeXml(address.street)}</Street><Name>${escapeXml(address.name)}</Name><CountryCode>${escapeXml(address.countryCode || 'SK')}</CountryCode><Contact>${escapeXml(address.name)}</Contact><ContactEmail>${escapeXml(address.email || '')}</ContactEmail><ContactTel>${escapeXml(address.phone || '')}</ContactTel></${tag}>` : '';
     const bodyXml = `<createNewOrderCustomer xmlns="${this.getSoapNamespace()}">
       <login>${escapeXml(this.login)}</login>
       <password>${escapeXml(this.pass)}</password>
-      <ord>
-        <NewOrderCustomerItems>${itemsXml}</NewOrderCustomerItems>
-        <ShippingAddress>
-          <City>${escapeXml(ship.city)}</City>
-          <ZipCode>${escapeXml(ship.zipCode)}</ZipCode>
-          <Street>${escapeXml(ship.street)}</Street>
-          <Name>${escapeXml(ship.name)}</Name>
-          <CountryCode>${escapeXml(ship.countryCode || 'SK')}</CountryCode>
-        </ShippingAddress>
+      <orderHead>
+        ${addressXml(ship, 'ShippingAddress')}
         <OrderNote>${escapeXml(order.OrderNote || '')}</OrderNote>
         <OrderSymbolCustomer>${escapeXml(order.OrderSymbolCustomer)}</OrderSymbolCustomer>
-        <customerName>${escapeXml(order.customerName)}</customerName>
-        <custumerInvoiceCode>${escapeXml(order.custumerInvoiceCode)}</custumerInvoiceCode>
+        <TransportCode>${order.TransportCode ?? 0}</TransportCode>
+        <telephone>${escapeXml(order.telephone)}</telephone>
         <email>${escapeXml(order.email)}</email>
+        ${addressXml(invoice, 'InvoiceAddress')}
+        <customerName>${escapeXml(order.customerName)}</customerName>
+        <customerOrgNo>${escapeXml(order.customerOrgNo || '')}</customerOrgNo>
+        <customerOrgVat>${escapeXml(order.customerOrgVat || '')}</customerOrgVat>
+        <created>${escapeXml(order.created || '')}</created>
+        <custumerInvoiceCode>${escapeXml(order.custumerInvoiceCode)}</custumerInvoiceCode>
         <price>${order.price}</price>
         <priceVat>${order.priceVat}</priceVat>
-        <telephone>${escapeXml(order.telephone)}</telephone>
-        <TransportCode>${order.TransportCode ?? 0}</TransportCode>
+        <priceTotal>${Boolean(order.priceTotal)}</priceTotal>
+        <customerCurrency>${escapeXml(order.customerCurrency || '')}</customerCurrency>
         <deliveryWithoutInvoice>${Boolean(order.deliveryWithoutInvoice)}</deliveryWithoutInvoice>
         <deliveryWithoutDeliveryNote>${Boolean(order.deliveryWithoutDeliveryNote)}</deliveryWithoutDeliveryNote>
         <noCashOnDelivery>${Boolean(order.noCashOnDelivery)}</noCashOnDelivery>
-      </ord>
+        <deferredInvoicing>${Boolean(order.deferredInvoicing)}</deferredInvoicing>
+        <NewOrderCustomerItems>${itemsXml}</NewOrderCustomerItems>
+      </orderHead>
       <isTest>${isTest}</isTest>
     </createNewOrderCustomer>`;
 

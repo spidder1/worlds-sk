@@ -62,3 +62,27 @@ test('changeDocument serializes deferred invoicing changes', async () => {
     assert.equal(result.Status.StatusCode, 'DONE');
   });
 });
+
+test('createNewOrderCustomer serializes the live WSDL orderHead and invoice fields', async () => {
+  await withSoapServer((body, action) => {
+    assert.match(action, /createNewOrderCustomer$/);
+    assert.match(body, /<orderHead>/);
+    assert.doesNotMatch(body, /<ord>/);
+    assert.match(body, /<InvoiceAddress>/);
+    assert.match(body, new RegExp('<customerOrgNo>123</customerOrgNo>'));
+    assert.match(body, new RegExp('<customerOrgVat>SK123</customerOrgVat>'));
+    assert.match(body, new RegExp('<customerCurrency>EUR</customerCurrency>'));
+    assert.match(body, new RegExp('<deferredInvoicing>true</deferredInvoicing>'));
+    return `<?xml version="1.0"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><createNewOrderCustomerResponse><createNewOrderCustomerResult><OrderSymbol>B2C-42</OrderSymbol><Status><StatusCode>DONE</StatusCode></Status></createNewOrderCustomerResult></createNewOrderCustomerResponse></soap:Body></soap:Envelope>`;
+  }, async (url) => {
+    const result = await new EDSystemClient({ endpointUrl: url, login: 'login', password: 'secret' }).createNewOrderCustomer({
+      NewOrderCustomerItems: [{ ProductCode: 'SKU-1', Qty: 1, Price: 10, PriceVat: 12, VatRate: 1.2 }],
+      ShippingAddress: { name: 'Buyer', street: 'Street 1', city: 'Bratislava', zipCode: '81101', countryCode: 'SK' },
+      InvoiceAddress: { name: 'Company', street: 'Invoice 2', city: 'Bratislava', zipCode: '81102', countryCode: 'SK' },
+      OrderSymbolCustomer: 'W-42', customerName: 'Company', customerOrgNo: '123', customerOrgVat: 'SK123',
+      custumerInvoiceCode: 'INV-42', email: 'buyer@example.test', telephone: '+421900000000', price: 10, priceVat: 12,
+      TransportCode: 7, deferredInvoicing: true, customerCurrency: 'EUR',
+    });
+    assert.equal(result.OrderSymbol, 'B2C-42');
+  });
+});

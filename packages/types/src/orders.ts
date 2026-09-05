@@ -52,6 +52,9 @@ export interface EDNewOrderCustomerRequest {
   OrderNote?: string;
   OrderSymbolCustomer: string; // Internal Order ID / Symbol
   customerName: string;
+  customerOrgNo?: string;
+  customerOrgVat?: string;
+  created?: string;
   custumerInvoiceCode: string; // Unique dealer invoice number
   email: string;
   telephone: string;
