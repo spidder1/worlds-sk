@@ -900,7 +900,7 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
     // previous implementation selected every matching row (descriptions,
     // attributes and image JSON included) and counted them in the browser.
     const facetSql = `
-      WITH scoped AS (SELECT brand, title FROM products ${baseWhereClause})
+      WITH scoped AS (SELECT brand, title FROM storefront_products ${baseWhereClause})
       SELECT 'brand' AS kind, brand AS label, COUNT(*)::int AS count
         FROM scoped
        WHERE brand IS NOT NULL AND brand <> '' AND brand <> 'Unbranded'
