@@ -104,6 +104,8 @@ SELECT mode, status, total_read, created_count, changed_count, missing_count, me
 
 - Attach `worlds.sk` to the Vercel project and set `NEXT_PUBLIC_SITE_URL`.
   Until then the site is intentionally invisible to search engines.
-- Build the 301 map from legacy worlds.sk URLs to the new routes. Not started.
-- Do not switch DNS while `/kosik` is still a placeholder — the current site
-  cannot take an order.
+- Build and load the 301 map from the exported legacy worlds.sk URLs to the new
+  routes before the DNS switch. The redirect table/loader remains a cutover
+  task because the legacy URL export is not yet present in this repository.
+- Verify `/kosik`, payment webhooks and the eD supplier-order worker in a
+  production-like environment before switching DNS.
