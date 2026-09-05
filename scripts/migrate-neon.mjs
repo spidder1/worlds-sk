@@ -77,7 +77,20 @@ function splitStatements(sql) {
 
 const sql = neon(connectionString);
 
+await sql.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
+  version text PRIMARY KEY,
+  applied_at timestamptz NOT NULL DEFAULT now()
+)`);
+
+const appliedRows = await sql.query('SELECT version FROM schema_migrations');
+const applied = new Set(appliedRows.map((row) => row.version));
+let pending = 0;
+
 for (const file of files) {
+  if (applied.has(file)) {
+    process.stdout.write(`[migrate] ${file} (already applied)\n`);
+    continue;
+  }
   const contents = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
   const statements = splitStatements(contents);
   process.stdout.write(`[migrate] ${file} (${statements.length} statements)\n`);
@@ -89,6 +102,8 @@ for (const file of files) {
       process.exit(1);
     }
   }
+  await sql.query('INSERT INTO schema_migrations (version) VALUES ($1) ON CONFLICT (version) DO NOTHING', [file]);
+  pending += 1;
 }
 
-console.log(`[migrate] applied ${files.length} migration file(s)`);
+console.log(`[migrate] applied ${pending} new migration file(s); ${files.length - pending} already applied`);

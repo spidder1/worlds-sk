@@ -58,8 +58,10 @@ Schema lives in `db/neon/migrations/`, applied in filename order:
 DATABASE_URL='postgresql://...' node scripts/migrate-neon.mjs
 ```
 
-Every migration is idempotent, so re-running is safe. `0002_ed_sync_pipeline.sql`
-has already been applied to the production database.
+The runner creates a `schema_migrations` journal and skips versions already
+recorded there. Each migration remains idempotent as a recovery safeguard if a
+run is interrupted before its journal row is written. `0002_ed_sync_pipeline.sql`
+and later versions are applied in lexical filename order.
 
 To test a schema change without touching production, create a Neon branch, point
 `DATABASE_URL` at it, migrate there, then delete the branch.
