@@ -491,6 +491,16 @@ export class EDSystemClient {
     });
   }
 
+  async getProductCatalogueFullNavFilterDownloadXML(options: {
+    onStock?: boolean;
+    navigatorFilter?: string;
+  } = {}): Promise<EDProductListStatus> {
+    return this.getCatalogueDownloadStatus('getProductCatalogueFullNavFilterDownloadXML', {
+      onStock: options.onStock ?? false,
+      navigatorFilter: options.navigatorFilter ?? '',
+    });
+  }
+
   /**
    * 3.14. getProductDetail
    * Returns complete details for a single product code.
