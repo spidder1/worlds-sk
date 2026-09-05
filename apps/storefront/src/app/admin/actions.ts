@@ -26,6 +26,19 @@ export async function updateProductCategory(formData: FormData) {
   redirect('/admin/produkty?saved=1');
 }
 
+export async function updateCategoryPresentation(formData: FormData) {
+  if (!(await isAdminAuthenticated())) redirect('/admin');
+  const slug = String(formData.get('slug') || '').trim();
+  const name = String(formData.get('name') || '').trim().slice(0, 160);
+  const displayOrder = boundedNumber(formData.get('display_order'), 1, 0, 999_999);
+  const active = String(formData.get('active') || '') === 'true';
+  if (!slug || !name || !/^[a-z0-9][a-z0-9-]{1,160}$/.test(slug)) redirect('/admin/kategorie?error=invalid');
+  await queryNeon(`UPDATE categories
+    SET name = $1, display_order = $2, active = $3, updated_at = NOW()
+    WHERE slug = $4`, [name, displayOrder, active, slug]);
+  redirect('/admin/kategorie?saved=1');
+}
+
 export async function approveCategoryReview(formData: FormData) {
   if (!(await isAdminAuthenticated())) redirect('/admin');
   const id = String(formData.get('id') || '').trim();
