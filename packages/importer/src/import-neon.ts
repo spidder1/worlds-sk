@@ -256,6 +256,8 @@ async function syncCategoriesAndManufacturers(pool: pg.Pool) {
   }
 
   async function insertCategoryNode(cat: TaxonomyCategory, parentSlug?: string) {
+    const hasExplicitParent = Object.prototype.hasOwnProperty.call(cat, 'parentSlug');
+    const effectiveParentSlug = hasExplicitParent ? cat.parentSlug : parentSlug;
     await pool.query(
       `INSERT INTO categories (id, slug, name, parent_id, parent_slug, level, display_order)
        VALUES ($1, $2, $3, (SELECT id FROM categories WHERE slug = $4), $4, $5, $6)
@@ -265,7 +267,7 @@ async function syncCategoriesAndManufacturers(pool: pg.Pool) {
          parent_slug = EXCLUDED.parent_slug,
          level = EXCLUDED.level,
          display_order = EXCLUDED.display_order`,
-      [cat.id, cat.slug, cat.name, parentSlug || null, cat.level, cat.displayOrder]
+      [cat.id, cat.slug, cat.name, effectiveParentSlug || null, cat.level, cat.displayOrder]
     );
 
     if (cat.subcategories && cat.subcategories.length > 0) {
