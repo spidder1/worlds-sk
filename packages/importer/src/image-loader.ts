@@ -95,6 +95,9 @@ async function main() {
               WHERE id = $4`,
             [JSON.stringify(merged), Number(detail.ImgCount || merged.length) || merged.length, imageChangedAt(detail.ImgLastChanged), product.id],
           );
+          await pool.query(`INSERT INTO search_sync_queue (product_id, reason, enqueued_at, processed_at, last_error)
+            VALUES ($1, 'image_sync', NOW(), NULL, NULL)
+            ON CONFLICT (product_id) DO UPDATE SET reason = EXCLUDED.reason, enqueued_at = NOW(), processed_at = NULL, last_error = NULL`, [product.id]);
           if (merged.length > existingImages.length) updated += 1;
         } else {
           await pool.query('UPDATE products SET image_count = COALESCE($1, image_count), image_sync_checked_at = NOW() WHERE id = $2', [detail?.ImgCount ?? null, product.id]);
