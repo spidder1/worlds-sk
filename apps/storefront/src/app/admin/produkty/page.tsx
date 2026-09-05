@@ -10,11 +10,14 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
   if (!(await isAdminAuthenticated())) redirect('/admin');
   const params = await searchParams;
   const q = (params.q || '').trim();
+  const foldedQuery = q.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
   const page = Math.max(1, Number.parseInt(params.page || '1', 10) || 1);
   const limit = 30;
   const offset = (page - 1) * limit;
-  const where = q ? 'WHERE title ILIKE $1 OR sku ILIKE $1 OR brand ILIKE $1' : '';
-  const args = q ? [`%${q}%`] : [];
+  const where = q ? `WHERE translate(lower(title), 'áäčďéěíĺľňóôŕřšťúůýž', 'aacdeeillnoorrstuuyz') ILIKE $1
+    OR translate(lower(sku), 'áäčďéěíĺľňóôŕřšťúůýž', 'aacdeeillnoorrstuuyz') ILIKE $1
+    OR translate(lower(brand), 'áäčďéěíĺľňóôŕřšťúůýž', 'aacdeeillnoorrstuuyz') ILIKE $1` : '';
+  const args = q ? [`%${foldedQuery}%`] : [];
   const [products, totals] = await Promise.all([
     queryNeon<{ id: string; title: string; sku: string; brand: string; category_slug: string; final_price: string }>(`SELECT id, title, sku, brand, category_slug, final_price::text FROM products ${where} ORDER BY updated_at DESC LIMIT $${args.length + 1} OFFSET $${args.length + 2}`, [...args, limit, offset]),
     queryNeon<{ count: string }>(`SELECT COUNT(*)::text AS count FROM products ${where}`, args),
