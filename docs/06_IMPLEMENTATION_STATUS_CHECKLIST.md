@@ -36,7 +36,7 @@ Posledná revízia: 2026-09-04.
 | `createNewOrderCustomer` dropshipping | ✅ | Platené objednávky sa zaraďujú do eD fronty a odosielajú workerom |
 | PDF fakturácia | ✅ | Chránený endpoint s položkami, DPH a identifikátormi zákazníka |
 | EU VAT reverse charge / VIES | ✅ | VIES endpoint, validácia zahraničného IČ DPH pri objednávke, netto prepočet, nulová DPH a označenie reverse charge na PDF |
-| `/admin` dashboard, AI approval queue, karanténa | 🟡 | Admin obsahuje objednávky, importy, kategórie, výrobcov, produkty, nastavenia a kvalitu; AI karanténa je mimo aktuálneho scope |
+| `/admin` dashboard, AI approval queue, karanténa | 🟡 | Admin obsahuje živé metriky katalógu a karanténu importu s označením záznamov ako vyriešených; samostatná AI confidence queue ešte čaká na uloženie confidence dát z importu |
 | AI konverzačný asistent (`/api/chat`) | 🟡 | Dostupný konverzačný API fallback s extrakciou rozpočtu/RAM/SSD/kategórie a stránka `/asistent`; externý Gemini provider ešte nie je nakonfigurovaný |
 | Meilisearch | 🟡 | Dávkový reindex a nightly/manual workflow sú pripravené; storefront používa Postgres fallback, kým nie sú nastavené Meilisearch secrets |
 | Google / Heureka / NajNakup feedy | ✅ | Dynamické XML endpointy v `apps/storefront/src/app/api/feeds/` |
