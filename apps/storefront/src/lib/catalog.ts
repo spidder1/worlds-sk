@@ -780,15 +780,16 @@ export async function getManufacturers(options: ManufacturerOptions = {}): Promi
       }
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-
+    const manufacturerWhere = whereConditions.length > 0
+      ? `WHERE p.brand <> '' AND COALESCE(m.audit_class, 'UNVERIFIED_CANDIDATE') <> 'REMOVED' AND ${whereConditions.join(' AND ')}`
+      : `WHERE p.brand <> '' AND COALESCE(m.audit_class, 'UNVERIFIED_CANDIDATE') <> 'REMOVED'`;
     const rows = await queryNeon<{ brand: string; count: string; logo_url: string | null; logo_status: string | null }>(`
       SELECT p.brand, COUNT(*)::int as count,
         MAX(CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END) AS logo_url,
         MAX(m.logo_status) AS logo_status
       FROM storefront_products p
       LEFT JOIN manufacturers m ON ${foldSql('m.name')} = ${foldSql('p.brand')}
-      ${whereClause}
+      ${manufacturerWhere}
       GROUP BY p.brand
       ORDER BY count DESC
     `, params);

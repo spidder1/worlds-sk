@@ -140,7 +140,29 @@ export async function updateManufacturerReview(formData: FormData) {
   const id = String(formData.get('id') || '');
   const auditClass = String(formData.get('audit_class') || 'UNVERIFIED_CANDIDATE');
   if (!id || !['VERIFIED_BRAND', 'UNVERIFIED_CANDIDATE', 'REMOVED'].includes(auditClass)) return;
-  await queryNeon('UPDATE manufacturers SET audit_class = $1, updated_at = NOW() WHERE id = $2', [auditClass, id]);
+  await queryNeon(`WITH changed AS (
+    UPDATE manufacturers
+       SET audit_class = $1, updated_at = NOW()
+     WHERE id = $2
+     RETURNING name, audit_class
+  ), reassigned AS (
+    UPDATE products p
+       SET brand = COALESCE((
+         SELECT candidate.name
+           FROM manufacturers candidate
+          WHERE candidate.audit_class IN ('VERIFIED_BRAND', 'UNVERIFIED_CANDIDATE')
+            AND candidate.id <> $2
+            AND length(trim(candidate.name)) >= 3
+            AND lower(p.title) LIKE '%' || lower(candidate.name) || '%'
+          ORDER BY length(candidate.name) DESC, candidate.name
+          LIMIT 1
+       ), '')
+      FROM changed
+     WHERE changed.audit_class = 'REMOVED'
+       AND lower(p.brand) = lower(changed.name)
+    RETURNING p.id
+  )
+  SELECT count(*)::int AS reassigned_count FROM reassigned`, [auditClass, id]);
   redirect('/admin/vyrobcovia?saved=1');
 }
 
