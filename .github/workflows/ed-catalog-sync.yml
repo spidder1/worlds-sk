@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - sample
+          - full
   schedule:
     - cron: '17 */2 * * *'
     - cron: '43 2 * * 0'
@@ -67,6 +68,30 @@ jobs:
           ED_SAMPLE_ONLY: true
           ED_SAMPLE_LIMIT: 250
           ED_SAMPLE_BRANDS: ASUS,Lenovo
+          ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
+          ED_LOGIN: ${{ secrets.ED_LOGIN }}
+          ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  full-catalog-manual:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'full'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
+      - run: pnpm import:neon
+        env:
+          ED_SAMPLE_ONLY: false
+          ED_SAMPLE_BRANDS: ALL
           ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
           ED_LOGIN: ${{ secrets.ED_LOGIN }}
           ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
