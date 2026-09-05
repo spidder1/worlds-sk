@@ -370,6 +370,23 @@ export class EDSystemClient {
   }
 
   /**
+   * Premium catalogue reconciliation endpoint. This is intentionally separate
+   * from the primary full import because eD documents it as an audit feed.
+   */
+  async getProductCatalogueFullPremiumDownloadXML(options: { onStock?: boolean } = {}): Promise<EDProductListStatus> {
+    return this.getCatalogueDownloadStatus('getProductCatalogueFullPremiumDownloadXML', {
+      onStock: options.onStock ?? false,
+    });
+  }
+
+  /** Compact secondary reconciliation feed (not the master catalogue). */
+  async getProductCatalogueShortDownloadXML(options: { onStock?: boolean } = {}): Promise<EDProductListStatus> {
+    return this.getCatalogueDownloadStatus('getProductCatalogueShortDownloadXML', {
+      onStock: options.onStock ?? false,
+    });
+  }
+
+  /**
    * 3.21. getProductCatalogueFullDownloadZIPv1
    * Requests URL for full catalog ZIP (contains complete product details with attributes, prices, stock, etc.).
    */
