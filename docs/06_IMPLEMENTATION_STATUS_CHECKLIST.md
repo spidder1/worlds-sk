@@ -30,7 +30,7 @@ Posledná revízia: 2026-09-04.
 | Oblasť | Stav | Poznámka |
 | :--- | :---: | :--- |
 | Košík so stavom | ✅ | Session košík cez Neon API, aktualizácia a mazanie položiek |
-| Pokladňa (B2C aj B2B) | ✅ | Formulár, režim súkromná/právnická osoba, IČO/DIČ/IČ DPH validácia |
+| Pokladňa (B2C aj B2B) | ✅ | Formulár, režim súkromná/právnická osoba, IČO/DIČ/IČ DPH validácia a `/api/company/lookup` pre SK/CZ registre |
 | Ukladanie objednávok | ✅ | Neon tabuľky `orders`/`order_items`, idempotentné API |
 | Platobná brána | ✅ | Stripe Checkout + podpisovaný webhook, bankový prevod a dobierka |
 | `createNewOrderCustomer` dropshipping | ✅ | Platené objednávky sa zaraďujú do eD fronty a odosielajú workerom |
