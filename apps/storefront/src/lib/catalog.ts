@@ -989,6 +989,30 @@ export async function getProductBySlug(slug: string): Promise<MasterProduct | nu
   }
 }
 
+/** Directed eD relations projected as storefront products. The relation table
+ * is optional until the reference-data migration runs, so an unavailable
+ * projection must never make a product detail page fail. */
+export async function getRelatedProducts(productId: string, limit = 8): Promise<MasterProduct[]> {
+  try {
+    const rows = await queryNeon(
+      `SELECT child.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url
+         FROM product_relations relation
+         JOIN storefront_products child ON child.id = relation.child_product_id
+         LEFT JOIN manufacturers m ON ${foldSql('m.name')} = ${foldSql('child.brand')}
+        WHERE relation.parent_product_id = $1
+          AND child.final_price > 0
+        ORDER BY relation.relation_type_id, relation.updated_at DESC, child.final_price ASC
+        LIMIT $2`,
+      [productId, Math.max(1, Math.min(limit, 24))],
+    );
+    return rows.map(mapDbRowToMasterProduct);
+  } catch (error) {
+    rethrowIfMisconfigured(error);
+    console.warn('Súvisiace produkty nie sú zatiaľ dostupné:', error);
+    return [];
+  }
+}
+
 export async function getProductsByCategory(categorySlug: string): Promise<MasterProduct[]> {
   return (await getProductsPage({ categorySlug, pageSize: 60 })).products;
 }

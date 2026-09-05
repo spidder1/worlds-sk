@@ -2,10 +2,11 @@ import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { getProductBySlug } from '../../../lib/catalog';
+import { getProductBySlug, getRelatedProducts } from '../../../lib/catalog';
 import { ProductDescription } from '../../../components/ProductDescription';
 import { ProductGallery } from '../../../components/ProductGallery';
 import { AddToCartButton } from '../../../components/AddToCartButton';
+import { ProductCard } from '../../../components/ProductCard';
 import { absoluteUrl } from '../../../lib/site';
 import {
   ShieldCheck,
@@ -60,6 +61,8 @@ export default async function ProductDetailPage({ params }: Props) {
   if (!product) {
     notFound();
   }
+
+  const relatedProducts = await getRelatedProducts(product.id);
 
   // Group attributes into clean categories for presentation
   const allAttrs = Object.values(product.attributes || {});
@@ -388,6 +391,18 @@ export default async function ProductDetailPage({ params }: Props) {
           )}
         </div>
       </div>
+
+      {relatedProducts.length > 0 && (
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-xl font-black text-slate-900">Súvisiace produkty</h2>
+            <p className="mt-1 text-sm text-slate-500">Väzby podľa katalógu dodávateľa eD system.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {relatedProducts.map((related) => <ProductCard key={related.id} product={related} />)}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
