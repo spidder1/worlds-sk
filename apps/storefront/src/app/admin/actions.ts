@@ -93,7 +93,17 @@ export async function runSyncJob(formData: FormData) {
   // explicit manual execution path.
   const rows = await queryNeon<{ workflow_file: string }>('SELECT workflow_file FROM sync_job_settings WHERE job_key = $1 LIMIT 1', [jobKey]);
   const workflow = rows[0]?.workflow_file;
-  const queueJob: SyncJobName | null = jobKey === 'stock-price' ? 'stock-price' : jobKey === 'catalog-full' ? 'catalog-full' : jobKey === 'manufacturer-cleanup' ? 'manufacturer-cleanup' : jobKey === 'transport-dictionary' ? 'transport-dictionary' : null;
+  const queueJob: SyncJobName | null = jobKey === 'stock-price'
+    ? 'stock-price'
+    : jobKey === 'catalog-full'
+      ? 'catalog-full'
+      : jobKey === 'image-loader'
+        ? 'image-loader'
+        : jobKey === 'manufacturer-cleanup'
+          ? 'manufacturer-cleanup'
+          : jobKey === 'transport-dictionary'
+            ? 'transport-dictionary'
+            : null;
   if (process.env.REDIS_URL?.trim() && queueJob) {
     try {
       const { enqueueSyncJob } = await import(/* webpackIgnore: true */ '@worlds/queue');
@@ -107,7 +117,13 @@ export async function runSyncJob(formData: FormData) {
   const token = process.env.GITHUB_TOKEN?.trim();
   const repository = process.env.GITHUB_REPOSITORY?.trim() || 'spidder1/worlds-sk';
   if (!workflow || !token) redirect('/admin/importy?error=github');
-  const inputs = jobKey === 'stock-price' ? { mode: 'stock-price' } : jobKey === 'catalog-full' ? { mode: 'full' } : jobKey === 'manufacturer-cleanup' ? { dry_run: 'false' } : {};
+  const inputs = jobKey === 'stock-price'
+    ? { mode: 'stock-price' }
+    : jobKey === 'catalog-full'
+      ? { mode: 'full' }
+      : jobKey === 'manufacturer-cleanup'
+        ? { dry_run: 'false' }
+        : {};
   const response = await fetch(`https://api.github.com/repos/${repository}/actions/workflows/${encodeURIComponent(workflow)}/dispatches`, {
     method: 'POST', headers: { accept: 'application/vnd.github+json', authorization: `Bearer ${token}`, 'content-type': 'application/json', 'user-agent': 'worlds-admin' },
     body: JSON.stringify({ ref: 'main', inputs }),
