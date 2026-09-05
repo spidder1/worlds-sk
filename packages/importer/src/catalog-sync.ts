@@ -123,6 +123,13 @@ function hash(parts: unknown[]): string {
   return crypto.createHash('sha256').update(JSON.stringify(parts)).digest('hex');
 }
 
+async function sha256File(filePath: string): Promise<string> {
+  const digest = crypto.createHash('sha256');
+  const stream = fs.createReadStream(filePath);
+  for await (const chunk of stream) digest.update(chunk as Buffer);
+  return digest.digest('hex');
+}
+
 function normalizeIdentifier(raw: unknown): string | null {
   const normalized = value(raw);
   return normalized && normalized !== '0' ? normalized : null;
@@ -656,6 +663,13 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
   const sources = await resolveSources(options);
   const sourceBytes = sources.reduce((total, source) => total + fs.statSync(source.filePath).size, 0);
   const sourceMethod = sources.map((source) => source.sourceMethod).join(',');
+  const sourceMetadata = await Promise.all(sources.map(async (source) => ({
+    sourceMethod: source.sourceMethod,
+    sourceName: path.basename(source.filePath),
+    byteSize: fs.statSync(source.filePath).size,
+    sha256: await sha256File(source.filePath),
+    mediaType: source.filePath.toLowerCase().endsWith('.zip') ? 'application/zip' : 'application/xml',
+  })));
   console.log(`[import] mode=${options.mode} transport=neon scope=${options.scope} brands=${options.brandScope.join(',') || 'all'} minCost=${pricing.minimumCostEur} vat=${pricing.vatRate} marginBands=${pricing.marginBands.length} sources=${sources.length} bytes=${sourceBytes}`);
 
   const batchId = rpc ? await rpc<string>('begin_ed_import', {
@@ -672,6 +686,7 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
       transport: 'neon',
     },
   }) : 'dry-run';
+  if (rpc) await rpc<boolean>('record_import_sources', { p_batch_id: batchId, p_sources: sourceMetadata });
   const result: RpcBatchResult = { processed: 0, created: 0, changed: 0, unchanged: 0, missing: 0 };
   let parsed = 0;
   let skipped = 0;

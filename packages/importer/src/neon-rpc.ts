@@ -573,6 +573,20 @@ export function createNeonRpcClient(options: { brandScope?: string[] } = {}): Rp
         return true as unknown as T;
       }
 
+      case 'record_import_sources': {
+        await pool.query(
+          `INSERT INTO sync_batch_sources
+            (batch_id, source_method, source_name, byte_size, sha256, media_type)
+           SELECT $1::uuid, item.source_method, item.source_name, item.byte_size, item.sha256, item.media_type
+             FROM jsonb_to_recordset($2::jsonb) AS item(
+               source_method text, source_name text, byte_size bigint, sha256 text, media_type text
+             )
+           ON CONFLICT (batch_id, source_name, sha256) DO NOTHING`,
+          [parameters.p_batch_id, jsonParameter(parameters.p_sources)],
+        );
+        return true as unknown as T;
+      }
+
       case 'complete_ed_import': {
         const metrics = (parameters.p_metrics ?? {}) as Record<string, unknown>;
         let missing = 0;
