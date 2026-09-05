@@ -382,11 +382,11 @@ async function fetchLiveStockMap(): Promise<Map<string, any>> {
   return stockMap;
 }
 
-function retailPriceFromCost(cost: number, pricing: PricingConfig): { basePrice: number; finalPrice: number } {
-  if (!Number.isFinite(cost) || cost <= 0) return { basePrice: 0, finalPrice: 0 };
+function retailPriceFromCost(cost: number, pricing: PricingConfig): { basePrice: number; finalPrice: number; marginPercentage: number } {
+  if (!Number.isFinite(cost) || cost <= 0) return { basePrice: 0, finalPrice: 0, marginPercentage: 0 };
   const marginPct = marginFor(cost, pricing.marginBands);
   const basePrice = Number((cost * (1 + marginPct / 100)).toFixed(2));
-  return { basePrice, finalPrice: Number((basePrice * (1 + pricing.vatRate / 100)).toFixed(2)) };
+  return { basePrice, finalPrice: Number((basePrice * (1 + pricing.vatRate / 100)).toFixed(2)), marginPercentage: marginPct };
 }
 
 async function syncStockOnly(pool: pg.Pool, stockMap: Map<string, any>, batchId: string | undefined, minimumCostEur: number, pricingConfig: PricingConfig): Promise<void> {
@@ -411,13 +411,16 @@ async function syncStockOnly(pool: pg.Pool, stockMap: Map<string, any>, batchId:
           SET stock_count = $2::numeric,
               is_in_stock = $3::boolean,
               stock_text = $4::text,
+              supplier_cost = CASE WHEN $6::numeric > 0 THEN $6::numeric ELSE supplier_cost END,
+              total_cost_with_fees = CASE WHEN $6::numeric > 0 THEN $6::numeric ELSE total_cost_with_fees END,
+              margin_percentage = CASE WHEN $6::numeric > 0 THEN $7::numeric ELSE margin_percentage END,
               vat_rate = $5::numeric,
-              base_price = CASE WHEN $6::numeric > 0 THEN $7::numeric ELSE base_price END,
-              final_price = CASE WHEN $6::numeric > 0 THEN $8::numeric ELSE final_price END,
+              base_price = CASE WHEN $6::numeric > 0 THEN $8::numeric ELSE base_price END,
+              final_price = CASE WHEN $6::numeric > 0 THEN $9::numeric ELSE final_price END,
               data_hash = CONCAT('stock_', $2::text, '_', COALESCE($6::text, '0'), '_', $5::text),
               updated_at = NOW()
         WHERE id = $1`,
-      [product.id, stockCount, stockCount > 0, stockCount > 0 ? `Skladom > ${stockCount} ks` : 'Na objednávku', pricingConfig.vatRate, Number(info.price) || 0, pricing.basePrice, pricing.finalPrice],
+      [product.id, stockCount, stockCount > 0, stockCount > 0 ? `Skladom > ${stockCount} ks` : 'Na objednávku', pricingConfig.vatRate, Number(info.price) || 0, pricing.marginPercentage, pricing.basePrice, pricing.finalPrice],
     );
   }
   if (minimumCostEur > 0) {
