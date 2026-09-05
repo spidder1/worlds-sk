@@ -45,3 +45,20 @@ test('createNewOrderXML rejects envelope and entity payloads before sending', as
   await assert.rejects(() => client.createNewOrderXML('<soap:Envelope />'), /inner order XML payload/);
   await assert.rejects(() => client.createNewOrderXML('<!DOCTYPE order [<!ENTITY x "x">]><order>&x;</order>'), /inner order XML payload/);
 });
+
+test('changeDocument serializes deferred invoicing changes', async () => {
+  await withSoapServer((body, action) => {
+    assert.match(action, /changeDocument$/);
+    assert.match(body, /<Id>42<\/Id>/);
+    assert.match(body, /<DocumentType>ORDER_HEAD<\/DocumentType>/);
+    assert.match(body, /<ChangeType>DEFERRED_INVOICING<\/ChangeType>/);
+    return `<?xml version="1.0"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><changeDocumentResponse><changeDocumentResult><Status><StatusCode>DONE</StatusCode></Status></changeDocumentResult></changeDocumentResponse></soap:Body></soap:Envelope>`;
+  }, async (url) => {
+    const result = await new EDSystemClient({ endpointUrl: url, login: 'login', password: 'secret' }).changeDocument({
+      id: 42,
+      documentType: 'ORDER_HEAD',
+      changeType: 'DEFERRED_INVOICING',
+    });
+    assert.equal(result.Status.StatusCode, 'DONE');
+  });
+});

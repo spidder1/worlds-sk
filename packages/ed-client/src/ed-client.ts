@@ -15,6 +15,8 @@ import {
   EDNewOrderRequest,
   EDNewOrderCustomerRequest,
   EDResponseNewOrder,
+  EDDocumentChangeRequest,
+  EDResponseChangeDocument,
   EDOrderTransportation,
 } from '@worlds/types';
 import { XMLParser } from 'fast-xml-parser';
@@ -494,6 +496,25 @@ export class EDSystemClient {
     const response = await executeSoapCall<{ createNewOrderXMLResponse?: { createNewOrderXMLResult?: any } }>({ endpoint: this.endpoint, action, bodyXml });
     const result = response?.createNewOrderXMLResponse?.createNewOrderXMLResult;
     return { OrderSymbol: result?.OrderSymbol, Status: { StatusCode: result?.Status?.StatusCode || 'ERROR', ErrorText: result?.Status?.ErrorText } };
+  }
+
+  /** Apply a documented eD document change, such as deferred invoicing. */
+  async changeDocument(change: EDDocumentChangeRequest): Promise<EDResponseChangeDocument> {
+    const action = `${this.getSoapNamespace()}changeDocument`;
+    const bodyXml = `<changeDocument xmlns="${this.getSoapNamespace()}">
+      <login>${escapeXml(this.login)}</login>
+      <password>${escapeXml(this.pass)}</password>
+      <docChangeDefinition>
+        <Id>${change.id}</Id>
+        <Code>${escapeXml(change.code || '')}</Code>
+        <DocumentType>${escapeXml(change.documentType)}</DocumentType>
+        <ChangeType>${escapeXml(change.changeType)}</ChangeType>
+        <ChangeParametr>${escapeXml(change.changeParameter || '')}</ChangeParametr>
+      </docChangeDefinition>
+    </changeDocument>`;
+    const response = await executeSoapCall<{ changeDocumentResponse?: { changeDocumentResult?: any } }>({ endpoint: this.endpoint, action, bodyXml });
+    const result = response?.changeDocumentResponse?.changeDocumentResult;
+    return { Status: { StatusCode: result?.Status?.StatusCode || 'ERROR', ErrorText: result?.Status?.ErrorText } };
   }
 
   /**

@@ -499,7 +499,7 @@ Partition append-only `supplier_inventory_snapshots`, `supplier_price_snapshots`
 - `createNewOrder`: B2B order with product code/quantity, shipping address, transport code, customer symbol, note, email and telephone; returns `OrderSymbol` and status. **[PDF]**
 - `createNewOrderCustomer`: B2C/dropship order with item selling prices, price-with-VAT, VAT rate, shipping and optional invoice address, customer/invoice/contact/total data, transport and delivery flags. **[PDF]**
 - `createNewOrderXML`: the live WSDL exposes a mixed `order` XML node, string `options` and boolean `test`; the client now provides a low-level wrapper. The business meaning and exact order XML schema remain **[VERIFY]** before production use.
-- `changeDocument`: documented support for `DEFERRED_INVOICING` on order head; quantity on order item is shown as allowed but not yet implemented. **[PDF]**
+- `changeDocument`: typed client wrapper now supports the WSDL `DEFERRED_INVOICING` and `QTY` change types; quantity changes remain supplier-contract gated because the PDF says that behavior is not yet implemented. **[PDF + live WSDL]**
 - B2B and B2C transport dictionaries are distinct. **[PDF]**
 - B2C customer invoice code must be unique in eD logistics. **[PDF]**
 

@@ -73,3 +73,21 @@ export interface EDResponseNewOrder {
     ErrorText?: string;
   };
 }
+
+export type EDDocumentType = 'NONE' | 'ORDER_HEAD' | 'ORDER_ITEM';
+export type EDDocumentChangeType = 'NONE' | 'DEFERRED_INVOICING' | 'QTY';
+
+export interface EDDocumentChangeRequest {
+  id: number;
+  code?: string;
+  documentType: EDDocumentType;
+  changeType: EDDocumentChangeType;
+  changeParameter?: string;
+}
+
+export interface EDResponseChangeDocument {
+  Status: {
+    StatusCode: 'DONE' | 'ERROR';
+    ErrorText?: string;
+  };
+}
