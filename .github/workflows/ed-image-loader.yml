@@ -2,9 +2,6 @@ name: eD nightly image enrichment
 
 on:
   workflow_dispatch:
-  schedule:
-    # 02:15 UTC every night. The loader is intentionally incremental.
-    - cron: '15 2 * * *'
 
 permissions:
   contents: read

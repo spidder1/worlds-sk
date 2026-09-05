@@ -8,8 +8,6 @@ on:
         required: false
         default: false
         type: boolean
-  schedule:
-    - cron: '20 3 * * 0'
 
 permissions:
   contents: write
@@ -36,7 +34,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Normalize manufacturers and download logos
-        if: github.event_name == 'schedule' || inputs.dry_run != true
+        if: inputs.dry_run != true
         run: pnpm manufacturers:clean
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -49,7 +47,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Commit downloaded logos
-        if: github.event_name == 'schedule' || inputs.dry_run != true
+        if: inputs.dry_run != true
         run: |
           git config user.name "worlds.sk automation"
           git config user.email "automation@worlds.sk"

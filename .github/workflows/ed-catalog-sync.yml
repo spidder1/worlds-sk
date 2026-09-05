@@ -15,11 +15,6 @@ on:
         options:
           - stock-price
           - full
-  schedule:
-    # Stock and purchase prices, hourly.
-    - cron: '0 * * * *'
-    # Full catalogue, twice a day (06:30 and 20:30 UTC).
-    - cron: '30 6,20 * * *'
 
 permissions:
   contents: read
@@ -35,7 +30,7 @@ env:
 
 jobs:
   stock-price:
-    if: (github.event_name == 'workflow_dispatch' && inputs.mode == 'stock-price') || github.event.schedule == '0 * * * *'
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'stock-price'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -56,7 +51,7 @@ jobs:
           ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
 
   full-catalog:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'full' || github.event.schedule == '30 6,20 * * *'
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'full'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
