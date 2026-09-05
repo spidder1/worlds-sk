@@ -787,6 +787,7 @@ export async function importAsusLenovoToNeon() {
         is_in_stock = EXCLUDED.is_in_stock,
         images = EXCLUDED.images,
         attributes = EXCLUDED.attributes,
+        status = EXCLUDED.status,
         data_hash = EXCLUDED.data_hash,
         category_source = EXCLUDED.category_source,
         category_confidence = EXCLUDED.category_confidence,
@@ -798,6 +799,21 @@ export async function importAsusLenovoToNeon() {
     await syncProductMedia(pool, batch);
     inserted += batch.length;
     console.log(`  ✓ Uložených ${inserted}/${targetProducts.length} produktov...`);
+  }
+
+  // Keep the storefront aligned with the configured commercial floor. Products
+  // imported by an older run (or from a higher threshold) must not remain
+  // sellable when their current price is below the active minimum.
+  if (minimumCostEur > 0) {
+    const deactivated = await pool.query(
+      `UPDATE products
+          SET status = 'INACTIVE', updated_at = NOW()
+        WHERE status = 'ACTIVE' AND final_price > 0 AND final_price < $1`,
+      [minimumCostEur],
+    );
+    if (deactivated.rowCount) {
+      console.log(`⛔ Deaktivovaných pod minimálnou cenou: ${deactivated.rowCount}`);
+    }
   }
 
   console.log('\n===========================================================');
