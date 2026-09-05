@@ -12,6 +12,7 @@ import {
   EDProductRelationChild,
   EDProductInformation,
   EDRawProductDetail,
+  EDNewOrderRequest,
   EDNewOrderCustomerRequest,
   EDResponseNewOrder,
   EDOrderTransportation,
@@ -445,6 +446,54 @@ export class EDSystemClient {
     const items = list?.Transportation ?? result?.Transportation ?? list;
     if (!items) return [];
     return (Array.isArray(items) ? items : [items]) as EDOrderTransportation[];
+  }
+
+  /**
+   * B2B supplier order using the WSDL NewOrderHead contract.
+   */
+  async createNewOrder(order: EDNewOrderRequest, isTest = true): Promise<EDResponseNewOrder> {
+    const action = `${this.getSoapNamespace()}createNewOrder`;
+    const ship = order.ShippingAddress;
+    const itemsXml = order.NewOrderItems.map((item) => `<NewOrderItem><ProductCode>${escapeXml(item.ProductCode)}</ProductCode><Qty>${item.Qty}</Qty></NewOrderItem>`).join('');
+    const bodyXml = `<createNewOrder xmlns="${this.getSoapNamespace()}">
+      <login>${escapeXml(this.login)}</login>
+      <password>${escapeXml(this.pass)}</password>
+      <orderHead>
+        ${ship ? `<ShippingAddress><Name>${escapeXml(ship.name)}</Name><Street>${escapeXml(ship.street)}</Street><ZipCode>${escapeXml(ship.zipCode)}</ZipCode><City>${escapeXml(ship.city)}</City><CountryCode>${escapeXml(ship.countryCode || 'SK')}</CountryCode><Contact>${escapeXml(ship.name)}</Contact><ContactEmail>${escapeXml(ship.email || order.email)}</ContactEmail><ContactTel>${escapeXml(ship.phone || order.telephone)}</ContactTel></ShippingAddress>` : ''}
+        <NewOrderItems>${itemsXml}</NewOrderItems>
+        <OrderNote>${escapeXml(order.OrderNote || '')}</OrderNote>
+        <OrderSymbolCustomer>${escapeXml(order.OrderSymbolCustomer || '')}</OrderSymbolCustomer>
+        <TransportCode>${order.TransportCode}</TransportCode>
+        <telephone>${escapeXml(order.telephone || ship?.phone)}</telephone>
+        <email>${escapeXml(order.email || ship?.email)}</email>
+      </orderHead>
+      <test>${isTest}</test>
+    </createNewOrder>`;
+    const response = await executeSoapCall<{ createNewOrderResponse?: { createNewOrderResult?: any } }>({ endpoint: this.endpoint, action, bodyXml });
+    const result = response?.createNewOrderResponse?.createNewOrderResult;
+    return { OrderSymbol: result?.OrderSymbol, Status: { StatusCode: result?.Status?.StatusCode || 'ERROR', ErrorText: result?.Status?.ErrorText } };
+  }
+
+  /**
+   * Low-level WSDL escape hatch for supplier order XML. The WSDL defines the
+   * order node as mixed content; callers own its schema, while credentials and
+   * the test flag remain controlled by this client.
+   */
+  async createNewOrderXML(orderXml: string, options = '', isTest = true): Promise<EDResponseNewOrder> {
+    if (!orderXml.trim() || /<\/?(?:soap:)?(?:Envelope|Body|createNewOrderXML)\b/i.test(orderXml)) {
+      throw new Error('createNewOrderXML expects only the inner order XML payload');
+    }
+    const action = `${this.getSoapNamespace()}createNewOrderXML`;
+    const bodyXml = `<createNewOrderXML xmlns="${this.getSoapNamespace()}">
+      <login>${escapeXml(this.login)}</login>
+      <password>${escapeXml(this.pass)}</password>
+      <order>${orderXml}</order>
+      <options>${escapeXml(options)}</options>
+      <test>${isTest}</test>
+    </createNewOrderXML>`;
+    const response = await executeSoapCall<{ createNewOrderXMLResponse?: { createNewOrderXMLResult?: any } }>({ endpoint: this.endpoint, action, bodyXml });
+    const result = response?.createNewOrderXMLResponse?.createNewOrderXMLResult;
+    return { OrderSymbol: result?.OrderSymbol, Status: { StatusCode: result?.Status?.StatusCode || 'ERROR', ErrorText: result?.Status?.ErrorText } };
   }
 
   /**

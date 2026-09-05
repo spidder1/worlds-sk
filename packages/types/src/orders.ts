@@ -27,6 +27,16 @@ export interface EDNewOrderItem {
   Qty: number;
 }
 
+export interface EDNewOrderRequest {
+  ShippingAddress?: OrderAddress;
+  NewOrderItems: EDNewOrderItem[];
+  OrderNote?: string;
+  OrderSymbolCustomer?: string;
+  TransportCode: number;
+  telephone?: string;
+  email?: string;
+}
+
 export interface EDNewOrderItemCustomer {
   ProductCode: string; // Product Code or 'TRA' for transportation
   Qty: number;

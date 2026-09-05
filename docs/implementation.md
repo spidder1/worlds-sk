@@ -498,7 +498,7 @@ Partition append-only `supplier_inventory_snapshots`, `supplier_price_snapshots`
 
 - `createNewOrder`: B2B order with product code/quantity, shipping address, transport code, customer symbol, note, email and telephone; returns `OrderSymbol` and status. **[PDF]**
 - `createNewOrderCustomer`: B2C/dropship order with item selling prices, price-with-VAT, VAT rate, shipping and optional invoice address, customer/invoice/contact/total data, transport and delivery flags. **[PDF]**
-- `createNewOrderXML`: accepts order XML/options, but its input definition is not included and must be requested separately. **[PDF]**
+- `createNewOrderXML`: the live WSDL exposes a mixed `order` XML node, string `options` and boolean `test`; the client now provides a low-level wrapper. The business meaning and exact order XML schema remain **[VERIFY]** before production use.
 - `changeDocument`: documented support for `DEFERRED_INVOICING` on order head; quantity on order item is shown as allowed but not yet implemented. **[PDF]**
 - B2B and B2C transport dictionaries are distinct. **[PDF]**
 - B2C customer invoice code must be unique in eD logistics. **[PDF]**
@@ -586,7 +586,8 @@ All 32 documented methods were reviewed. Production recommendation:
 - **Use for diagnostics/recovery:** `getProductDetail`, filtered full/nav methods and short catalogue.
 - **Do not use as primary master:** basic catalogue XML/ZIP because commercial fields are defaulted and full detail requires per-item calls.
 - **Do not use:** `getProductCatalogueFullDownloadXMLWithTransform` because the PDF states it is not implemented.
-- **Blocked pending extra specification:** `createNewOrderXML` options/input schema and any order-status/tracking/invoice retrieval.
+- **Implemented wrapper, still verify:** `createNewOrderXML` accepts the WSDL's mixed `order` XML plus string `options` and `test`; do not use in production until a supplier contract fixture confirms the business schema.
+- **Blocked pending extra specification:** any order-status/tracking/invoice retrieval.
 
 ## Appendix B - PDF-backed field inventory
 
