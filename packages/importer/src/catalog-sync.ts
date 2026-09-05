@@ -302,7 +302,8 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
   }).total;
   const contentHash = hash([title, nameB2c, brand, mpn, mpn2, ean, currency, cleanHtml, category.slug, imageUrls, extracted.allAttributes]);
   const priceHash = hash([supplierCost, garbageFee, authorFee, totalCostWithFees, vatRate, basePrice, finalPrice]);
-  const expectedAt = normalizeIdentifier(product.DateAvailible ?? product.DateAvailable ?? product.DateOfDelivery);
+  const expectedAtRaw = normalizeIdentifier(product.DateAvailible ?? product.DateAvailable ?? product.DateOfDelivery);
+  const expectedAt = expectedAtRaw && !/^0?1[./-]0?1[./-]1900(?:$|\s)/.test(expectedAtRaw) ? expectedAtRaw : null;
   const stockText = normalizeIdentifier(product.OnStockText) || (isInStock
     ? (Number.isFinite(stockCountRaw) ? `Skladom ${stockCount} ks` : 'Skladom')
     : 'Na objednávku');
@@ -423,13 +424,19 @@ function transformStockProduct(product: Record<string, unknown>, pricing: Pricin
     stock_text: normalizeIdentifier(product.OnStockText) || (isInStock
       ? (Number.isFinite(stockCountRaw) ? `Skladom ${stockCount} ks` : 'Skladom')
       : 'Na objednávku'),
-    expected_at: normalizeIdentifier(product.DateAvailible ?? product.DateAvailable ?? product.DateOfDelivery),
+    expected_at: (() => {
+      const raw = normalizeIdentifier(product.DateAvailible ?? product.DateAvailable ?? product.DateOfDelivery);
+      return raw && !/^0?1[./-]0?1[./-]1900(?:$|\s)/.test(raw) ? raw : null;
+    })(),
     price_hash: hash([supplierCost, garbageFee, authorFee, totalCostWithFees, vatRate, basePrice, finalPrice]),
     inventory_hash: hash([
       stockCount,
       isInStock,
       normalizeIdentifier(product.OnStockText),
-      normalizeIdentifier(product.DateAvailible ?? product.DateAvailable ?? product.DateOfDelivery),
+      (() => {
+        const raw = normalizeIdentifier(product.DateAvailible ?? product.DateAvailable ?? product.DateOfDelivery);
+        return raw && !/^0?1[./-]0?1[./-]1900(?:$|\s)/.test(raw) ? raw : null;
+      })(),
     ]),
   };
 }

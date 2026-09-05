@@ -519,7 +519,7 @@ function mapDbRowToMasterProduct(row: any): MasterProduct {
     stockCount: Number(row.stock_count || 0),
     isInStock: Boolean(row.is_in_stock),
     stockText: row.stock_text || (row.is_in_stock ? 'Skladom' : 'Na objednávku'),
-    expectedRestockDate: undefined,
+    expectedRestockDate: row.expected_at || undefined,
     minOrderQuantity: Number(row.min_order_quantity || 1),
     warrantyMonths: Number(row.warranty_months ?? 24),
     attributes: typeof row.attributes === 'object' && row.attributes !== null ? row.attributes : {},

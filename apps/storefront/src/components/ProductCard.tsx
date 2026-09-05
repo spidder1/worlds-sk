@@ -75,7 +75,9 @@ export function ProductCard({ product }: { product: MasterProduct }) {
             ) : (
               <span className="flex items-center gap-1 text-amber-600">
                 <AlertCircle className="w-3.5 h-3.5" />
-                Na objednávku
+                {product.expectedRestockDate
+                  ? `Dostupné od ${product.expectedRestockDate}`
+                  : 'Na objednávku'}
               </span>
             )}
           </div>

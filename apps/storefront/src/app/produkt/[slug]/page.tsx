@@ -216,7 +216,9 @@ export default async function ProductDetailPage({ params }: Props) {
                 <div className="flex items-center gap-2.5 text-sm font-bold text-amber-800 bg-amber-50 border border-amber-200 px-4 py-2.5 rounded-xl">
                   <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
                   <div>
-                    <div>Na objednávku u dodávateľa</div>
+                    <div>{product.expectedRestockDate
+                      ? `Dostupné od ${product.expectedRestockDate}`
+                      : 'Na objednávku u dodávateľa'}</div>
                     <div className="text-xs font-normal text-amber-700">Dostupnosť overujeme pri spracovaní objednávky</div>
                   </div>
                 </div>
