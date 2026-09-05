@@ -20,6 +20,8 @@ DROP INDEX IF EXISTS idx_products_last_import_batch;
 DROP INDEX IF EXISTS idx_products_index_codes;
 DROP INDEX IF EXISTS idx_products_ean_not_null;
 DROP INDEX IF EXISTS idx_products_brand;
+DROP INDEX IF EXISTS idx_products_storefront_sellable;
+DROP INDEX IF EXISTS idx_products_storefront_price;
 
 CREATE INDEX IF NOT EXISTS idx_product_localizations_locale
   ON product_localizations (locale, approved, updated_at DESC);
@@ -58,7 +60,7 @@ TRUNCATE product_localizations, product_seo, slugs;
 INSERT INTO product_localizations
   (product_id, locale, title, short_description, description, seo_title, seo_description, source, approved)
 SELECT p.id, 'sk', COALESCE(NULLIF(p.name_b2c, ''), p.title), COALESCE(p.short_description, ''),
-       COALESCE(p.enriched_description, p.supplier_description, ''), p.seo_title, p.seo_description,
+       '', p.seo_title, p.seo_description,
        'IMPORT', true
   FROM products p
  WHERE p.status IN ('ACTIVE', 'OUT_OF_STOCK')
@@ -72,10 +74,9 @@ SELECT p.id, 'sk', '/produkt/' || p.slug, 'IMPORT' FROM products p
  WHERE p.status IN ('ACTIVE', 'OUT_OF_STOCK')
 ON CONFLICT (product_id, locale) DO UPDATE SET canonical_path = EXCLUDED.canonical_path, updated_at = now();
 
-INSERT INTO slugs (entity_type, entity_id, locale, slug, is_canonical)
-SELECT 'PRODUCT', p.id, 'sk', p.slug, true FROM products p
- WHERE p.status IN ('ACTIVE', 'OUT_OF_STOCK')
-ON CONFLICT (entity_type, entity_id, locale) DO UPDATE SET slug = EXCLUDED.slug, updated_at = now();
+-- Product URLs remain sourced from products.slug. The trigger below records
+-- future changes; bulk materializing 45k duplicate slug rows is unnecessary
+-- and would exceed the starter Neon storage quota.
 
 CREATE OR REPLACE FUNCTION worlds_sync_product_localization_seo()
 RETURNS trigger

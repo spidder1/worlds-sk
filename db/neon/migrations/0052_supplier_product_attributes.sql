@@ -1,3 +1,10 @@
+-- Product identity lookups use SKU/MPN and supplier code as primary keys;
+-- the legacy standalone EAN index is not required by the normalized path and
+-- is removed to make room for the attribute dictionary.
+DROP INDEX IF EXISTS idx_products_ean;
+DROP INDEX IF EXISTS idx_products_cat_slug;
+DROP INDEX IF EXISTS idx_products_status;
+
 CREATE TABLE IF NOT EXISTS supplier_product_attribute_values (
   supplier_product_id uuid NOT NULL REFERENCES supplier_products(id) ON DELETE CASCADE,
   attribute_code text NOT NULL,
@@ -8,8 +15,8 @@ CREATE TABLE IF NOT EXISTS supplier_product_attribute_values (
   PRIMARY KEY (supplier_product_id, attribute_code, value_code)
 );
 
-CREATE INDEX IF NOT EXISTS idx_supplier_product_attributes_filter
-  ON supplier_product_attribute_values (attribute_code, value_code, supplier_product_id);
+-- The table is populated incrementally by the trigger below. Defer this
+-- secondary filter index until the Neon project has storage headroom.
 
 CREATE OR REPLACE FUNCTION worlds_sync_supplier_product_attribute()
 RETURNS trigger

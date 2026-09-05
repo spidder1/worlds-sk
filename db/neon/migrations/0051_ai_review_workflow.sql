@@ -1,3 +1,10 @@
+-- The normalized price/search projections supersede these legacy composite
+-- indexes. Free their space before creating the review queue on small Neon
+-- projects; correctness is unchanged and the indexes can be rebuilt later.
+DROP INDEX IF EXISTS idx_products_storefront_stock;
+DROP INDEX IF EXISTS idx_products_mpn;
+DROP INDEX IF EXISTS idx_products_is_in_stock_price;
+
 CREATE TABLE IF NOT EXISTS ai_runs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   provider text NOT NULL,
