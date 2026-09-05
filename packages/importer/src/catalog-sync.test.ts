@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { detectFullProductElementName, extractProductImageUrls } from './catalog-sync.js';
+import { detectFullProductElementName, extractNavigatorAttributes, extractProductImageUrls } from './catalog-sync.js';
 
 test('extracts nested eD ProductImage URLs and normalizes thumbnail suffixes', () => {
   assert.deepEqual(
@@ -30,6 +30,20 @@ test('supports a single nested image and legacy flat image field', () => {
   assert.deepEqual(
     extractProductImageUrls({ ImageUrl: 'https://cdn.example.test/legacy.jpg' }),
     ['https://cdn.example.test/legacy.jpg'],
+  );
+});
+
+test('preserves singleton and nested eD navigator attributes', () => {
+  assert.deepEqual(
+    extractNavigatorAttributes({ ProductNavigatorDataList: { ProductNavigatorData: { AttributeCode: 12, ValueCode: 34 } } }),
+    { attr_12: { code: '12', name: 'Atribút 12', value: '34', rawValue: '34' } },
+  );
+  assert.deepEqual(
+    extractNavigatorAttributes({ ProductNavigatorDataList: [{ AttributeCode: '12', ValueCode: '35' }, { AttributeCode: '13', Value: 'blue' }] }),
+    {
+      attr_12: { code: '12', name: 'Atribút 12', value: '35', rawValue: '35' },
+      attr_13: { code: '13', name: 'Atribút 13', value: 'blue', rawValue: 'blue' },
+    },
   );
 });
 

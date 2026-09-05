@@ -151,6 +151,36 @@ function asArray<T>(input: T | T[] | null | undefined): T[] {
   return Array.isArray(input) ? input : [input];
 }
 
+/** Preserve every eD navigator attribute even when no label dictionary is
+ * available in the catalogue file. The reference codes remain stable and can
+ * be resolved later by an enrichment/admin job without losing the source data.
+ */
+export function extractNavigatorAttributes(product: Record<string, unknown>): Record<string, {
+  code: string;
+  name: string;
+  value: string;
+  rawValue: string;
+}> {
+  const rawList = product.ProductNavigatorDataList;
+  const wrapped = rawList && typeof rawList === 'object' && !Array.isArray(rawList)
+    ? (rawList as Record<string, unknown>).ProductNavigatorData ?? rawList
+    : rawList;
+  const attributes: Record<string, { code: string; name: string; value: string; rawValue: string }> = {};
+  for (const item of asArray(wrapped as Record<string, unknown> | Record<string, unknown>[] | null | undefined)) {
+    if (!item || typeof item !== 'object') continue;
+    const attribute = value(item.AttributeCode ?? item.attributeCode);
+    const rawValue = value(item.ValueCode ?? item.Value ?? item.valueCode ?? item.value);
+    if (!attribute || !rawValue) continue;
+    attributes[`attr_${attribute}`] = {
+      code: attribute,
+      name: `Atribút ${attribute}`,
+      value: rawValue,
+      rawValue,
+    };
+  }
+  return attributes;
+}
+
 /**
  * eD serializes images as ImageList.ProductImage.URL. fast-xml-parser keeps
  * that wrapper, and a single ProductImage is an object while multiple images
@@ -229,6 +259,7 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
     producerName: brand,
   });
   const extracted = extractStructuredAttributes(title, rawDescription, specs, brand, mpn, warrantyMonths);
+  Object.assign(extracted.allAttributes, extractNavigatorAttributes(product));
   const imageUrls = extractProductImageUrls(product);
   const proId = value(product.ProId) || code;
   const shortDescription = plainText.slice(0, 300);
