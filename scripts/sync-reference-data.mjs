@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import pg from 'pg';
-import { EDSystemClient } from '@worlds/ed-client';
+// This script runs from the repository root in GitHub Actions and locally.
+// Use the built workspace artifact directly instead of relying on the root
+// package having a node_modules symlink for the private workspace package.
+import { EDSystemClient } from '../packages/ed-client/dist/index.js';
 
 const { Pool } = pg;
 
@@ -76,25 +79,39 @@ async function main() {
     for (const treeKey of ['INDEX_1', 'INDEX_2']) {
       await db.query('DELETE FROM supplier_index_nodes WHERE tree_key = $1', [treeKey]);
     }
-    for (const row of indexRows) {
+    for (let offset = 0; offset < indexRows.length; offset += 250) {
+      const chunk = indexRows.slice(offset, offset + 250);
+      const indexParams = [];
+      const indexPlaceholders = chunk.map((row, index) => {
+        const base = index * 11;
+        indexParams.push(row.treeKey, row.indexCode, row.commodityCode, row.parentIndexCode, row.indexName,
+          row.indexSort, row.indexSortCode, row.indexLevel, row.indexOrder, row.codeName, JSON.stringify(row.payload));
+        return `($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5},$${base + 6},$${base + 7},$${base + 8},$${base + 9},$${base + 10},$${base + 11}::jsonb,NOW())`;
+      }).join(',');
       await db.query(
         `INSERT INTO supplier_index_nodes
           (tree_key, index_code, commodity_code, parent_index_code, index_name, index_sort, index_sort_code,
            index_level, index_order, code_name, source_payload, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,NOW())`,
-        [row.treeKey, row.indexCode, row.commodityCode, row.parentIndexCode, row.indexName, row.indexSort,
-          row.indexSortCode, row.indexLevel, row.indexOrder, row.codeName, JSON.stringify(row.payload)],
+         VALUES ${indexPlaceholders}`,
+        indexParams,
       );
-      const taxonomyCode = row.treeKey === 'INDEX_1' ? 'ED_INDEX_1' : 'ED_INDEX_2';
-      const nodeId = `${taxonomyCode.toLowerCase()}:${row.indexCode}`;
-      const parentNodeId = row.parentIndexCode ? `${taxonomyCode.toLowerCase()}:${row.parentIndexCode}` : null;
+
+      const taxonomyParams = [];
+      const taxonomyPlaceholders = chunk.map((row, index) => {
+        const taxonomyCode = row.treeKey === 'INDEX_1' ? 'ED_INDEX_1' : 'ED_INDEX_2';
+        const nodeId = `${taxonomyCode.toLowerCase()}:${row.indexCode}`;
+        const parentNodeId = row.parentIndexCode ? `${taxonomyCode.toLowerCase()}:${row.parentIndexCode}` : null;
+        const base = index * 7;
+        taxonomyParams.push(nodeId, taxonomyCode, row.indexCode, row.indexName, parentNodeId, row.indexOrder, JSON.stringify(row.payload));
+        return `($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5},COALESCE($${base + 6},0),$${base + 7}::jsonb,NOW())`;
+      }).join(',');
       await db.query(
         `INSERT INTO taxonomy_nodes
           (id, taxonomy_code, external_code, name, parent_node_id, display_order, source_payload, updated_at)
-         VALUES ($1,$2,$3,$4,$5,COALESCE($6,0),$7::jsonb,NOW())
+         VALUES ${taxonomyPlaceholders}
          ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, parent_node_id = EXCLUDED.parent_node_id,
            display_order = EXCLUDED.display_order, source_payload = EXCLUDED.source_payload, updated_at = NOW()`,
-        [nodeId, taxonomyCode, row.indexCode, row.indexName, parentNodeId, row.indexOrder, JSON.stringify(row.payload)],
+        taxonomyParams,
       );
     }
     if (informationCodes.length > 0) {
@@ -110,63 +127,101 @@ async function main() {
     }
     if (producers.length > 0) {
       await db.query('DELETE FROM supplier_producers');
-      for (const item of producers) {
+      for (let offset = 0; offset < producers.length; offset += 250) {
+        const chunk = producers.slice(offset, offset + 250);
+        const params = [];
+        const placeholders = chunk.map((item, index) => {
+          const base = index * 4;
+          params.push(String(item.ProducerCode), String(item.ProducerName || ''), item.ProducerId == null ? null : String(item.ProducerId), JSON.stringify(item));
+          return `($${base + 1},$${base + 2},$${base + 3},$${base + 4}::jsonb,NOW())`;
+        }).join(',');
         await db.query(
           `INSERT INTO supplier_producers (producer_code, producer_name, producer_id, source_payload, updated_at)
-           VALUES ($1,$2,$3,$4::jsonb,NOW())`,
-          [String(item.ProducerCode), String(item.ProducerName || ''), item.ProducerId == null ? null : String(item.ProducerId), JSON.stringify(item)],
+           VALUES ${placeholders}`,
+          params,
         );
       }
     }
     if (commodities.length > 0) {
       await db.query('DELETE FROM supplier_commodities');
-      for (const item of commodities) {
-        await db.query(
+      for (let offset = 0; offset < commodities.length; offset += 250) {
+        const chunk = commodities.slice(offset, offset + 250).filter((item) => text(item.CommodityCode));
+        const params = [];
+        const placeholders = chunk.map((item, index) => {
+          const base = index * 4;
+          params.push(String(item.CommodityCode), String(item.CommodityName || ''), item.CommodityParentCode ? String(item.CommodityParentCode) : null, JSON.stringify(item));
+          return `($${base + 1},$${base + 2},$${base + 3},$${base + 4}::jsonb,NOW())`;
+        }).join(',');
+        if (chunk.length) await db.query(
           `INSERT INTO supplier_commodities (commodity_code, commodity_name, parent_commodity_code, source_payload, updated_at)
-           VALUES ($1,$2,$3,$4::jsonb,NOW())`,
-          [String(item.CommodityCode), String(item.CommodityName || ''), item.CommodityParentCode ? String(item.CommodityParentCode) : null, JSON.stringify(item)],
+           VALUES ${placeholders}`,
+          params,
         );
-        const commodityCode = text(item.CommodityCode);
-        if (commodityCode) {
+
+        const taxonomyParams = [];
+        const taxonomyPlaceholders = chunk.map((item, index) => {
+          const commodityCode = text(item.CommodityCode);
           const parentCode = text(item.CommodityParentCode);
-          await db.query(
-            `INSERT INTO taxonomy_nodes
-              (id, taxonomy_code, external_code, name, parent_node_id, source_payload, updated_at)
-             VALUES ($1,'ED_COMMODITY',$2,$3,$4,$5::jsonb,NOW())
-             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, parent_node_id = EXCLUDED.parent_node_id,
-               source_payload = EXCLUDED.source_payload, updated_at = NOW()`,
-            [`ed_commodity:${commodityCode}`, commodityCode, text(item.CommodityName), parentCode ? `ed_commodity:${parentCode}` : null, JSON.stringify(item)],
-          );
-        }
+          const base = index * 6;
+          taxonomyParams.push(`ed_commodity:${commodityCode}`, commodityCode, text(item.CommodityName), parentCode ? `ed_commodity:${parentCode}` : null, JSON.stringify(item), 'ED_COMMODITY');
+          return `($${base + 1},$${base + 6},$${base + 2},$${base + 3},$${base + 4},$${base + 5}::jsonb,NOW())`;
+        }).join(',');
+        if (chunk.length) await db.query(
+          `INSERT INTO taxonomy_nodes
+            (id, taxonomy_code, external_code, name, parent_node_id, source_payload, updated_at)
+           VALUES ${taxonomyPlaceholders}
+           ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, parent_node_id = EXCLUDED.parent_node_id,
+             source_payload = EXCLUDED.source_payload, updated_at = NOW()`,
+          taxonomyParams,
+        );
       }
     }
     if (categoryAttributes.length > 0) {
       await db.query('DELETE FROM supplier_attributes');
-      for (const item of categoryAttributes) {
-        const attributeCode = text(item.AttributeCode);
-        if (!attributeCode) continue;
-        await db.query(
+      for (let offset = 0; offset < categoryAttributes.length; offset += 250) {
+        const chunk = categoryAttributes.slice(offset, offset + 250).filter((item) => text(item.AttributeCode));
+        const params = [];
+        const placeholders = chunk.map((item, index) => {
+          const base = index * 5;
+          params.push(text(item.AttributeCode), text(item.AttributeName), String(item.IsPrimary).toLowerCase() === 'true', item.FilterOperator ? text(item.FilterOperator) : null, JSON.stringify(item));
+          return `($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5}::jsonb,NOW())`;
+        }).join(',');
+        if (chunk.length) await db.query(
           `INSERT INTO supplier_attributes (attribute_code, attribute_name, is_primary, filter_operator, source_payload, updated_at)
-           VALUES ($1,$2,$3,$4,$5::jsonb,NOW())
+           VALUES ${placeholders}
            ON CONFLICT (attribute_code) DO UPDATE SET attribute_name = EXCLUDED.attribute_name,
              is_primary = EXCLUDED.is_primary, filter_operator = EXCLUDED.filter_operator,
              source_payload = EXCLUDED.source_payload, updated_at = NOW()`,
-          [attributeCode, text(item.AttributeName), String(item.IsPrimary).toLowerCase() === 'true', item.FilterOperator ? text(item.FilterOperator) : null, JSON.stringify(item)],
+          params,
         );
       }
     }
     if (attributeValues.length > 0) {
       await db.query('DELETE FROM supplier_attribute_values');
-      for (const item of attributeValues) {
-        const attributeCode = text(item.AttributeCode);
-        const valueCode = text(item.ValueCode);
-        if (!attributeCode || !valueCode) continue;
+      const rows = attributeValues.map((item) => ({
+        attributeCode: text(item.AttributeCode),
+        valueCode: text(item.ValueCode),
+        valueText: text(item.Value),
+        valueSort: numberOrNull(item.ValueSort),
+        payload: JSON.stringify(item),
+      })).filter((item) => item.attributeCode && item.valueCode);
+      // The eD dictionary contains tens of thousands of values. Keep the
+      // import inside the same transaction, but send them in batches instead
+      // of issuing one network round-trip per value.
+      for (let offset = 0; offset < rows.length; offset += 500) {
+        const chunk = rows.slice(offset, offset + 500);
+        const params = [];
+        const placeholders = chunk.map((item, index) => {
+          const base = index * 5;
+          params.push(item.attributeCode, item.valueCode, item.valueText, item.valueSort, item.payload);
+          return `($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5}::jsonb,NOW())`;
+        }).join(',');
         await db.query(
           `INSERT INTO supplier_attribute_values (attribute_code, value_code, value_text, value_sort, source_payload, updated_at)
-           VALUES ($1,$2,$3,$4,$5::jsonb,NOW())
+           VALUES ${placeholders}
            ON CONFLICT (attribute_code, value_code) DO UPDATE SET value_text = EXCLUDED.value_text,
              value_sort = EXCLUDED.value_sort, source_payload = EXCLUDED.source_payload, updated_at = NOW()`,
-          [attributeCode, valueCode, text(item.Value), numberOrNull(item.ValueSort), JSON.stringify(item)],
+          params,
         );
       }
     }

@@ -160,20 +160,12 @@ export class EDSystemClient {
    * 3.3. getProductCategoryAttributeList
    */
   async getProductCategoryAttributeList(): Promise<EDCategoryAttribute[]> {
-    const action = `${this.getSoapNamespace()}getProductCategoryAttributeList`;
-    const bodyXml = `<getProductCategoryAttributeList xmlns="${this.getSoapNamespace()}">
-      <login>${escapeXml(this.login)}</login>
-      <password>${escapeXml(this.pass)}</password>
-    </getProductCategoryAttributeList>`;
-
-    const response = await executeSoapCall<{ getProductCategoryAttributeListResponse?: { getProductCategoryAttributeListResult?: any } }>({
-      endpoint: this.endpoint,
-      action,
-      bodyXml,
-    });
-
-    const result = response?.getProductCategoryAttributeListResponse?.getProductCategoryAttributeListResult;
-    const items = result?.ProductCategoryAttributeList?.ProductCategoryAttribute;
+    const parsed = await this.getXmlOverUrl('getProductCategoryAttributeList');
+    const envelope = (parsed.ResponseProductCategoryAttributeList ?? parsed) as Record<string, any>;
+    const status = (envelope.Status ?? {}) as Record<string, unknown>;
+    const statusCode = xmlString(status.StatusCode);
+    if (statusCode && statusCode !== 'DONE') throw new Error(`eD category attribute list failed: ${xmlString(status.ErrorText) ?? statusCode}`);
+    const items = envelope.ProductCategoryAttributeList?.ProductCategoryAttribute;
     if (!items) return [];
     return Array.isArray(items) ? items : [items];
   }
@@ -182,20 +174,12 @@ export class EDSystemClient {
    * 3.4. getProductCategoryAttributeValueList
    */
   async getProductCategoryAttributeValueList(): Promise<EDAttributeValue[]> {
-    const action = `${this.getSoapNamespace()}getProductCategoryAttributeValueList`;
-    const bodyXml = `<getProductCategoryAttributeValueList xmlns="${this.getSoapNamespace()}">
-      <login>${escapeXml(this.login)}</login>
-      <password>${escapeXml(this.pass)}</password>
-    </getProductCategoryAttributeValueList>`;
-
-    const response = await executeSoapCall<{ getProductCategoryAttributeValueListResponse?: { getProductCategoryAttributeValueListResult?: any } }>({
-      endpoint: this.endpoint,
-      action,
-      bodyXml,
-    });
-
-    const result = response?.getProductCategoryAttributeValueListResponse?.getProductCategoryAttributeValueListResult;
-    const items = result?.ProductCategoryAttributeValueList?.ProductCategoryAttributeValue;
+    const parsed = await this.getXmlOverUrl('getProductCategoryAttributeValueList');
+    const envelope = (parsed.ResponseProductCategoryAttributeValueList ?? parsed) as Record<string, any>;
+    const status = (envelope.Status ?? {}) as Record<string, unknown>;
+    const statusCode = xmlString(status.StatusCode);
+    if (statusCode && statusCode !== 'DONE') throw new Error(`eD category attribute values failed: ${xmlString(status.ErrorText) ?? statusCode}`);
+    const items = envelope.ProductCategoryAttributeValueList?.ProductCategoryAttributeValue;
     if (!items) return [];
     return Array.isArray(items) ? items : [items];
   }
@@ -205,20 +189,12 @@ export class EDSystemClient {
    * Returns list of producers (brands/manufacturers)
    */
   async getProductProducerList(): Promise<EDProducer[]> {
-    const action = `${this.getSoapNamespace()}getProductProducerList`;
-    const bodyXml = `<getProductProducerList xmlns="${this.getSoapNamespace()}">
-      <login>${escapeXml(this.login)}</login>
-      <password>${escapeXml(this.pass)}</password>
-    </getProductProducerList>`;
-
-    const response = await executeSoapCall<{ getProductProducerListResponse?: { getProductProducerListResult?: any } }>({
-      endpoint: this.endpoint,
-      action,
-      bodyXml,
-    });
-
-    const result = response?.getProductProducerListResponse?.getProductProducerListResult;
-    const items = result?.ProductProducerList?.ProductProducer;
+    const parsed = await this.getXmlOverUrl('getProductProducerList');
+    const envelope = (parsed.ResponseProductProducerList ?? parsed) as Record<string, any>;
+    const status = (envelope.Status ?? {}) as Record<string, unknown>;
+    const statusCode = xmlString(status.StatusCode);
+    if (statusCode && statusCode !== 'DONE') throw new Error(`eD producer list failed: ${xmlString(status.ErrorText) ?? statusCode}`);
+    const items = envelope.ProductProducerList?.ProductProducer;
     if (!items) return [];
     return Array.isArray(items) ? items : [items];
   }
@@ -254,20 +230,13 @@ export class EDSystemClient {
    * 3.8. getProductIndexTree1
    */
   async getProductIndexTree1(): Promise<EDIndexTreeItem[]> {
-    const action = `${this.getSoapNamespace()}getProductIndexTree1`;
-    const bodyXml = `<getProductIndexTree1 xmlns="${this.getSoapNamespace()}">
-      <login>${escapeXml(this.login)}</login>
-      <password>${escapeXml(this.pass)}</password>
-    </getProductIndexTree1>`;
-
-    const response = await executeSoapCall<{ getProductIndexTree1Response?: { getProductIndexTree1Result?: any } }>({
-      endpoint: this.endpoint,
-      action,
-      bodyXml,
-    });
-
-    const result = response?.getProductIndexTree1Response?.getProductIndexTree1Result;
-    const items = result?.ProductIndexItem;
+    const parsed = await this.getXmlOverUrl('getProductIndexTree1');
+    const envelope = (parsed.ResponseProductIndexTree ?? parsed) as Record<string, any>;
+    const status = (envelope.Status ?? {}) as Record<string, unknown>;
+    const statusCode = xmlString(status.StatusCode);
+    if (statusCode && statusCode !== 'DONE') throw new Error(`eD index tree 1 failed: ${xmlString(status.ErrorText) ?? statusCode}`);
+    const root = (envelope.ProductIndexRoot ?? envelope.ProductIndexTree ?? envelope) as Record<string, any>;
+    const items = root.ProductIndexList?.ProductIndexItem ?? root.ProductIndexItem;
     if (!items) return [];
     return Array.isArray(items) ? items : [items];
   }
@@ -277,20 +246,13 @@ export class EDSystemClient {
    * Returns the second independent eD product index tree.
    */
   async getProductIndexTree2(): Promise<EDIndexTreeItem[]> {
-    const action = `${this.getSoapNamespace()}getProductIndexTree2`;
-    const bodyXml = `<getProductIndexTree2 xmlns="${this.getSoapNamespace()}">
-      <login>${escapeXml(this.login)}</login>
-      <password>${escapeXml(this.pass)}</password>
-    </getProductIndexTree2>`;
-
-    const response = await executeSoapCall<{ getProductIndexTree2Response?: { getProductIndexTree2Result?: any } }>({
-      endpoint: this.endpoint,
-      action,
-      bodyXml,
-    });
-
-    const result = response?.getProductIndexTree2Response?.getProductIndexTree2Result;
-    const items = result?.ProductIndexItem ?? result?.ProductIndexTree?.ProductIndexItem;
+    const parsed = await this.getXmlOverUrl('getProductIndexTree2');
+    const envelope = (parsed.ResponseProductIndexTree ?? parsed) as Record<string, any>;
+    const status = (envelope.Status ?? {}) as Record<string, unknown>;
+    const statusCode = xmlString(status.StatusCode);
+    if (statusCode && statusCode !== 'DONE') throw new Error(`eD index tree 2 failed: ${xmlString(status.ErrorText) ?? statusCode}`);
+    const root = (envelope.ProductIndexRoot ?? envelope.ProductIndexTree ?? envelope) as Record<string, any>;
+    const items = root.ProductIndexList?.ProductIndexItem ?? root.ProductIndexItem;
     if (!items) return [];
     return Array.isArray(items) ? items : [items];
   }
@@ -301,20 +263,13 @@ export class EDSystemClient {
    * singleton values differently from arrays, so both forms are normalized.
    */
   async getProductRelationList(): Promise<EDProductRelation[]> {
-    const action = `${this.getSoapNamespace()}getProductRelationList`;
-    const bodyXml = `<getProductRelationList xmlns="${this.getSoapNamespace()}">
-      <login>${escapeXml(this.login)}</login>
-      <password>${escapeXml(this.pass)}</password>
-    </getProductRelationList>`;
-
-    const response = await executeSoapCall<{ getProductRelationListResponse?: { getProductRelationListResult?: any } }>({
-      endpoint: this.endpoint,
-      action,
-      bodyXml,
-    });
-    const result = response?.getProductRelationListResponse?.getProductRelationListResult;
-    const list = result?.ProductRelationList ?? result;
-    const rawRelations = list?.ProductRelation ?? list?.Relation ?? list?.ProductRelationItem;
+    const parsed = await this.getXmlOverUrl('getProductRelationList');
+    const envelope = (parsed.ResponseProductRelationList ?? parsed) as Record<string, any>;
+    const status = (envelope.Status ?? {}) as Record<string, unknown>;
+    const statusCode = xmlString(status.StatusCode);
+    if (statusCode && statusCode !== 'DONE') throw new Error(`eD relation list failed: ${xmlString(status.ErrorText) ?? statusCode}`);
+    const list = (envelope.ProductRelationList ?? envelope) as Record<string, any>;
+    const rawRelations = list?.ProductRelation ?? list?.Relation ?? list?.ProductRelationItem ?? list?.ProductRealationParent;
     const relations = rawRelations ? (Array.isArray(rawRelations) ? rawRelations : [rawRelations]) : [];
 
     return relations.map((raw: Record<string, any>) => {
@@ -344,18 +299,12 @@ export class EDSystemClient {
    * Returns the supplier dictionary for product marketing/status codes.
    */
   async getProductInformationList(): Promise<EDProductInformation[]> {
-    const action = `${this.getSoapNamespace()}getProductInformationList`;
-    const bodyXml = `<getProductInformationList xmlns="${this.getSoapNamespace()}">
-      <login>${escapeXml(this.login)}</login>
-      <password>${escapeXml(this.pass)}</password>
-    </getProductInformationList>`;
-    const response = await executeSoapCall<{ getProductInformationListResponse?: { getProductInformationListResult?: any } }>({
-      endpoint: this.endpoint,
-      action,
-      bodyXml,
-    });
-    const result = response?.getProductInformationListResponse?.getProductInformationListResult;
-    const list = result?.ProductInformationList ?? result;
+    const parsed = await this.getXmlOverUrl('getProductInformationList');
+    const envelope = (parsed.ResponseProductInformationList ?? parsed) as Record<string, any>;
+    const status = (envelope.Status ?? {}) as Record<string, unknown>;
+    const statusCode = xmlString(status.StatusCode);
+    if (statusCode && statusCode !== 'DONE') throw new Error(`eD information list failed: ${xmlString(status.ErrorText) ?? statusCode}`);
+    const list = (envelope.ProductInformationList ?? envelope) as Record<string, any>;
     const rawItems = list?.ProductInformation ?? list?.Information ?? list?.ProductInformationItem;
     const items = rawItems ? (Array.isArray(rawItems) ? rawItems : [rawItems]) : [];
     return items.map((item: Record<string, unknown>) => ({
