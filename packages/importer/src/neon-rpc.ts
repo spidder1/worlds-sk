@@ -606,6 +606,20 @@ export function createNeonRpcClient(options: { brandScope?: string[] } = {}): Rp
         return rows[0] as unknown as T;
       }
 
+      case 'record_raw_records': {
+        await pool.query(
+          `INSERT INTO raw_records
+             (batch_id, record_number, source_key, payload, payload_sha256)
+           SELECT $1::uuid, item.record_number, item.source_key, item.payload, item.payload_sha256
+             FROM jsonb_to_recordset($2::jsonb) AS item(
+               record_number bigint, source_key text, payload jsonb, payload_sha256 text
+             )
+           ON CONFLICT (batch_id, record_number) DO NOTHING`,
+          [parameters.p_batch_id, jsonParameter(parameters.p_items)],
+        );
+        return true as unknown as T;
+      }
+
       case 'sync_ed_stock_price_batch': {
         const { rows } = await pool.query<RpcBatchResult>(STOCK_PRICE_SQL, [
           parameters.p_batch_id,

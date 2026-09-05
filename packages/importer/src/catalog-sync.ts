@@ -695,6 +695,7 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
   const filteredByReason: Record<string, number> = {};
   let lastHeartbeatAt = Date.now();
   let payload: Record<string, unknown>[] = [];
+  let rawRecords: Array<{ record_number: number; source_key: string | null; payload: Record<string, unknown>; payload_sha256: string }> = [];
   const quarantinePayload: Record<string, unknown>[] = [];
   const rpcName = options.mode === 'full' ? 'stage_ed_catalog_batch' : 'sync_ed_stock_price_batch';
 
@@ -732,6 +733,15 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
     }
   };
 
+  const flushRawRecords = async () => {
+    if (rawRecords.length === 0) return;
+    const pending = rawRecords;
+    rawRecords = [];
+    if (rpc) {
+      await rpc<boolean>('record_raw_records', { p_batch_id: batchId, p_items: pending });
+    }
+  };
+
   try {
     let limitReached = false;
     for (const source of sources) {
@@ -745,6 +755,14 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
       console.log(`[import] parsing source=${path.basename(source.filePath)}`);
       for await (const rawProduct of streamXmlElements(source.filePath, elementName)) {
         parsed += 1;
+        const rawSourceKey = value(rawProduct.Code ?? rawProduct.ProId) || null;
+        rawRecords.push({
+          record_number: parsed,
+          source_key: rawSourceKey,
+          payload: rawProduct,
+          payload_sha256: crypto.createHash('sha256').update(JSON.stringify(rawProduct)).digest('hex'),
+        });
+        if (rawRecords.length >= options.batchSize) await flushRawRecords();
         if (options.mode === 'full' && options.scope === 'it-only') {
           const scope = assessCatalogScope({
             title: rawProduct.Name ?? rawProduct.ProductName,
@@ -817,6 +835,7 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
       if (limitReached) break;
     }
     await flush();
+    await flushRawRecords();
     if (rpc && quarantinePayload.length > 0) {
       for (let offset = 0; offset < quarantinePayload.length; offset += options.batchSize) {
         await rpc<boolean>('record_product_quarantine', {
