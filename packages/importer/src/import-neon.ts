@@ -396,8 +396,7 @@ export async function importAsusLenovoToNeon() {
   let xmlContent = '';
   const existingXml = xmlCandidates.find((c) => fs.existsSync(c));
   if (!existingXml) {
-    console.error('❌ Nenašiel sa žiadny XML súbor v složke downloads!');
-    return;
+    throw new Error('Nenašiel sa žiadny XML súbor v priečinku downloads.');
   }
 
   console.log(`📦 Načítavam katalóg: ${path.basename(existingXml)}`);
@@ -406,8 +405,7 @@ export async function importAsusLenovoToNeon() {
     const zip = new AdmZip(existingXml);
     const xmlEntry = zip.getEntries().find((e) => e.entryName.endsWith('.xml'));
     if (!xmlEntry) {
-      console.error('❌ ZIP súbor neobsahuje XML!');
-      return;
+      throw new Error(`ZIP katalóg ${path.basename(existingXml)} neobsahuje XML súbor.`);
     }
     xmlContent = xmlEntry.getData().toString('utf8');
   } else {
