@@ -38,7 +38,7 @@ Posledná revízia: 2026-09-04.
 | EU VAT reverse charge / VIES | ✅ | VIES endpoint, validácia zahraničného IČ DPH pri objednávke, netto prepočet, nulová DPH a označenie reverse charge na PDF |
 | `/admin` dashboard, AI approval queue, karanténa | 🟡 | Admin obsahuje objednávky, importy, kategórie, výrobcov, produkty, nastavenia a kvalitu; AI karanténa je mimo aktuálneho scope |
 | AI konverzačný asistent (`/api/chat`) | 🟡 | Dostupný konverzačný API fallback s extrakciou rozpočtu/RAM/SSD/kategórie a stránka `/asistent`; externý Gemini provider ešte nie je nakonfigurovaný |
-| Meilisearch | ❌ | Vyhľadávanie ide cez Postgres `ILIKE` + `pg_trgm` |
+| Meilisearch | 🟡 | Dávkový reindex a nightly/manual workflow sú pripravené; storefront používa Postgres fallback, kým nie sú nastavené Meilisearch secrets |
 | Google / Heureka / NajNakup feedy | ✅ | Dynamické XML endpointy v `apps/storefront/src/app/api/feeds/` |
 | GDPR cookie lišta | ✅ | Súhlas v localStorage a odkazy na právne stránky |
 | 301 mapa zo starého worlds.sk | 🟡 | Registry `seo_redirects`, 301 catch-all handler a CSV loader sú hotové; treba načítať historický URL export |
