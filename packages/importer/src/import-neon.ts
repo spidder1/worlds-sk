@@ -402,7 +402,7 @@ function retailPriceFromCost(cost: number, vatRate: number): { basePrice: number
   return { basePrice, finalPrice: Number((basePrice * (1 + vatRate / 100)).toFixed(2)) };
 }
 
-async function syncStockOnly(pool: pg.Pool, stockMap: Map<string, any>, batchId: string | undefined): Promise<void> {
+async function syncStockOnly(pool: pg.Pool, stockMap: Map<string, any>, batchId: string | undefined, minimumCostEur: number): Promise<void> {
   if (stockMap.size === 0) throw new Error('Stock feed neobsahuje žiadne položky.');
   const products = await pool.query<{ id: string; supplier_code: string; supplier_pro_id: string | null; mpn: string | null; vat_rate: string | number }>(
     `SELECT id, supplier_code, supplier_pro_id, mpn, vat_rate
@@ -431,6 +431,17 @@ async function syncStockOnly(pool: pg.Pool, stockMap: Map<string, any>, batchId:
         WHERE id = $1`,
       [product.id, stockCount, stockCount > 0, stockCount > 0 ? `Skladom > ${stockCount} ks` : 'Na objednávku', Number(info.price) || 0, pricing.basePrice, pricing.finalPrice],
     );
+  }
+  if (minimumCostEur > 0) {
+    const deactivated = await pool.query(
+      `UPDATE products
+          SET status = 'INACTIVE', updated_at = NOW()
+        WHERE status = 'ACTIVE' AND final_price > 0 AND final_price < $1`,
+      [minimumCostEur],
+    );
+    if (deactivated.rowCount) {
+      console.log(`⛔ Stock-only: deaktivovaných pod minimálnou cenou: ${deactivated.rowCount}`);
+    }
   }
   if (matched === 0) throw new Error('Stock feed sa nezhoduje so žiadnym aktívnym produktom.');
   if (batchId) {
@@ -465,10 +476,11 @@ export async function importAsusLenovoToNeon() {
   const batchId = batchResult.rows[0]?.id;
 
   try {
+    const minimumCostEur = await loadMinimumCostEur(pool);
     const stockOnly = process.env.ED_STOCK_ONLY === 'true';
     if (stockOnly) {
       const stockMap = await fetchLiveStockMap();
-      await syncStockOnly(pool, stockMap, batchId);
+      await syncStockOnly(pool, stockMap, batchId, minimumCostEur);
       return;
     }
     await syncCategoriesAndManufacturers(pool);
@@ -523,7 +535,6 @@ export async function importAsusLenovoToNeon() {
   const targetProducts: any[] = [];
   const sampleOnly = process.env.ED_SAMPLE_ONLY === 'true';
   const dryRun = process.argv.includes('--dry-run') || process.env.ED_DRY_RUN === 'true';
-  const minimumCostEur = await loadMinimumCostEur(pool);
   const targetBrands = configuredTargetBrands();
   const sampleLimitRaw = Number.parseInt(process.env.ED_SAMPLE_LIMIT || '250', 10);
   const sampleLimit = Number.isFinite(sampleLimitRaw) && sampleLimitRaw > 0 ? sampleLimitRaw : 250;
