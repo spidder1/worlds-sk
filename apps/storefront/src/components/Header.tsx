@@ -75,11 +75,7 @@ export function Header({ categories }: { categories: TaxonomyCategory[] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const pathname = usePathname();
   const router = useRouter();
-
-  // The administration has its own dark navigation. Do not render the
-  // storefront header (including the public category bar) above it.
-  if (pathname?.startsWith('/admin')) return null;
-
+  const isAdmin = pathname?.startsWith('/admin') ?? false;
   const primaryCategories = categories.filter((category) =>
     ['pocitace-a-notebooky', 'pocitacove-komponenty', 'monitory-a-displeje'].includes(category.slug),
   );
@@ -121,31 +117,48 @@ export function Header({ categories }: { categories: TaxonomyCategory[] }) {
         <Link href="/asistent" className="hidden rounded-full bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100 sm:inline">Asistent</Link>
       </div>
 
-      <nav className="relative hidden border-t border-slate-200 bg-slate-50 lg:block" aria-label="Hlavné kategórie">
+      <nav className={`relative hidden border-t lg:block ${isAdmin ? 'border-slate-800 bg-black' : 'border-slate-200 bg-slate-50'}`} aria-label={isAdmin ? 'Hlavne kategorie' : 'Hlavné kategórie'}>
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2 text-sm">
-          <MegaMenu categories={categories} />
-          
-          <div className="flex flex-1 items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">
-            {primaryCategories.map((category) => (
-              <Link
-                key={category.id}
-                href={`/kategoria/${category.slug}`}
-                className="whitespace-nowrap rounded-lg px-3 py-1.5 font-semibold text-slate-700 transition-colors hover:bg-white hover:text-brand-700"
-              >
-                {category.name}
-              </Link>
-            ))}
-          </div>
+          {isAdmin ? <AdminHeaderLinks /> : <>
+            <MegaMenu categories={categories} />
+            <div className="flex flex-1 items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">
+              {primaryCategories.map((category) => (
+                <Link key={category.id} href={`/kategoria/${category.slug}`} className="whitespace-nowrap rounded-lg px-3 py-1.5 font-semibold text-slate-700 transition-colors hover:bg-white hover:text-brand-700">{category.name}</Link>
+              ))}
+            </div>
+          </>}
         </div>
       </nav>
 
       <details className="border-t border-slate-200 bg-white lg:hidden">
-        <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold text-slate-800"><Menu className="h-4 w-4" /> Kategórie a produkty</summary>
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold text-slate-800"><Menu className="h-4 w-4" /> {isAdmin ? 'Administrácia' : 'Kategórie a produkty'}</summary>
         <div className="max-h-[65vh] overflow-y-auto border-t border-slate-100">
-          <Link href="/produkty" className="block bg-brand-600 px-4 py-3 text-sm font-bold text-white">Všetky produkty</Link>
-          {categories.map((category) => <MobileCategory key={category.id} category={category} />)}
+          {isAdmin ? <div className="grid gap-1 bg-black p-3">{ADMIN_LINKS.map(([href, label]) => <Link key={href} href={href} className="rounded-lg px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">{label}</Link>)}</div> : <>
+            <Link href="/produkty" className="block bg-brand-600 px-4 py-3 text-sm font-bold text-white">Všetky produkty</Link>
+            {categories.map((category) => <MobileCategory key={category.id} category={category} />)}
+          </>}
         </div>
       </details>
     </header>
   );
+}
+
+const ADMIN_LINKS: [string, string][] = [
+  ['/admin', 'Prehľad'],
+  ['/admin/produkty', 'Produkty'],
+  ['/admin/objednavky', 'Objednávky'],
+  ['/admin/kategorie', 'Kategórie'],
+  ['/admin/atributy', 'Atribúty'],
+  ['/admin/vyrobcovia', 'Výrobcovia'],
+  ['/admin/kategorizacia', 'Kategorizácia'],
+  ['/admin/importy', 'Importy a synchronizácia'],
+  ['/admin/karantena', 'Karanténa'],
+  ['/admin/kvalita', 'Audit katalógu'],
+  ['/admin/audit', 'Prevádzkový audit'],
+  ['/admin/nastavenia', 'Ceny a pravidlá'],
+  ['/admin/obsah', 'Obsah stránok'],
+];
+
+function AdminHeaderLinks() {
+  return <div className="flex flex-1 items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">{ADMIN_LINKS.map(([href, label]) => <Link key={href} href={href} className="whitespace-nowrap rounded-lg px-3 py-1.5 font-semibold text-slate-100 transition-colors hover:bg-slate-800 hover:text-white">{label}</Link>)}</div>;
 }
