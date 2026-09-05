@@ -23,13 +23,20 @@ try {
     const claimed = await pool.query(`UPDATE orders SET supplier_order_status = 'PROCESSING', supplier_order_error = NULL, updated_at = NOW() WHERE id = $1 AND supplier_order_status = 'QUEUED'`, [order.id]);
     if (!claimed.rowCount) continue;
     try {
-      const { rows: items } = await pool.query(`SELECT oi.sku, oi.quantity, oi.unit_price, COALESCE(p.vat_rate, 20) AS vat_rate
-        FROM order_items oi LEFT JOIN products p ON p.id = oi.product_id WHERE oi.order_id = $1 ORDER BY oi.id`, [order.id]);
+      const { rows: items } = await pool.query(`SELECT oi.sku, oi.quantity, oi.unit_price,
+          COALESCE(p.vat_rate, 20) AS vat_rate,
+          COALESCE(o.reverse_charge, false) AS reverse_charge
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        LEFT JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = $1
+       ORDER BY oi.id`, [order.id]);
       const address = order.shipping_address || {};
       const edItems = items.map((item) => {
-        const vatMultiplier = 1 + Number(item.vat_rate || 20) / 100;
+        const vatMultiplier = item.reverse_charge ? 1 : 1 + Number(item.vat_rate || 20) / 100;
         const priceVat = Number(item.unit_price);
-        return { ProductCode: item.sku, Qty: Number(item.quantity), Price: Number((priceVat / vatMultiplier).toFixed(2)), PriceVat: priceVat, VatRate: Number(vatMultiplier.toFixed(4)) };
+        const price = priceVat / vatMultiplier;
+        return { ProductCode: item.sku, Qty: Number(item.quantity), Price: Number(price.toFixed(2)), PriceVat: Number(priceVat.toFixed(2)), VatRate: Number(vatMultiplier.toFixed(4)) };
       });
       const priceVat = Number(order.total);
       const result = await client.createNewOrderCustomer({
