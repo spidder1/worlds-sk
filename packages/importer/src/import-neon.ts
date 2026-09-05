@@ -24,7 +24,16 @@ const connectionUrl = new URL(rawConnectionString);
 connectionUrl.searchParams.delete('sslmode');
 const connectionString = connectionUrl.toString();
 
-function isTargetBrand(name: string, rawBrand?: string): { isMatch: boolean; brandName: 'ASUS' | 'Lenovo' | null } {
+function configuredTargetBrands(): Set<string> {
+  return new Set(
+    (process.env.ED_SAMPLE_BRANDS || 'ASUS,Lenovo')
+      .split(',')
+      .map((brand) => brand.trim().toUpperCase())
+      .filter(Boolean),
+  );
+}
+
+function isTargetBrand(name: string, rawBrand: string | undefined, targetBrands: Set<string>): { isMatch: boolean; brandName: 'ASUS' | 'Lenovo' | null } {
   const b = (rawBrand || '').toUpperCase().trim();
   const title = name.toUpperCase();
 
@@ -37,7 +46,7 @@ function isTargetBrand(name: string, rawBrand?: string): { isMatch: boolean; bra
     title.includes(' TUF ') ||
     title.includes('ZENBOOK')
   ) {
-    return { isMatch: true, brandName: 'ASUS' };
+    return targetBrands.has('ALL') || targetBrands.has('ASUS') ? { isMatch: true, brandName: 'ASUS' } : { isMatch: false, brandName: null };
   }
 
   if (
@@ -48,7 +57,7 @@ function isTargetBrand(name: string, rawBrand?: string): { isMatch: boolean; bra
     title.includes('IDEAPAD') ||
     title.includes('LEGION')
   ) {
-    return { isMatch: true, brandName: 'Lenovo' };
+    return targetBrands.has('ALL') || targetBrands.has('LENOVO') ? { isMatch: true, brandName: 'Lenovo' } : { isMatch: false, brandName: null };
   }
 
   return { isMatch: false, brandName: null };
@@ -414,6 +423,7 @@ export async function importAsusLenovoToNeon() {
 
   const targetProducts: any[] = [];
   const sampleOnly = process.env.ED_SAMPLE_ONLY === 'true';
+  const targetBrands = configuredTargetBrands();
   const sampleLimitRaw = Number.parseInt(process.env.ED_SAMPLE_LIMIT || '250', 10);
   const sampleLimit = Number.isFinite(sampleLimitRaw) && sampleLimitRaw > 0 ? sampleLimitRaw : 250;
   let asusCount = 0;
@@ -428,7 +438,7 @@ export async function importAsusLenovoToNeon() {
     if (!name || name.length < 3) continue;
 
     const rawBrand = String(p.ProducerName || p.ProducerCode || '');
-    const { isMatch, brandName } = isTargetBrand(name, rawBrand);
+    const { isMatch, brandName } = isTargetBrand(name, rawBrand, targetBrands);
     if (!isMatch || !brandName) continue;
     const scope = assessCatalogScope({
       title: name,
