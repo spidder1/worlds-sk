@@ -32,7 +32,7 @@ Posledná revízia: 2026-09-04.
 | Košík so stavom | ✅ | Session košík cez Neon API, aktualizácia a mazanie položiek |
 | Pokladňa (B2C aj B2B) | ✅ | Formulár, režim súkromná/právnická osoba, IČO/DIČ/IČ DPH validácia a `/api/company/lookup` pre SK/CZ registre |
 | Ukladanie objednávok | ✅ | Neon tabuľky `orders`/`order_items`, idempotentné API |
-| Platobná brána | 🟡 | Stripe Checkout + Comgate REST v2.0 redirect/webhook, bankový prevod a dobierka; GoPay zostáva nepripojený |
+| Platobná brána | 🟡 | Stripe Checkout + Comgate REST v2.0 + GoPay REST v3 redirect/webhook, bankový prevod a dobierka; produkčné merchant credentials treba nastaviť |
 | `createNewOrderCustomer` dropshipping | ✅ | Platené objednávky sa zaraďujú do eD fronty a odosielajú workerom |
 | PDF fakturácia | ✅ | Chránený endpoint s položkami, DPH a identifikátormi zákazníka |
 | EU VAT reverse charge / VIES | ✅ | VIES endpoint, validácia zahraničného IČ DPH pri objednávke, netto prepočet, nulová DPH a označenie reverse charge na PDF |

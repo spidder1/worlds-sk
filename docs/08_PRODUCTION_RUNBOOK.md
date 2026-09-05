@@ -116,6 +116,12 @@ SELECT mode, status, total_read, created_count, changed_count, missing_count, me
   `https://worlds.sk/api/payments/comgate/notify` as the Comgate status URL;
   the webhook is accepted only after the transaction is verified against the
   Comgate status API.
+- If GoPay is enabled, configure `GOPAY_GO_ID`, `GOPAY_CLIENT_ID`,
+  `GOPAY_CLIENT_SECRET` and `GOPAY_TEST` in Vercel. Register
+  `https://worlds.sk/api/payments/gopay/notify` as the GoPay notification URL;
+  the webhook always verifies the payment state through GoPay REST API before
+  changing the order status. Use the sandbox first, then set `GOPAY_TEST=false`
+  for production credentials.
 - If Gemini intent extraction is desired, configure `GEMINI_API_KEY` and
   optionally `GEMINI_MODEL` (the assistant keeps its deterministic fallback
   when the key is absent or the provider is unavailable).
