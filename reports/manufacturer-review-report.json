@@ -1,0 +1,516 @@
+{
+  "generatedAt": "2026-09-05T05:12:08.222Z",
+  "productsScanned": 67572,
+  "reviewedRows": 1198,
+  "verifiedBrands": 86,
+  "unverifiedCandidates": 366,
+  "junkRowsRemoved": 746,
+  "rawManufacturers": 1199,
+  "canonicalManufacturers": 452,
+  "changedProducts": 15319,
+  "invalidRawManufacturers": 0,
+  "recoveredFromTitle": 6696,
+  "unbrandedProducts": 8628,
+  "examples": [
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranná folie Watch Protection ARC pro Garmin Vivoactive 4"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranná folie Watch Protection ARC pro Garmin Vivosmart 5"
+    },
+    {
+      "raw": "Súprava",
+      "canonical": "HPE",
+      "sampleTitle": "Súprava HPE NS AF/HF 3000W Dual DC PS Kit"
+    },
+    {
+      "raw": "Xbox",
+      "canonical": "Unbranded",
+      "sampleTitle": "Xbox Wireless Controller bílý - ovladač"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranná folie Watch Protection ARC pro Honor Watch ES (4ks)"
+    },
+    {
+      "raw": "Náhradný",
+      "canonical": "HPE",
+      "sampleTitle": "Náhradný adaptér HPE NS 32Gb 2p FC"
+    },
+    {
+      "raw": "Uw",
+      "canonical": "HP",
+      "sampleTitle": "UW HP Fctry Express Blade Svr Pkg 4 SVC"
+    },
+    {
+      "raw": "In",
+      "canonical": "Unbranded",
+      "sampleTitle": "IN WIN Ventilátor Crown AC120, 12 cm, dvojbalenie"
+    },
+    {
+      "raw": "Owa",
+      "canonical": "Armor",
+      "sampleTitle": "OWA Armor toner pro HP LJ Enterprise flow 634 10.500 str., komp.s W1470A"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranná folie Watch Protection ARC pro Huawei Band 4"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranná folie Watch Protection ARC pro Huawei Watch D"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranná folie Watch Protection ARC pro Huawei Watch Fit 2"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranná folie Watch Protection ARC pro Xiaomi Amazfit BIP S"
+    },
+    {
+      "raw": "Uw",
+      "canonical": "HP",
+      "sampleTitle": "UW HP Install mc-Series SL5042 Service"
+    },
+    {
+      "raw": "Uw",
+      "canonical": "HP",
+      "sampleTitle": "UW HP Install Stor Autoldr/TapeDrvArray SVC"
+    },
+    {
+      "raw": "Ubnt",
+      "canonical": "Unbranded",
+      "sampleTitle": "UBNT Swiss Army Knife Ultra"
+    },
+    {
+      "raw": "Ubnt",
+      "canonical": "Unbranded",
+      "sampleTitle": "UBNT USW-Ultra, bez napájecího adaptéru"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranná folie Watch Protection ARC pro Xiaomi Amazfit BIP U Pro"
+    },
+    {
+      "raw": "Ubnt",
+      "canonical": "Unbranded",
+      "sampleTitle": "UBNT USW-Ultra-60W"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranná folie Watch Protection ARC pro Xiaomi Mi Watch Lite"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk bezdrátová stereo sluchátka LifePods, stereo, nabíjecí pouzdro, bílá"
+    },
+    {
+      "raw": "Ubnt",
+      "canonical": "Unbranded",
+      "sampleTitle": "UBNT USW-Ultra-210W"
+    },
+    {
+      "raw": "Ubnt",
+      "canonical": "Unbranded",
+      "sampleTitle": "UBNT USW-Pro-Max-24-PoE"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo FlexibleGlass pro Apple iPad 10,9\" 10 gen / 11\" 11 gen"
+    },
+    {
+      "raw": "Ubnt",
+      "canonical": "Unbranded",
+      "sampleTitle": "UBNT USW-Pro-Max-48-PoE"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo FlexibleGlass pro Apple iPad 3. generace"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo FlexibleGlass pro Apple iPad Pro 12,9\" 3/4/5/6 gen"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo FlexibleGlass pro Apple iPhone 12 Pro Max"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo FlexibleGlass pro Garmin Edge 130"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo FlexibleGlass pro Huawei MatePad 11 Wifi"
+    },
+    {
+      "raw": "Owa",
+      "canonical": "Armor",
+      "sampleTitle": "OWA Armor toner pre HP LJ Pro M203, M227, 1600 strán, CF230A, čierna/čierna"
+    },
+    {
+      "raw": "Owa",
+      "canonical": "Armor",
+      "sampleTitle": "OWA Armor toner pre HP LJ Pro M203, M227, 3500 strán, CF230X, čierna/čierna"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo FlexibleGlass pro Realme GT2 5G"
+    },
+    {
+      "raw": "Postscriptová",
+      "canonical": "HP",
+      "sampleTitle": "PostScriptová tlačiareň HP Designjet Z6dr 44\" s V-rezom (v-trimmer)"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo FlexibleGlass pro Tecno Spark 10 Pro"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Amazfit Falcon"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Amazfit GTR 4 46mm"
+    },
+    {
+      "raw": "Penová",
+      "canonical": "Unbranded",
+      "sampleTitle": "Penová podložka pod myš a zápästie Fellowes čierna"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Amazfit T-Rex 2"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garett Women Emma"
+    },
+    {
+      "raw": "Usb-c",
+      "canonical": "Unbranded",
+      "sampleTitle": "USB-C 100W G6 Dock"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Edge 130 Plus"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Fenix 5S 42mm"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Fenix 6"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Fenix 7 Pro Solar"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Fenix 7S"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Fenix 7S Pro Solar"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Fenix 7X"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Forerunner 255"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Forerunner 255s Music"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Forerunner 945"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Forerunner 955"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk Watch Protection FlexibleGlass pro Garmin Instinct 2"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Instinct 2s"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Instinct 2X"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Garmin Quatix 7X"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Huawei Watch GT 2 Pro"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Huawei Watch GT 3 Pro Ceramic, 43mm"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Huawei Watch GT 3 SE"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Huawei Watch GT Runner"
+    },
+    {
+      "raw": "Ubnt",
+      "canonical": "Unbranded",
+      "sampleTitle": "UBNT UA-SK-Elevator Starter Kit"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Realme Watch S"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Samsung Galaxy Watch3 R850 41mm"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Samsung Galaxy Watch4 Classic 46mm"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Samsung Galaxy Watch5 Pro"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Samsung Galaxy Watch6 40mm"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Samsung Galaxy Watch6 Classic 43mm"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Samsung Galaxy Watch6 Classic 47mm"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Suunto D5"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Xiaomi Amazfit T-Rex"
+    },
+    {
+      "raw": "Redukcia",
+      "canonical": "Yealink",
+      "sampleTitle": "Redukcia Yealink EHS36 pre bezdrôtové náhlavné súpravy (Jabra, Plantronics, Sennheiser)"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Xiaomi Amazfit Verge"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk hybridní sklo Watch Protection FlexibleGlass pro Xiaomi Watch S1"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Armor",
+      "sampleTitle": "3mk ochranný kryt Armor Case pro Apple iPhone 12 mini /AS"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Armor",
+      "sampleTitle": "3mk ochranný kryt Armor Case pro Apple iPhone 12 Pro Max /AS"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Armor",
+      "sampleTitle": "3mk ochranný kryt Armor Case pro POCO M4 Pro 5G, čirý /AS"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Armor",
+      "sampleTitle": "3mk ochranný kryt Armor Case pro Samsung Galaxy A04s (SM-A047) čirý /AS"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Armor",
+      "sampleTitle": "3mk ochranný kryt Armor Case pro Samsung Galaxy A34 5G (SM-A346) čirý /AS"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Armor",
+      "sampleTitle": "3mk ochranný kryt Armor Case pro Samsung Galaxy A54 5G (SM-A546) čirý /AS"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Armor",
+      "sampleTitle": "3mk ochranný kryt Armor Case pro Samsung Galaxy S23 (SM-S911) čirý /AS"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Armor",
+      "sampleTitle": "3mk ochranný kryt Armor Case pro Xiaomi Redmi 9C, čirý /AS"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Clear Case pro Redmi Note 12 5G, čirá"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Clear Case pro Samsung Galaxy S21 (SM-G991) čirá"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Clear Case pro Samsung Galaxy S21+ (SM-G996) čirá"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Clear Case pro Samsung Galaxy S23 FE (SM-S711) čirá"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Clear Case pro Xiaomi 11T / Xiaomi 11T Pro, čirá"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Clear Case pro Xiaomi 13, čirá"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Magcase pro Apple iPhone 13, čirý"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Magcase pro Apple iPhone 14 Pro, čirý"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Magcase pro Apple iPhone 14, čirý"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Matt Case pro Apple iPhone 11 Pro Max, Black"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Matt Case pro Apple iPhone 11 Pro, Black"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Matt Case pro Apple iPhone 12, 12 Pro, Blueberry"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Matt Case pro Apple iPhone 12, 12 Pro, Black"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Matt Case pro Apple iPhone 13 mini, Lychee"
+    },
+    {
+      "raw": "Ubnt",
+      "canonical": "Unbranded",
+      "sampleTitle": "UBNT INS-8023AF-I [interný PoE konvertor 48V z (aktívny 802.3af) na 18 V (pasívne PoE pre UBNT)]"
+    },
+    {
+      "raw": "Batéria",
+      "canonical": "Avacom",
+      "sampleTitle": "Batéria AVACOM pre HP 440 G0/G1, 450 G0/G1, 470 G0/G1 Li-Ion 10,8 V 4400 mAh"
+    },
+    {
+      "raw": "Dúhový",
+      "canonical": "Chieftec",
+      "sampleTitle": "Dúhový ventilátor CHIEFTEC TORNADO CF-1225RGB so 6-pinovým konektorom pre GR-01B/CF-3012-RGB"
+    },
+    {
+      "raw": "3mk",
+      "canonical": "Unbranded",
+      "sampleTitle": "3mk ochranný kryt Matt Case pro Apple iPhone 13 mini, Strawberry"
+    },
+    {
+      "raw": "Owa",
+      "canonical": "Armor",
+      "sampleTitle": "OWA Armor toner pre SAMSUNG Xpress M2020,2026, 2070, 2071, 2000 (EC) strán, MLTD111L, čierny/čierny (MLT-D111L,SU799A)"
+    }
+  ]
+}
