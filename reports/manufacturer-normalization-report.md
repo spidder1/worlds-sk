@@ -1,6 +1,6 @@
 # Manufacturer normalization report
 
-Generated: 2026-09-05T03:40:40.595Z
+Generated: 2026-09-05T03:41:31.935Z
 
 | Metric | Count |
 | --- | ---: |
