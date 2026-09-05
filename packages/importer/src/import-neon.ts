@@ -745,7 +745,9 @@ export async function importAsusLenovoToNeon() {
 
 function sampleOnlyLabel(): string {
   const brands = (process.env.ED_SAMPLE_BRANDS || 'ASUS,Lenovo').replace(/\s+/g, '').replace(/,/g, '_').toUpperCase();
-  return process.env.ED_SAMPLE_ONLY === 'true' ? `SAMPLE_${brands}` : `FULL_${brands}`;
+  const scope = process.env.ED_SAMPLE_ONLY === 'true' ? `SAMPLE_${brands}` : `FULL_${brands}`;
+  const dryRun = process.argv.includes('--dry-run') || process.env.ED_DRY_RUN === 'true';
+  return dryRun ? `DRY_RUN_${scope}` : scope;
 }
 
 if (process.argv[1]?.endsWith('import-neon.ts') || process.argv[1]?.endsWith('import-neon.js')) {
