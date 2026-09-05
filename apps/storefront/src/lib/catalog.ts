@@ -264,16 +264,6 @@ export const CATEGORIES: TaxonomyCategory[] = [
         allowedFilterAttributes: ['brand', 'interface'],
       },
       {
-        id: 'cat-zaruky-a-sluzby',
-        slug: 'zaruky-a-sluzby',
-        name: 'Záruky, rozšírenia a služby',
-        parentSlug: 'prislusenstvo-a-periferie',
-        level: 2,
-        isSeoIndexed: true,
-        displayOrder: 3,
-        allowedFilterAttributes: ['brand'],
-      },
-      {
         id: 'cat-klavesnice-a-mysi',
         slug: 'klavesnice-a-mysi',
         name: 'Klávesnice a myši',
