@@ -37,3 +37,12 @@ DROP TRIGGER IF EXISTS products_lifecycle_history ON products;
 CREATE TRIGGER products_lifecycle_history
 AFTER INSERT OR UPDATE OF status ON products
 FOR EACH ROW EXECUTE FUNCTION worlds_record_product_lifecycle_change();
+
+INSERT INTO product_lifecycle_history
+  (product_id, old_status, new_status, reason, batch_id, changed_at, metadata)
+SELECT p.id, NULL, p.status, 'MIGRATION_BACKFILL', p.last_import_batch,
+       COALESCE(p.created_at, now()), jsonb_build_object('source', 'migration-0066')
+  FROM products p
+ WHERE NOT EXISTS (
+   SELECT 1 FROM product_lifecycle_history h WHERE h.product_id = p.id
+ );
