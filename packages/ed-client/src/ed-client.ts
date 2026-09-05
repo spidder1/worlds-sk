@@ -372,6 +372,14 @@ export class EDSystemClient {
     return this.getCatalogueDownloadStatus('getProductCatalogueStockDownloadXML');
   }
 
+  async getProductCatalogueDownloadXML(options: { onStock?: boolean } = {}): Promise<EDProductListStatus> {
+    return this.getCatalogueDownloadStatus('getProductCatalogueDownloadXML', { onStock: options.onStock ?? false });
+  }
+
+  async getProductCatalogueDownloadZIP(options: { onStock?: boolean } = {}): Promise<EDProductListStatus> {
+    return this.getCatalogueDownloadStatus('getProductCatalogueDownloadZIP', { onStock: options.onStock ?? false });
+  }
+
   /**
    * Premium catalogue reconciliation endpoint. This is intentionally separate
    * from the primary full import because eD documents it as an audit feed.
@@ -401,6 +409,80 @@ export class EDSystemClient {
     categories?: string;
   } = {}): Promise<EDProductListStatus> {
     return this.getCatalogueDownloadStatus('getProductCatalogueFullDownloadZIPv1', {
+      onStock: options.onStock ?? false,
+      Comodities: options.commodities ?? '',
+      ComoditiesTree: options.commoditiesTree ?? '',
+      Producers: options.producers ?? '',
+      Categories: options.categories ?? '',
+    });
+  }
+
+  async getProductCatalogueFullDownloadXML(options: {
+    onStock?: boolean;
+    commodities?: string;
+    commoditiesTree?: string;
+    producers?: string;
+    categories?: string;
+  } = {}): Promise<EDProductListStatus> {
+    return this.getCatalogueDownloadStatus('getProductCatalogueFullDownloadXML', {
+      onStock: options.onStock ?? false,
+      Comodities: options.commodities ?? '',
+      ComoditiesTree: options.commoditiesTree ?? '',
+      Producers: options.producers ?? '',
+      Categories: options.categories ?? '',
+    });
+  }
+
+  async getProductCatalogueFullDownloadXMLv1(options: {
+    onStock?: boolean;
+    commoditiesTree?: string;
+  } = {}): Promise<EDProductListStatus> {
+    return this.getCatalogueDownloadStatus('getProductCatalogueFullDownloadXMLv1', {
+      onStock: options.onStock ?? false,
+      ComoditiesTree: options.commoditiesTree ?? '',
+    });
+  }
+
+  async getProductCatalogueFullDownloadXMLExt(options: {
+    onStock?: boolean;
+    commodities?: string;
+    commoditiesTree?: string;
+    producers?: string;
+    categories?: string;
+  } = {}): Promise<EDProductListStatus> {
+    return this.getCatalogueDownloadStatus('getProductCatalogueFullDownloadXMLExt', {
+      onStock: options.onStock ?? false,
+      Comodities: options.commodities ?? '',
+      ComoditiesTree: options.commoditiesTree ?? '',
+      Producers: options.producers ?? '',
+      Categories: options.categories ?? '',
+    });
+  }
+
+  async getProductCatalogueFullDownloadZIP(options: {
+    onStock?: boolean;
+    commodities?: string;
+    commoditiesTree?: string;
+    producers?: string;
+    categories?: string;
+  } = {}): Promise<EDProductListStatus> {
+    return this.getCatalogueDownloadStatus('getProductCatalogueFullDownloadZIP', {
+      onStock: options.onStock ?? false,
+      Comodities: options.commodities ?? '',
+      ComoditiesTree: options.commoditiesTree ?? '',
+      Producers: options.producers ?? '',
+      Categories: options.categories ?? '',
+    });
+  }
+
+  async getProductCatalogueFullDownloadZIPExt(options: {
+    onStock?: boolean;
+    commodities?: string;
+    commoditiesTree?: string;
+    producers?: string;
+    categories?: string;
+  } = {}): Promise<EDProductListStatus> {
+    return this.getCatalogueDownloadStatus('getProductCatalogueFullDownloadZIPExt', {
       onStock: options.onStock ?? false,
       Comodities: options.commodities ?? '',
       ComoditiesTree: options.commoditiesTree ?? '',
