@@ -8,7 +8,7 @@ import { getManufacturers, getProductsPage } from '../../lib/catalog';
 import { searchMeilisearch } from '../../lib/meilisearch';
 
 interface Props {
-  searchParams: Promise<{ q?: string; vyrobca?: string; inStock?: string; page?: string; cpu?: string; ram?: string; ssd?: string }>;
+  searchParams: Promise<{ q?: string; vyrobca?: string; inStock?: string; page?: string; cpu?: string; ram?: string; ssd?: string; minPrice?: string; maxPrice?: string }>;
 }
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
@@ -25,7 +25,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function SearchPage({ searchParams }: Props) {
-  const { q = '', vyrobca = '', inStock, page: rawPage, cpu = '', ram = '', ssd = '' } = await searchParams;
+  const { q = '', vyrobca = '', inStock, page: rawPage, cpu = '', ram = '', ssd = '', minPrice: rawMinPrice, maxPrice: rawMaxPrice } = await searchParams;
   const parsedPage = Number.parseInt(rawPage ?? '1', 10);
   const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const query = q.trim();
@@ -35,10 +35,14 @@ export default async function SearchPage({ searchParams }: Props) {
   const cpuFilters = cpu.split(',').map((s) => s.trim()).filter(Boolean);
   const ramFilters = ram.split(',').map((s) => s.trim()).filter(Boolean);
   const ssdFilters = ssd.split(',').map((s) => s.trim()).filter(Boolean);
+  const minPrice = Number.parseFloat(rawMinPrice ?? '');
+  const maxPrice = Number.parseFloat(rawMaxPrice ?? '');
+  const validMinPrice = Number.isFinite(minPrice) && minPrice >= 0 ? minPrice : undefined;
+  const validMaxPrice = Number.isFinite(maxPrice) && maxPrice > 0 ? maxPrice : undefined;
 
-  const indexed = page === 1 && query && !vyrobca && !cpu && !ram && !ssd && !inStockOnly ? await searchMeilisearch(query, 1000) : null;
+  const indexed = page === 1 && query && !vyrobca && !cpu && !ram && !ssd && !inStockOnly && !rawMinPrice && !rawMaxPrice ? await searchMeilisearch(query, 1000) : null;
   const [results, manufacturers] = await Promise.all([
-    getProductsPage({ query: indexed ? '' : query, searchIds: indexed?.ids, brand: vyrobca, inStockOnly, page, cpu, ram, ssd }),
+    getProductsPage({ query: indexed ? '' : query, searchIds: indexed?.ids, brand: vyrobca, inStockOnly, page, cpu, ram, ssd, minPrice: validMinPrice, maxPrice: validMaxPrice }),
     getManufacturers({ query, inStockOnly }),
   ]);
 
@@ -163,7 +167,7 @@ export default async function SearchPage({ searchParams }: Props) {
                 basePath="/vyhladavanie"
                 currentPage={results.page}
                 totalPages={results.pageCount}
-                searchParams={{ q: query, vyrobca, inStock, cpu, ram, ssd }}
+                searchParams={{ q: query, vyrobca, inStock, cpu, ram, ssd, minPrice: rawMinPrice, maxPrice: rawMaxPrice }}
               />
             </>
           )}
