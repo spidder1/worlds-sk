@@ -1,6 +1,9 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Lock, ArrowLeft } from 'lucide-react';
+import { getEditableContentPage } from '../../lib/content';
+import { EditableContentPage } from '../../components/EditableContentPage';
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Ochrana osobných údajov (GDPR) | Worlds.sk',
@@ -8,7 +11,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default function OchranaOsobnychUdajovPage() {
+export default async function OchranaOsobnychUdajovPage() {
+  const editable = await getEditableContentPage('ochrana-osobnych-udajov');
+  if (editable) return <EditableContentPage page={editable} />;
   return (
     <div className="container mx-auto px-4 py-12 max-w-4xl">
       <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">

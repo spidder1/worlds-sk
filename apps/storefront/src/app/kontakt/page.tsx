@@ -6,8 +6,13 @@ import {
   Clock,
   ArrowLeft,
 } from 'lucide-react';
+import { getEditableContentPage } from '../../lib/content';
+import { EditableContentPage } from '../../components/EditableContentPage';
+export const dynamic = 'force-dynamic';
 
-export default function KontaktPage() {
+export default async function KontaktPage() {
+  const editable = await getEditableContentPage('kontakt');
+  if (editable) return <EditableContentPage page={editable} />;
   return (
     <div className="bg-slate-50 min-h-screen py-12">
       <div className="container mx-auto px-4 max-w-5xl">

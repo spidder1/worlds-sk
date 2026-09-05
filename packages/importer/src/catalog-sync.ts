@@ -14,6 +14,7 @@ import { sanitizeAndFormatHtml } from './html-sanitizer.js';
 import { classifyProductIndependently } from './taxonomy-definition.js';
 import { assessCatalogScope } from './catalog-scope.js';
 import { createNeonRpcClient } from './neon-rpc.js';
+import { loadPricingConfig, marginFor, type PricingConfig } from './pricing-config.js';
 import { calculateQualityScore } from '@worlds/types';
 
 type SyncMode = 'full' | 'stock-price';
@@ -134,12 +135,6 @@ function extractBrand(title: string, rawBrand?: unknown): string {
   return firstToken ? firstToken.slice(0, 120) : 'Unbranded';
 }
 
-function marginFor(cost: number): number {
-  if (cost < 50) return 18;
-  if (cost > 1000) return 10;
-  return 12;
-}
-
 function parseWarrantyMonths(raw: unknown): number {
   const match = value(raw).match(/\d+/);
   const parsed = match ? Number.parseInt(match[0], 10) : 24;
@@ -192,7 +187,7 @@ export function extractProductImageUrls(product: Record<string, unknown>): strin
   return [...urls];
 }
 
-function transformFullProduct(product: Record<string, unknown>): Record<string, unknown> | null {
+function transformFullProduct(product: Record<string, unknown>, pricing: PricingConfig): Record<string, unknown> | null {
   const code = value(product.Code ?? product.ProId);
   const title = value(product.Name ?? product.ProductName);
   if (!code || title.length < 3) return null;
@@ -206,8 +201,8 @@ function transformFullProduct(product: Record<string, unknown>): Record<string, 
   );
   const hasCommercialData = totalCostWithFees > 0;
 
-  const vatRate = Math.max(0, numberValue(product.Vat, 20));
-  const marginPercentage = marginFor(totalCostWithFees);
+  const vatRate = pricing.vatRate;
+  const marginPercentage = marginFor(totalCostWithFees, pricing.marginBands);
   const basePrice = hasCommercialData
     ? Number((totalCostWithFees * (1 + marginPercentage / 100)).toFixed(2))
     : 0;
@@ -336,7 +331,7 @@ function transformFullProduct(product: Record<string, unknown>): Record<string, 
   };
 }
 
-function transformStockProduct(product: Record<string, unknown>): Record<string, unknown> | null {
+function transformStockProduct(product: Record<string, unknown>, pricing: PricingConfig): Record<string, unknown> | null {
   const code = value(product.Code ?? product.ProId ?? product.PartNumber);
   if (!code) return null;
   const supplierCost = Math.max(0, numberValue(product.YourPrice));
@@ -344,8 +339,8 @@ function transformStockProduct(product: Record<string, unknown>): Record<string,
   const authorFee = Math.max(0, numberValue(product.AuthorFee));
   const totalCostWithFees = Math.max(0, numberValue(product.YourPriceWithFees, supplierCost + garbageFee + authorFee));
   const hasCommercialData = totalCostWithFees > 0;
-  const vatRate = Math.max(0, numberValue(product.Vat, 20));
-  const marginPercentage = marginFor(totalCostWithFees);
+  const vatRate = pricing.vatRate;
+  const marginPercentage = marginFor(totalCostWithFees, pricing.marginBands);
   const basePrice = Number((totalCostWithFees * (1 + marginPercentage / 100)).toFixed(2));
   const finalPrice = Number((basePrice * (1 + vatRate / 100)).toFixed(2));
   const stockCountRaw = numberValue(product.OnStockCount, Number.NaN);
@@ -550,11 +545,12 @@ function addResult(target: RpcBatchResult, update: Partial<RpcBatchResult>): voi
 
 export async function runCatalogSync(options = parseArgs(process.argv.slice(2))): Promise<RpcBatchResult> {
   const startedAt = Date.now();
+  const pricing = await loadPricingConfig();
   const rpc = options.dryRun ? undefined : createRpcClient(options.brandScope);
   const sources = await resolveSources(options);
   const sourceBytes = sources.reduce((total, source) => total + fs.statSync(source.filePath).size, 0);
   const sourceMethod = sources.map((source) => source.sourceMethod).join(',');
-  console.log(`[import] mode=${options.mode} transport=neon scope=${options.scope} brands=${options.brandScope.join(',') || 'all'} sources=${sources.length} bytes=${sourceBytes}`);
+  console.log(`[import] mode=${options.mode} transport=neon scope=${options.scope} brands=${options.brandScope.join(',') || 'all'} minCost=${pricing.minimumCostEur} vat=${pricing.vatRate} marginBands=${pricing.marginBands.length} sources=${sources.length} bytes=${sourceBytes}`);
 
   const batchId = rpc ? await rpc<string>('begin_ed_import', {
     p_batch_type: options.mode === 'full' ? 'FULL_CATALOG' : 'STOCK_PRICE',
@@ -564,6 +560,9 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
       limit: options.limit ?? null,
       batchSize: options.batchSize,
       scope: options.scope,
+      minimumCostEur: pricing.minimumCostEur,
+      vatRate: pricing.vatRate,
+      marginBands: pricing.marginBands,
       transport: 'neon',
     },
   }) : 'dry-run';
@@ -637,7 +636,13 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
             continue;
           }
         }
-        const transformed = options.mode === 'full' ? transformFullProduct(rawProduct) : transformStockProduct(rawProduct);
+        const supplierCost = Math.max(0, numberValue(rawProduct.YourPriceWithFees, numberValue(rawProduct.YourPrice)));
+        if (supplierCost < pricing.minimumCostEur) {
+          filtered += 1;
+          filteredByReason.MINIMUM_COST_EUR = (filteredByReason.MINIMUM_COST_EUR ?? 0) + 1;
+          continue;
+        }
+        const transformed = options.mode === 'full' ? transformFullProduct(rawProduct, pricing) : transformStockProduct(rawProduct, pricing);
         if (transformed && options.mode === 'full' && options.brandScope.length > 0) {
           const brand = String(transformed.brand ?? '').toLowerCase();
           const inScope = options.brandScope.some((allowed) => allowed.toLowerCase() === brand);

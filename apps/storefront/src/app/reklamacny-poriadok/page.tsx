@@ -7,6 +7,9 @@ import {
   Wrench,
   FileCheck,
 } from 'lucide-react';
+import { getEditableContentPage } from '../../lib/content';
+import { EditableContentPage } from '../../components/EditableContentPage';
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Reklamačný poriadok a záručné podmienky | Worlds.sk',
@@ -14,7 +17,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default function ReklamacnyPoriadokPage() {
+export default async function ReklamacnyPoriadokPage() {
+  const editable = await getEditableContentPage('reklamacny-poriadok');
+  if (editable) return <EditableContentPage page={editable} />;
   return (
     <div className="bg-slate-50 min-h-screen py-12">
       <div className="container mx-auto px-4 max-w-5xl">

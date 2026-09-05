@@ -9,13 +9,18 @@ import {
   Calendar,
   Database
 } from 'lucide-react';
+import { getEditableContentPage } from '../../lib/content';
+import { EditableContentPage } from '../../components/EditableContentPage';
 
 export const metadata: Metadata = {
   title: 'O nás | Worlds.sk',
   description: 'Spoznajte Worlds.sk – moderný technologický e-shop prevádzkovaný spoločnosťou ETHOS Technology, s. r. o. od roku 2008.',
 };
+export const dynamic = 'force-dynamic';
 
-export default function ONasPage() {
+export default async function ONasPage() {
+  const editable = await getEditableContentPage('o-nas');
+  if (editable) return <EditableContentPage page={editable} />;
   return (
     <div className="bg-slate-50 min-h-screen py-12">
       <div className="container mx-auto px-4 max-w-5xl">

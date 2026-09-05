@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft, Clock3, Mail, Truck } from 'lucide-react';
+import { getEditableContentPage } from '../../lib/content';
+import { EditableContentPage } from '../../components/EditableContentPage';
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Doprava a platba | Worlds.sk',
@@ -8,7 +11,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default function DopravaAPlatbaPage() {
+export default async function DopravaAPlatbaPage() {
+  const editable = await getEditableContentPage('doprava-a-platba');
+  if (editable) return <EditableContentPage page={editable} />;
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
       <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">

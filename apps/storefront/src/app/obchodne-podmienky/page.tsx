@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -15,6 +15,9 @@ import {
 
 export default function ObchodnePodmienkyPage() {
   const [activeTab, setActiveTab] = useState<'b2c' | 'b2b'>('b2c');
+  const [editable, setEditable] = useState<{ title: string; body: string } | null>(null);
+  useEffect(() => { fetch('/api/content/obchodne-podmienky').then((response) => response.ok ? response.json() : null).then((value) => { if (value?.body?.trim()) setEditable(value); }).catch(() => undefined); }, []);
+  if (editable) return <div className="container mx-auto max-w-4xl px-4 py-12"><div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm md:p-12"><h1 className="text-3xl font-extrabold text-slate-900">{editable.title}</h1><div className="mt-6 space-y-4 text-sm leading-7 text-slate-700">{editable.body.split(/\n\s*\n|\r?\n/).map((paragraph, index) => paragraph.trim() ? <p key={index}>{paragraph.trim()}</p> : null)}</div></div></div>;
   return (
     <div className="bg-slate-50 min-h-screen py-12">
       <div className="container mx-auto px-4 max-w-5xl">
