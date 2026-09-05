@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Check, X, ChevronDown, ChevronUp, RotateCcw, Building2, SlidersHorizontal, Search } from 'lucide-react';
 import type { CatalogFacets } from '../lib/catalog';
@@ -50,6 +50,13 @@ export function ProductFilterSidebar({ facets, totalCount, allManufacturers = []
   // Local brand search filter inside sidebar
   const [brandSearch, setBrandSearch] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [minPriceInput, setMinPriceInput] = useState(activeMinPrice);
+  const [maxPriceInput, setMaxPriceInput] = useState(activeMaxPrice);
+
+  useEffect(() => {
+    setMinPriceInput(activeMinPrice);
+    setMaxPriceInput(activeMaxPrice);
+  }, [activeMinPrice, activeMaxPrice]);
 
   // Section collapse states
   const [sections, setSections] = useState<FilterSectionState>({
@@ -123,6 +130,19 @@ export function ProductFilterSidebar({ facets, totalCount, allManufacturers = []
     } else {
       params.delete(key);
     }
+    params.set('page', '1');
+    const qs = params.toString();
+    router.push(`${pathname}${qs ? `?${qs}` : ''}`);
+  };
+
+  const applyPriceFilter = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    const min = Number.parseFloat(minPriceInput.replace(',', '.'));
+    const max = Number.parseFloat(maxPriceInput.replace(',', '.'));
+    if (Number.isFinite(min) && min >= 0) params.set('minPrice', min.toFixed(2));
+    else params.delete('minPrice');
+    if (Number.isFinite(max) && max > 0) params.set('maxPrice', max.toFixed(2));
+    else params.delete('maxPrice');
     params.set('page', '1');
     const qs = params.toString();
     router.push(`${pathname}${qs ? `?${qs}` : ''}`);
@@ -225,7 +245,27 @@ export function ProductFilterSidebar({ facets, totalCount, allManufacturers = []
             ) : null}
           </div>
 
-          {/* 2. Manufacturers / Brands Filter */}
+          {/* 2. Price range filter */}
+          <div className="space-y-2 pt-3 border-t border-slate-100">
+            <button
+              onClick={() => toggleSection('price')}
+              className="w-full flex items-center justify-between font-bold text-xs text-slate-800 uppercase tracking-wider"
+            >
+              <span>Cena (€)</span>
+              {sections.price ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            </button>
+            {sections.price ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <input aria-label="Minimálna cena" inputMode="decimal" value={minPriceInput} onChange={(event) => setMinPriceInput(event.target.value)} placeholder="Od" className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs" />
+                  <input aria-label="Maximálna cena" inputMode="decimal" value={maxPriceInput} onChange={(event) => setMaxPriceInput(event.target.value)} placeholder="Do" className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs" />
+                </div>
+                <button type="button" onClick={applyPriceFilter} className="w-full rounded-lg bg-brand-600 px-3 py-2 text-xs font-bold text-white hover:bg-brand-700">Použiť cenu</button>
+              </div>
+            ) : null}
+          </div>
+
+          {/* 3. Manufacturers / Brands Filter */}
           <div className="space-y-3 pt-3 border-t border-slate-100">
             <button
               onClick={() => toggleSection('brands')}
