@@ -10,6 +10,7 @@ if (!endpointValue) throw new Error('ED_ENDPOINT_URL is required');
 const endpoint = new URL(endpointValue);
 if (endpoint.protocol !== 'https:') throw new Error('ED_ENDPOINT_URL must use HTTPS');
 if (!endpoint.hostname) throw new Error('ED_ENDPOINT_URL must contain a hostname');
+if (endpoint.username || endpoint.password) throw new Error('ED_ENDPOINT_URL must not contain userinfo');
 
 const wsdlUrl = new URL(endpoint.toString());
 // Some classic ASMX endpoints distinguish the bare `?WSDL` form from the
@@ -18,6 +19,8 @@ if (!/[?&]WSDL(?:=|&|$)/i.test(wsdlUrl.search)) {
   wsdlUrl.search = `${wsdlUrl.search ? `${wsdlUrl.search}&` : '?'}WSDL`;
 }
 if (wsdlUrl.hostname !== endpoint.hostname) throw new Error('WSDL host must match ED_ENDPOINT_URL host');
+wsdlUrl.username = '';
+wsdlUrl.password = '';
 
 const response = await fetch(wsdlUrl, { signal: AbortSignal.timeout(30_000), headers: { accept: 'text/xml, application/xml;q=0.9, */*;q=0.1' } });
 if (!response.ok) throw new Error(`WSDL request failed with HTTP ${response.status}`);
