@@ -64,7 +64,13 @@ test('full imports register manufacturers before products', () => {
 
 test('full imports do not reintroduce a manufacturer marked removed by admin', () => {
   assert.match(upsert, /removed\.audit_class = 'REMOVED'/);
-  assert.match(upsert, /THEN '' ELSE item\.brand END AS brand/);
+  assert.match(upsert, /THEN '' ELSE item\.brand END\s*\)\s*AS brand/);
+});
+
+test('full imports prefer an active reviewed manufacturer mapping', () => {
+  assert.match(upsert, /FROM manufacturer_mappings mapping/);
+  assert.match(upsert, /mapping\.status = 'ACTIVE'/);
+  assert.match(upsert, /canonical\.name/);
 });
 
 test('unchanged products are skipped but still stamped with the current batch', () => {

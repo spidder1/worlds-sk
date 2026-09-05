@@ -121,11 +121,20 @@ WITH input AS (
     item.mpn,
     item.mpn2,
     item.ean,
-    CASE WHEN EXISTS (
-      SELECT 1 FROM manufacturers removed
-       WHERE removed.audit_class = 'REMOVED'
-         AND lower(trim(removed.name)) = lower(trim(item.brand))
-    ) THEN '' ELSE item.brand END AS brand,
+    COALESCE(
+      (SELECT canonical.name
+         FROM manufacturer_mappings mapping
+         JOIN manufacturers canonical ON canonical.id = mapping.manufacturer_id
+        WHERE mapping.producer_code = item.producer_code
+          AND mapping.status = 'ACTIVE'
+          AND COALESCE(canonical.audit_class, 'VERIFIED_BRAND') <> 'REMOVED'
+        LIMIT 1),
+      CASE WHEN EXISTS (
+        SELECT 1 FROM manufacturers removed
+         WHERE removed.audit_class = 'REMOVED'
+           AND lower(trim(removed.name)) = lower(trim(item.brand))
+      ) THEN '' ELSE item.brand END
+    ) AS brand,
     item.producer_code,
     item.category_slug,
     COALESCE(item.category_hierarchy, '[]'::jsonb)  AS category_hierarchy,
