@@ -11,8 +11,9 @@ type CategoryRow = { category_slug: string; count: string };
 export default async function AdminQualityPage() {
   if (!(await isAdminAuthenticated())) redirect('/admin');
   const notebookSlugs = ['notebooky', 'herne-notebooky', 'firemne-notebooky', 'ultrabooky', '2v1-a-dotykove-notebooky'];
-  const [lowQuality, missingImages, missingPrice, missingAttrs, invalidBrands, notebookMismatch, categoryCounts] = await Promise.all([
+  const [lowQuality, lowConfidence, missingImages, missingPrice, missingAttrs, invalidBrands, notebookMismatch, categoryCounts] = await Promise.all([
     queryNeon<CountRow>('SELECT COUNT(*)::text AS count FROM products WHERE quality_score IS NOT NULL AND quality_score < 60'),
+    queryNeon<CountRow>('SELECT COUNT(*)::text AS count FROM products WHERE category_confidence IS NOT NULL AND category_confidence < 0.85'),
     queryNeon<CountRow>("SELECT COUNT(*)::text AS count FROM products WHERE COALESCE(jsonb_array_length(images), 0) = 0"),
     queryNeon<CountRow>('SELECT COUNT(*)::text AS count FROM products WHERE final_price IS NULL OR final_price <= 0'),
     queryNeon<CountRow>("SELECT COUNT(*)::text AS count FROM products WHERE attributes IS NULL OR attributes = '{}'::jsonb"),
@@ -22,6 +23,7 @@ export default async function AdminQualityPage() {
   ]);
   const checks = [
     ['Nízka kvalita (<60)', lowQuality[0]?.count],
+    ['Kategorizácia s istotou <85%', lowConfidence[0]?.count],
     ['Bez obrázka', missingImages[0]?.count],
     ['Bez predajnej ceny', missingPrice[0]?.count],
     ['Bez atribútov', missingAttrs[0]?.count],
