@@ -493,6 +493,7 @@ function mapDbRowToMasterProduct(row: any): MasterProduct {
     ean: row.ean,
     brand: row.brand,
     rawBrand: row.brand,
+    manufacturerLogoUrl: row.manufacturer_logo_url || null,
     categorySlug: row.category_slug,
     categoryHierarchy: Array.isArray(row.category_hierarchy) ? row.category_hierarchy : ['Počítače a IT'],
     commodityCode: row.commodity_code,
@@ -777,8 +778,10 @@ export async function getManufacturers(options: ManufacturerOptions = {}): Promi
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
-    const rows = await queryNeon<{ brand: string; count: string; logo_url: string | null }>(`
-      SELECT p.brand, COUNT(*)::int as count, MAX(m.logo_url) AS logo_url
+    const rows = await queryNeon<{ brand: string; count: string; logo_url: string | null; logo_status: string | null }>(`
+      SELECT p.brand, COUNT(*)::int as count,
+        MAX(CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END) AS logo_url,
+        MAX(m.logo_status) AS logo_status
       FROM storefront_products p
       LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand)
       ${whereClause}
@@ -786,7 +789,11 @@ export async function getManufacturers(options: ManufacturerOptions = {}): Promi
       ORDER BY count DESC
     `, params);
 
-    return rows.map((r) => ({ name: r.brand, count: Number(r.count), logoUrl: r.logo_url }));
+    return rows.map((r) => ({
+      name: r.brand,
+      count: Number(r.count),
+      logoUrl: r.logo_status === 'DOWNLOADED' ? r.logo_url : null,
+    }));
   } catch (err) {
     rethrowIfMisconfigured(err);
     console.error('Chyba pri načítaní výrobcov z Neon DB:', err);
@@ -862,7 +869,11 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
     const countRows = await queryNeon<{ total: number }>(countSql, filteredParams);
     const total = countRows[0]?.total ?? 0;
 
-    const pageSql = `SELECT * FROM storefront_products ${filteredWhereClause} ORDER BY ${orderBy} LIMIT $${filteredParamIdx++} OFFSET $${filteredParamIdx++}`;
+    const pageSql = `SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url
+      FROM storefront_products p
+      LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand)
+      ${filteredWhereClause}
+      ORDER BY ${orderBy.replace(/\bid\b/g, 'p.id')} LIMIT $${filteredParamIdx++} OFFSET $${filteredParamIdx++}`;
     const pageRows = await queryNeon(pageSql, [...filteredParams, pageSize, offset]);
     const products = pageRows.map(mapDbRowToMasterProduct);
 
@@ -932,23 +943,23 @@ export async function getProductBySlug(slug: string): Promise<MasterProduct | nu
     if (!/^[a-zA-Z0-9-]{1,200}$/.test(cleanSlug)) return null;
 
     // 1. Exact match on slug
-    const directRows = await queryNeon(`SELECT * FROM storefront_products WHERE slug = $1 LIMIT 1`, [cleanSlug]);
+    const directRows = await queryNeon(`SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand) WHERE p.slug = $1 LIMIT 1`, [cleanSlug]);
     if (directRows.length > 0) return mapDbRowToMasterProduct(directRows[0]);
 
     // 2. Trailing SKU match
     const trailingMatch = cleanSlug.match(/-([0-9a-zA-Z]+)$/);
     if (trailingMatch && trailingMatch[1]) {
       const sku = trailingMatch[1];
-      const skuRows = await queryNeon(`SELECT * FROM storefront_products WHERE (sku = $1 OR supplier_code = $1) LIMIT 1`, [sku]);
+      const skuRows = await queryNeon(`SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand) WHERE (p.sku = $1 OR p.supplier_code = $1) LIMIT 1`, [sku]);
       if (skuRows.length > 0) return mapDbRowToMasterProduct(skuRows[0]);
     }
 
     // 3. Direct SKU / MPN / ID
-    const idRows = await queryNeon(`SELECT * FROM storefront_products WHERE (sku = $1 OR supplier_code = $1 OR mpn = $1 OR id = $1) LIMIT 1`, [cleanSlug]);
+    const idRows = await queryNeon(`SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand) WHERE (p.sku = $1 OR p.supplier_code = $1 OR p.mpn = $1 OR p.id = $1) LIMIT 1`, [cleanSlug]);
     if (idRows.length > 0) return mapDbRowToMasterProduct(idRows[0]);
 
     // 4. Fuzzy slug match
-    const fuzzyRows = await queryNeon(`SELECT * FROM storefront_products WHERE slug ILIKE $1 LIMIT 1`, [`%${cleanSlug}%`]);
+    const fuzzyRows = await queryNeon(`SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand) WHERE p.slug ILIKE $1 LIMIT 1`, [`%${cleanSlug}%`]);
     if (fuzzyRows.length > 0) return mapDbRowToMasterProduct(fuzzyRows[0]);
 
     return null;
@@ -966,7 +977,7 @@ export async function getProductsByCategory(categorySlug: string): Promise<Maste
 export async function getFeaturedProducts(limit = 8): Promise<MasterProduct[]> {
   try {
     const rows = await queryNeon(
-      `SELECT * FROM storefront_products WHERE is_in_stock = true ORDER BY final_price ASC LIMIT $1`,
+      `SELECT p.*, CASE WHEN m.logo_status = 'DOWNLOADED' THEN m.logo_url END AS manufacturer_logo_url FROM storefront_products p LEFT JOIN manufacturers m ON lower(m.name) = lower(p.brand) WHERE p.is_in_stock = true ORDER BY p.final_price ASC LIMIT $1`,
       [limit]
     );
     return rows.map(mapDbRowToMasterProduct);

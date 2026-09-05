@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { MasterProduct } from '@worlds/types';
 import { CheckCircle2, AlertCircle, Eye } from 'lucide-react';
 import { ProductImage } from './ProductImage';
@@ -15,6 +16,17 @@ export function ProductCard({ product }: { product: MasterProduct }) {
           {product.brand}
         </span>
       </div>
+      {product.manufacturerLogoUrl && (
+        <div className="absolute right-2 top-2 z-10 flex h-8 w-16 items-center justify-center rounded-md border border-slate-200 bg-white/95 px-2 shadow-sm backdrop-blur-sm">
+          <Image
+            src={product.manufacturerLogoUrl}
+            alt={`${product.brand} logo`}
+            width={56}
+            height={24}
+            className="max-h-6 w-full object-contain"
+          />
+        </div>
+      )}
 
       {/* Product Image */}
       <Link href={`/produkt/${product.slug}`} className="block relative w-full h-48 bg-slate-50 overflow-hidden">

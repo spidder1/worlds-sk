@@ -100,6 +100,8 @@ export interface MasterProduct {
   // Brand & Taxonomy
   brand: string;
   rawBrand?: string;
+  /** Local manufacturer logo path, when the logo sync found one. */
+  manufacturerLogoUrl?: string | null;
   categorySlug: string;
   categoryHierarchy: string[];
   commodityCode?: string;

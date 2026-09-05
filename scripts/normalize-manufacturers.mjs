@@ -82,11 +82,26 @@ function titlePrefix(title) {
   return candidate && (/^[A-Z0-9][A-Za-z0-9-]*$/.test(candidate) || candidate.length > 2) ? candidate : undefined;
 }
 
+function stripMarkup(value) {
+  return String(value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&(?:lt|gt|amp|quot|apos|nbsp);/gi, (entity) => ({ '&lt;': '<', '&gt;': '>', '&amp;': '&', '&quot;': '"', '&apos;': "'", '&nbsp;': ' ' }[entity.toLowerCase()] || ' '))
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isInvalidBrand(value) {
+  return !value || value.length > 80 || /https?:\/\//i.test(value) || /[<>]/.test(value) || /&(?:lt|gt|amp);/i.test(value) || /[{}[\]|]/.test(value);
+}
+
 function cleanBrand(raw, title, knownBrands) {
-  const value = String(raw || '').replace(/&amp;/gi, '&').replace(/\s+/g, ' ').trim();
-  const candidateFromTitle = titleBrand(title, knownBrands) || titlePrefix(title);
+  const value = stripMarkup(raw);
+  const cleanTitle = stripMarkup(title);
+  const candidateFromTitle = titleBrand(cleanTitle, knownBrands) || titlePrefix(cleanTitle);
   const words = value.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
-  const isNoise = !value || words.length === 0 || words.every((word) => NOISE.has(word));
+  const isNoise = isInvalidBrand(String(raw || '').trim()) || !value || words.length === 0 || words.every((word) => NOISE.has(word));
   if (isNoise) return candidateFromTitle ? titleCaseBrand(candidateFromTitle) : 'Unbranded';
   if (words.some((word) => NOISE.has(word)) && candidateFromTitle) return titleCaseBrand(candidateFromTitle);
   return titleCaseBrand(value.replace(/\s+/g, ' '));
@@ -143,9 +158,50 @@ try {
     if (!mappings.has(raw)) mappings.set(raw, { canonical, titles: [] });
     mappings.get(raw).titles.push(row.title);
   }
-  const canonicalNames = [...new Set([...mappings.values()].map((mapping) => mapping.canonical))].filter(Boolean);
+  const canonicalNames = [...new Set([...mappings.values()].map((mapping) => mapping.canonical))]
+    .filter((name) => name && name !== 'Unbranded');
   console.log(`[manufacturers] products=${result.rowCount} raw=${mappings.size} canonical=${canonicalNames.length}`);
   const changedMappings = [...mappings].filter(([raw, mapping]) => raw !== mapping.canonical);
+  const invalidMappings = [...mappings].filter(([raw]) => isInvalidBrand(raw));
+  const recoveredMappings = invalidMappings.filter(([, mapping]) => mapping.canonical !== 'Unbranded');
+  const report = {
+    generatedAt: new Date().toISOString(),
+    productsScanned: result.rowCount,
+    rawManufacturers: mappings.size,
+    canonicalManufacturers: canonicalNames.length,
+    changedMappings: changedMappings.length,
+    invalidRawManufacturers: invalidMappings.length,
+    recoveredFromTitle: recoveredMappings.length,
+    unbrandedProducts: [...mappings.values()].filter((mapping) => mapping.canonical === 'Unbranded').length,
+    examples: changedMappings.slice(0, 100).map(([raw, mapping]) => ({ raw, canonical: mapping.canonical, sampleTitle: mapping.titles[0] || '' })),
+  };
+  const reportPath = path.resolve(process.env.MANUFACTURER_REPORT_PATH || 'reports/manufacturer-normalization-report.json');
+  await fs.mkdir(path.dirname(reportPath), { recursive: true });
+  await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  const markdownReport = [
+    '# Manufacturer normalization report',
+    '',
+    `Generated: ${report.generatedAt}`,
+    '',
+    '| Metric | Count |',
+    '| --- | ---: |',
+    `| Active priced products scanned | ${report.productsScanned} |`,
+    `| Raw manufacturer values | ${report.rawManufacturers} |`,
+    `| Canonical manufacturers retained | ${report.canonicalManufacturers} |`,
+    `| Changed mappings | ${report.changedMappings} |`,
+    `| Invalid raw values | ${report.invalidRawManufacturers} |`,
+    `| Recovered from product title | ${report.recoveredFromTitle} |`,
+    `| Products assigned to Unbranded | ${report.unbrandedProducts} |`,
+    '',
+    '## Changed examples',
+    '',
+    '| Source value | Canonical value | Sample title |',
+    '| --- | --- | --- |',
+    ...report.examples.map((example) => `| ${String(example.raw).replaceAll('|', '\\|')} | ${String(example.canonical).replaceAll('|', '\\|')} | ${String(example.sampleTitle).replaceAll('|', '\\|')} |`),
+    '',
+  ].join('\n');
+  await fs.writeFile(reportPath.replace(/\.json$/i, '.md'), `${markdownReport}\n`, 'utf8');
+  console.log(`[manufacturers] report=${reportPath}`);
   for (const [raw, mapping] of changedMappings.slice(0, 40)) console.log(`[manufacturers] ${raw || '(empty)'} -> ${mapping.canonical}`);
   if (changedMappings.length > 40) console.log(`[manufacturers] ... plus ${changedMappings.length - 40} additional name changes`);
   if (dryRun) {

@@ -41,6 +41,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           MANUFACTURER_LOGO_DIR: apps/storefront/public/manufacturers
+          MANUFACTURER_REPORT_PATH: reports/manufacturer-normalization-report.json
       - name: Dry-run manufacturer audit
         if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
         run: pnpm manufacturers:clean -- --dry-run --no-download
@@ -52,5 +53,6 @@ jobs:
           git config user.name "worlds.sk automation"
           git config user.email "automation@worlds.sk"
           git add apps/storefront/public/manufacturers
+          git add reports/manufacturer-normalization-report.json reports/manufacturer-normalization-report.md
           git diff --cached --quiet || git commit -m "chore(manufacturers): refresh normalized logos"
           git push
