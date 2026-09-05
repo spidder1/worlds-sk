@@ -42,6 +42,7 @@ const NOISE = new Set([
   'adaptér', 'adapter', 'kábel', 'kabel', 'taška', 'taska', 'puzdro', 'obal', 'držák', 'drziak',
   'toner', 'ssd', 'cpu', 'dimm', 'sodimm', 'ups', 'poe', 'usb-c', 'bazar', 'zdroj', 'router',
   'reproduktor', 'reproduktory', 'skener', 'scanner', 'tlaciaren', 'tlačiareň', 'multifunkcny',
+  'img', 'span', 'div', 'lt', 'gt', 'záruka', 'zaruka',
 ]);
 
 const TITLE_NOISE = new Set([...NOISE, 'laserová', 'laserova', 'inkoustová', 'inkoustova', 'herný', 'herny', 'pracovný', 'pracovny']);
@@ -101,8 +102,9 @@ function isInvalidBrand(value) {
 function cleanBrand(raw, title, knownBrands) {
   const value = stripMarkup(raw);
   const cleanTitle = stripMarkup(title);
-  const candidateFromTitle = titleBrand(cleanTitle, knownBrands) || (value ? titlePrefix(cleanTitle) : undefined);
   const words = value.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const knownTitleBrand = titleBrand(cleanTitle, knownBrands);
+  const candidateFromTitle = knownTitleBrand || (value && !words.every((word) => NOISE.has(word)) ? titlePrefix(cleanTitle) : undefined);
   const isNoise = isInvalidBrand(String(raw || '').trim()) || !value || words.length === 0 || words.every((word) => NOISE.has(word));
   if (isNoise) return candidateFromTitle ? titleCaseBrand(candidateFromTitle) : 'Unbranded';
   if (words.some((word) => NOISE.has(word)) && candidateFromTitle) return titleCaseBrand(candidateFromTitle);

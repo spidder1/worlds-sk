@@ -1,11 +1,27 @@
 {
-  "generatedAt": "2026-09-05T03:41:31.935Z",
+  "generatedAt": "2026-09-05T03:42:42.934Z",
   "productsScanned": 67572,
   "rawManufacturers": 1202,
-  "canonicalManufacturers": 1201,
-  "changedMappings": 0,
+  "canonicalManufacturers": 1198,
+  "changedMappings": 3,
   "invalidRawManufacturers": 0,
   "recoveredFromTitle": 0,
-  "unbrandedProducts": 1,
-  "examples": []
+  "unbrandedProducts": 3,
+  "examples": [
+    {
+      "raw": "Záruka",
+      "canonical": "Zebra",
+      "sampleTitle": "Záruka ZEBRA pre ZT230, predĺženie záruky o 36 mesiacov"
+    },
+    {
+      "raw": "Span",
+      "canonical": "Unbranded",
+      "sampleTitle": "&lt;p&gt;&lt;span style=\"text-align: left; color: #000000; text-transform: none; text-indent: 0px; letter-spacing: normal; font-"
+    },
+    {
+      "raw": "Img",
+      "canonical": "Unbranded",
+      "sampleTitle": "&lt;div class=\"tpl-product-detail-desc\"&gt;\n&lt;div class=\"box-in\"&gt;\n&lt;div class=\"row\"&gt;\n&lt;figure class=\"box-img\"&gt;&lt;img src=\"/IMGC"
+    }
+  ]
 }
