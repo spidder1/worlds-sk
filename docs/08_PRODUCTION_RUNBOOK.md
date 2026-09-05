@@ -117,5 +117,8 @@ SELECT mode, status, total_read, created_count, changed_count, missing_count, me
 - If Gemini intent extraction is desired, configure `GEMINI_API_KEY` and
   optionally `GEMINI_MODEL` (the assistant keeps its deterministic fallback
   when the key is absent or the provider is unavailable).
+- For incremental search updates, configure `MEILISEARCH_HOST` and
+  `MEILISEARCH_API_KEY`; the `meilisearch-queue.yml` worker drains changes
+  every ten minutes, while the nightly full reindex remains the recovery path.
 - Verify `/kosik`, Stripe/Comgate payment webhooks and the eD supplier-order worker in a
   production-like environment before switching DNS.

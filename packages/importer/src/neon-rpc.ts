@@ -191,6 +191,16 @@ seen AS (
    WHERE p.supplier_code = i.supplier_code
      AND p.last_import_batch IS DISTINCT FROM $1::uuid
   RETURNING p.supplier_code
+),
+queued AS (
+  INSERT INTO search_sync_queue (product_id, reason, enqueued_at, processed_at, last_error)
+  SELECT 'ed-' || supplier_code, 'catalog_sync', now(), NULL, NULL FROM upserted
+  ON CONFLICT (product_id) DO UPDATE SET
+    reason = EXCLUDED.reason,
+    enqueued_at = EXCLUDED.enqueued_at,
+    processed_at = NULL,
+    last_error = NULL
+  RETURNING product_id
 )
 SELECT
   (SELECT count(*) FROM input)::int                                     AS processed,
@@ -199,7 +209,8 @@ SELECT
   (SELECT count(*) FROM input)::int
     - (SELECT count(*) FROM upserted)::int                              AS unchanged,
   0::int                                                                AS missing,
-  (SELECT count(*) FROM seen)::int                                      AS touched;
+  (SELECT count(*) FROM seen)::int                                      AS touched,
+  (SELECT count(*) FROM queued)::int                                   AS queued;
 `;
 }
 
@@ -251,13 +262,24 @@ updated AS (
      AND (p.price_hash IS DISTINCT FROM i.price_hash
           OR p.inventory_hash IS DISTINCT FROM i.inventory_hash)
   RETURNING p.supplier_code
+),
+queued AS (
+  INSERT INTO search_sync_queue (product_id, reason, enqueued_at, processed_at, last_error)
+  SELECT 'ed-' || supplier_code, 'stock_price_sync', now(), NULL, NULL FROM updated
+  ON CONFLICT (product_id) DO UPDATE SET
+    reason = EXCLUDED.reason,
+    enqueued_at = EXCLUDED.enqueued_at,
+    processed_at = NULL,
+    last_error = NULL
+  RETURNING product_id
 )
 SELECT
   (SELECT count(*) FROM input)::int                                   AS processed,
   0::int                                                              AS created,
   (SELECT count(*) FROM updated)::int                                 AS changed,
   (SELECT count(*) FROM matched)::int - (SELECT count(*) FROM updated)::int AS unchanged,
-  (SELECT count(*) FROM input)::int - (SELECT count(*) FROM matched)::int   AS missing;
+  (SELECT count(*) FROM input)::int - (SELECT count(*) FROM matched)::int   AS missing,
+  (SELECT count(*) FROM queued)::int                                      AS queued;
 `;
 
 /**
