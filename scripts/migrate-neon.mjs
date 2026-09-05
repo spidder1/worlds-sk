@@ -26,8 +26,19 @@ function splitStatements(sql) {
   const statements = [];
   let current = '';
   let quote = null;
+  let dollarQuote = null;
   for (let i = 0; i < sql.length; i += 1) {
     const char = sql[i];
+    if (dollarQuote) {
+      if (sql.startsWith(dollarQuote, i)) {
+        current += dollarQuote;
+        i += dollarQuote.length - 1;
+        dollarQuote = null;
+      } else {
+        current += char;
+      }
+      continue;
+    }
     if (quote) {
       current += char;
       if (char === quote) quote = null;
@@ -37,6 +48,15 @@ function splitStatements(sql) {
       quote = char;
       current += char;
       continue;
+    }
+    if (char === '$') {
+      const marker = sql.slice(i).match(/^\$[A-Za-z_0-9]*\$/)?.[0];
+      if (marker) {
+        dollarQuote = marker;
+        current += marker;
+        i += marker.length - 1;
+        continue;
+      }
     }
     if (sql.startsWith('--', i)) {
       const end = sql.indexOf('\n', i);
