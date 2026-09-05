@@ -1,5 +1,11 @@
 -- Append-only supplier history. The products row remains the current read model;
 -- these tables preserve every materially different commercial observation.
+-- The legacy source_extra GIN index is not used by the storefront or importer
+-- and consumes scarce space on the starter Neon plan. Remove it before adding
+-- the normalized history so the migration can complete without changing the
+-- product read model.
+DROP INDEX IF EXISTS idx_products_source_extra_gin;
+
 CREATE TABLE IF NOT EXISTS supplier_price_snapshots (
   id bigserial PRIMARY KEY,
   product_id text NOT NULL REFERENCES products(id) ON DELETE CASCADE,
