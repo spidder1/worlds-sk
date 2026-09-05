@@ -101,6 +101,10 @@ export async function POST(request: Request) {
         await client.query('ROLLBACK');
         return NextResponse.json({ error: 'Košík je prázdny.' }, { status: 400 });
       }
+      const cartItemCount = await client.query<{ count: string }>(
+        'SELECT COUNT(*)::text AS count FROM cart_items WHERE cart_id = $1',
+        [cart.rows[0].id],
+      );
       const items = await client.query<{ product_id: string; quantity: number; sku: string; title: string; final_price: string; currency: string; stock_count: string; b2c_eligible: boolean; min_order_quantity: number; order_multiple: number }>(
         `SELECT ci.product_id, ci.quantity, p.sku, p.title, p.final_price, p.currency, p.stock_count
                 , COALESCE(p.b2c_eligible, true) AS b2c_eligible
@@ -112,6 +116,10 @@ export async function POST(request: Request) {
       if (!items.rows.length) {
         await client.query('ROLLBACK');
         return NextResponse.json({ error: 'Košík je prázdny.' }, { status: 400 });
+      }
+      if (Number(cartItemCount.rows[0]?.count || 0) !== items.rows.length) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: 'Niektorý produkt v košíku už nie je dostupný. Obnovte košík a skúste objednávku znova.' }, { status: 409 });
       }
       if (customerType === 'PRIVATE' && items.rows.some((item) => !item.b2c_eligible)) {
         await client.query('ROLLBACK');
