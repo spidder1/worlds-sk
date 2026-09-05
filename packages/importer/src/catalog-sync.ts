@@ -300,8 +300,17 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
     },
     stockCount,
   }).total;
-  const contentHash = hash([title, nameB2c, brand, mpn, mpn2, ean, currency, cleanHtml, category.slug, imageUrls, extracted.allAttributes]);
-  const priceHash = hash([supplierCost, garbageFee, authorFee, totalCostWithFees, vatRate, basePrice, finalPrice]);
+  const dealerPrice = Math.max(0, numberValue(product.DealerPrice, supplierCost));
+  const dealerPrice1 = Math.max(0, numberValue(product.DealerPrice1, supplierCost));
+  const valuePack = numberValue(product.ValuePack);
+  const valuePackQty = numberValue(product.ValuePackQty);
+  const unit = normalizeIdentifier(product.Unit);
+  const logisticData = product.LogisticDataList ?? null;
+  const extInfoCodes = product.ExtInfoCodes ?? null;
+  const indexCode1 = normalizeIdentifier(product.IndexCode1);
+  const indexCode2 = normalizeIdentifier(product.IndexCode2);
+  const contentHash = hash([title, nameB2c, brand, mpn, mpn2, ean, currency, cleanHtml, category.slug, imageUrls, extracted.allAttributes, valuePack, valuePackQty, unit, logisticData, extInfoCodes, indexCode1, indexCode2]);
+  const priceHash = hash([supplierCost, garbageFee, authorFee, totalCostWithFees, dealerPrice, dealerPrice1, vatRate, basePrice, finalPrice]);
   const expectedAtRaw = normalizeIdentifier(product.DateAvailible ?? product.DateAvailable ?? product.DateOfDelivery);
   const expectedAt = expectedAtRaw && !/^0?1[./-]0?1[./-]1900(?:$|\s)/.test(expectedAtRaw) ? expectedAtRaw : null;
   const stockText = normalizeIdentifier(product.OnStockText) || (isInStock
@@ -331,8 +340,8 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
     garbage_fee: garbageFee,
     author_fee: authorFee,
     total_cost_with_fees: totalCostWithFees,
-    dealer_price: Math.max(0, numberValue(product.DealerPrice, supplierCost)),
-    dealer_price_1: Math.max(0, numberValue(product.DealerPrice1, supplierCost)),
+    dealer_price: dealerPrice,
+    dealer_price_1: dealerPrice1,
     recommended_retail_price: Math.max(0, numberValue(product.EndUserPrice, finalPrice)),
     base_price: basePrice,
     final_price: finalPrice,
@@ -352,6 +361,13 @@ function transformFullProduct(product: Record<string, unknown>, pricing: Pricing
     commodity_name: normalizeIdentifier(product.CommodityName),
     name_b2c: nameB2c,
     currency,
+    value_pack: valuePack,
+    value_pack_qty: valuePackQty,
+    unit,
+    logistic_data: logisticData,
+    ext_info_codes: extInfoCodes,
+    index_code_1: indexCode1,
+    index_code_2: indexCode2,
     order_multiple: Math.max(1, numberValue(product.MultipleQuantity, 1)),
     b2c_eligible: booleanValue(product.B2C ?? true),
     is_premium: booleanValue(product.IsPremium ?? product.Premium) || finalPrice > 1500,
@@ -428,7 +444,17 @@ function transformStockProduct(product: Record<string, unknown>, pricing: Pricin
       const raw = normalizeIdentifier(product.DateAvailible ?? product.DateAvailable ?? product.DateOfDelivery);
       return raw && !/^0?1[./-]0?1[./-]1900(?:$|\s)/.test(raw) ? raw : null;
     })(),
-    price_hash: hash([supplierCost, garbageFee, authorFee, totalCostWithFees, vatRate, basePrice, finalPrice]),
+    price_hash: hash([
+      supplierCost,
+      garbageFee,
+      authorFee,
+      totalCostWithFees,
+      numberValue(product.DealerPrice, supplierCost),
+      numberValue(product.DealerPrice1, supplierCost),
+      vatRate,
+      basePrice,
+      finalPrice,
+    ]),
     inventory_hash: hash([
       stockCount,
       isInStock,

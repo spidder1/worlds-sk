@@ -37,6 +37,13 @@ test('full imports persist B2C naming and feed currency', () => {
   assert.match(upsert, /currency text/);
 });
 
+test('full imports persist normalized commerce and logistics fields', () => {
+  for (const column of ['dealer_price_1', 'value_pack', 'value_pack_qty', 'unit', 'logistic_data', 'ext_info_codes', 'index_code_1', 'index_code_2']) {
+    assert.match(upsert, new RegExp(`\\b${column}\\b`), `${column} must be part of the full import`);
+  }
+  assert.match(STOCK_PRICE_SQL, /dealer_price_1 = i\.dealer_price_1/);
+});
+
 test('full imports register manufacturers before products', () => {
   assert.match(upsert, /manufacturer_upsert AS \(/);
   assert.match(upsert, /INSERT INTO manufacturers \(id, name, slug\)/);
