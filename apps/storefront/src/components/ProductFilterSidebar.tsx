@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Check, X, ChevronDown, ChevronUp, RotateCcw, Building2, SlidersHorizontal, Search } from 'lucide-react';
 import type { CatalogFacets } from '../lib/catalog';
@@ -52,6 +52,8 @@ export function ProductFilterSidebar({ facets, totalCount, allManufacturers = []
   const [mobileOpen, setMobileOpen] = useState(false);
   const [minPriceInput, setMinPriceInput] = useState(activeMinPrice);
   const [maxPriceInput, setMaxPriceInput] = useState(activeMaxPrice);
+  const minPriceInputRef = useRef<HTMLInputElement>(null);
+  const maxPriceInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setMinPriceInput(activeMinPrice);
@@ -137,8 +139,8 @@ export function ProductFilterSidebar({ facets, totalCount, allManufacturers = []
 
   const applyPriceFilter = () => {
     const params = new URLSearchParams(searchParams.toString());
-    const min = Number.parseFloat(minPriceInput.replace(',', '.'));
-    const max = Number.parseFloat(maxPriceInput.replace(',', '.'));
+    const min = Number.parseFloat((minPriceInputRef.current?.value ?? minPriceInput).replace(',', '.'));
+    const max = Number.parseFloat((maxPriceInputRef.current?.value ?? maxPriceInput).replace(',', '.'));
     if (Number.isFinite(min) && min >= 0) params.set('minPrice', min.toFixed(2));
     else params.delete('minPrice');
     if (Number.isFinite(max) && max > 0) params.set('maxPrice', max.toFixed(2));
@@ -257,8 +259,8 @@ export function ProductFilterSidebar({ facets, totalCount, allManufacturers = []
             {sections.price ? (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <input aria-label="Minimálna cena" inputMode="decimal" value={minPriceInput} onChange={(event) => setMinPriceInput(event.target.value)} placeholder="Od" className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs" />
-                  <input aria-label="Maximálna cena" inputMode="decimal" value={maxPriceInput} onChange={(event) => setMaxPriceInput(event.target.value)} placeholder="Do" className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs" />
+                  <input ref={minPriceInputRef} aria-label="Minimálna cena" inputMode="decimal" value={minPriceInput} onChange={(event) => setMinPriceInput(event.target.value)} placeholder="Od" className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs" />
+                  <input ref={maxPriceInputRef} aria-label="Maximálna cena" inputMode="decimal" value={maxPriceInput} onChange={(event) => setMaxPriceInput(event.target.value)} placeholder="Do" className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs" />
                 </div>
                 <button type="button" onClick={applyPriceFilter} className="w-full rounded-lg bg-brand-600 px-3 py-2 text-xs font-bold text-white hover:bg-brand-700">Použiť cenu</button>
               </div>

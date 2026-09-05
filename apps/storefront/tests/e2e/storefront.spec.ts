@@ -11,6 +11,16 @@ test('empty cart gives a usable checkout entry point', async ({ page }) => {
   await expect(page.getByText(/košík je prázdny|objednávka/i).first()).toBeVisible();
 });
 
+test('price range controls load from and update the search URL', async ({ page }) => {
+  await page.goto('/vyhladavanie?minPrice=100&maxPrice=200');
+  await expect(page.getByLabel('Minimálna cena')).toHaveValue('100');
+  await expect(page.getByLabel('Maximálna cena')).toHaveValue('200');
+  await page.getByLabel('Minimálna cena').fill('150,50');
+  await page.getByRole('button', { name: 'Použiť cenu' }).click();
+  await expect(page).toHaveURL(/minPrice=150\.50/);
+  await expect(page).toHaveURL(/maxPrice=200\.00/);
+});
+
 test('VAT validation rejects malformed identifiers without external call', async ({ request }) => {
   const response = await request.post('/api/vat/validate', { data: { vatId: 'not-a-vat-id' } });
   expect(response.status()).toBe(400);
