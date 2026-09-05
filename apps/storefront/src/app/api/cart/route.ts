@@ -69,11 +69,23 @@ export async function POST(request: Request) {
     }
     const quantity = requestedQuantity;
     const cartId = await ensureCart(session);
-    const product = await queryNeon<{ id: string }>(
-      'SELECT id FROM storefront_products WHERE id = $1 LIMIT 1',
+    const product = await queryNeon<{ id: string; stock_count: string; is_in_stock: boolean }>(
+      'SELECT id, stock_count, is_in_stock FROM storefront_products WHERE id = $1 LIMIT 1',
       [body.productId],
     );
     if (!product.length) return NextResponse.json({ error: 'Produkt nie je dostupný.' }, { status: 404 });
+    const current = await queryNeon<{ quantity: number }>(
+      'SELECT quantity FROM cart_items WHERE cart_id = $1 AND product_id = $2 LIMIT 1',
+      [cartId, body.productId],
+    );
+    const stockCount = Number(product[0].stock_count);
+    if (Number.isFinite(stockCount) && stockCount > 0) {
+      const maxAvailable = Math.min(99, Math.max(1, Math.floor(stockCount)));
+      const requestedTotal = Number(current[0]?.quantity || 0) + quantity;
+      if (requestedTotal > maxAvailable) {
+        return NextResponse.json({ error: `Na sklade je dostupných najviac ${maxAvailable} ks.` }, { status: 409 });
+      }
+    }
     await queryNeon(
       `INSERT INTO cart_items (cart_id, product_id, quantity) VALUES ($1, $2, $3)
        ON CONFLICT (cart_id, product_id) DO UPDATE SET quantity = LEAST(99, cart_items.quantity + EXCLUDED.quantity), updated_at = NOW()`,
