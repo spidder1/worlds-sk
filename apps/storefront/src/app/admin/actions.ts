@@ -25,6 +25,17 @@ export async function updateProductCategory(formData: FormData) {
   redirect('/admin/produkty?saved=1');
 }
 
+export async function approveCategoryReview(formData: FormData) {
+  if (!(await isAdminAuthenticated())) redirect('/admin');
+  const id = String(formData.get('id') || '').trim();
+  const category = String(formData.get('category') || '').trim();
+  if (!id || !category) return;
+  await queryNeon(`UPDATE products
+    SET category_slug = $1, category_source = 'ADMIN', category_confidence = 1, category_reasoning = 'Schválené administrátorom', updated_at = NOW()
+    WHERE id = $2`, [category, id]);
+  redirect('/admin/kategorizacia?saved=1');
+}
+
 export async function resolveQuarantine(formData: FormData) {
   if (!(await isAdminAuthenticated())) redirect('/admin');
   const id = String(formData.get('id') || '').trim();
