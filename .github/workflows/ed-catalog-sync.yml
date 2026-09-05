@@ -10,10 +10,10 @@ on:
       mode:
         description: Import mode
         required: true
-        default: sample
+        default: full
         type: choice
         options:
-          - sample
+          - stock-price
           - full
   schedule:
     # Stock and purchase prices, hourly.
@@ -35,7 +35,7 @@ env:
 
 jobs:
   stock-price:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'stock-price' || github.event.schedule == '0 * * * *'
+    if: (github.event_name == 'workflow_dispatch' && inputs.mode == 'stock-price') || github.event.schedule == '0 * * * *'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -49,7 +49,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
-      - run: pnpm import:sample-neon
+      - run: pnpm --filter @worlds/importer run sync:stock-price
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ED_LOGIN: ${{ secrets.ED_LOGIN }}
@@ -70,7 +70,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
-      - run: pnpm import:sample-neon
+      - run: pnpm --filter @worlds/importer run sync:catalog
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ED_LOGIN: ${{ secrets.ED_LOGIN }}
