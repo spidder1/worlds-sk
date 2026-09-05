@@ -28,6 +28,8 @@ jobs:
         run: node scripts/scan-secrets.mjs
 
       - run: pnpm install --frozen-lockfile
+      - name: Validate Neon migrations
+        run: pnpm validate:migrations
 
       # The storefront now refuses to build without DATABASE_URL, so that a
       # misconfigured deploy fails instead of publishing an empty catalogue.
