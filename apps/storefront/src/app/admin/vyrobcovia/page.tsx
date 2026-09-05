@@ -1,0 +1,13 @@
+import { redirect } from 'next/navigation';
+import { isAdminAuthenticated } from '../auth';
+import { updateManufacturerReview } from '../actions';
+import { queryNeon } from '../../../lib/neon-client';
+
+export const dynamic = 'force-dynamic';
+
+export default async function AdminManufacturers({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
+  if (!(await isAdminAuthenticated())) redirect('/admin');
+  const params = await searchParams;
+  const manufacturers = await queryNeon<{ id: string; name: string; audit_class: string; logo_status: string; count: string }>('SELECT m.id, m.name, COALESCE(m.audit_class, \'UNVERIFIED_CANDIDATE\') AS audit_class, COALESCE(m.logo_status, \'PENDING\') AS logo_status, COUNT(p.id)::text AS count FROM manufacturers m LEFT JOIN products p ON lower(p.brand) = lower(m.name) GROUP BY m.id, m.name, m.audit_class, m.logo_status ORDER BY COUNT(p.id) DESC, m.name LIMIT 500');
+  return <div><h2 className="text-2xl font-bold">Výrobcovia</h2><p className="mt-1 text-sm text-slate-600">Kontrola značiek, loga a použitia v katalógu.</p>{params.saved ? <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Stav výrobcu bol uložený.</p> : null}<div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white"><table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-4 py-3">Výrobca</th><th className="px-4 py-3">Produkty</th><th className="px-4 py-3">Logo</th><th className="px-4 py-3">Audit</th><th className="px-4 py-3">Uložiť</th></tr></thead><tbody className="divide-y divide-slate-100">{manufacturers.map((manufacturer) => <tr key={manufacturer.id}><td className="px-4 py-3 font-medium">{manufacturer.name}</td><td className="px-4 py-3">{manufacturer.count}</td><td className="px-4 py-3 text-xs">{manufacturer.logo_status}</td><td className="px-4 py-3 text-xs">{manufacturer.audit_class}</td><td className="px-4 py-3"><form action={updateManufacturerReview} className="flex gap-2"><input type="hidden" name="id" value={manufacturer.id} /><select name="audit_class" defaultValue={manufacturer.audit_class} className="rounded border border-slate-300 px-2 py-1 text-xs"><option>VERIFIED_BRAND</option><option>UNVERIFIED_CANDIDATE</option><option>REMOVED</option></select><button className="rounded bg-slate-900 px-2 py-1 text-xs text-white">Uložiť</button></form></td></tr>)}</tbody></table></div></div>;
+}

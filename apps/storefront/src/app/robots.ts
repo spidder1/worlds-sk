@@ -14,7 +14,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         // Faceted filter combinations are crawl traps: the SEO surface is the
         // category and product URLs, not every filter permutation.
-        disallow: ['/api/', '/kategoria/*?', '/produkty?', '/vyhladavanie'],
+        disallow: ['/api/', '/admin/', '/kategoria/*?', '/produkty?', '/vyhladavanie'],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
