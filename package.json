@@ -14,6 +14,7 @@
     "sync:stock-price": "pnpm --filter @worlds/importer run sync:stock-price --",
     "manufacturers:clean": "node scripts/normalize-manufacturers.mjs",
     "transport:sync": "node scripts/sync-transport-methods.mjs",
+    "orders:submit": "node scripts/submit-paid-orders.mjs",
     "import:sample": "pnpm --filter @worlds/importer run import:sample",
     "search:reindex": "node scripts/reindex-meilisearch.mjs",
     "search:drain": "node scripts/drain-meilisearch-queue.mjs",

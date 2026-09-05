@@ -1,8 +1,6 @@
 name: eD supplier order queue
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 permissions:

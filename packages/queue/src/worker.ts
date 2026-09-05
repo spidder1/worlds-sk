@@ -7,6 +7,7 @@ const commands: Record<string, string[]> = {
   'image-loader': ['--filter', '@worlds/importer', 'run', 'sync:images'],
   'manufacturer-cleanup': ['manufacturers:clean'],
   'transport-dictionary': ['transport:sync'],
+  'supplier-orders': ['orders:submit'],
   'search-drain': ['search:drain'],
 };
 
