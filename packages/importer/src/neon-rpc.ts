@@ -268,6 +268,35 @@ attributes_written AS (
     updated_at = now()
   RETURNING product_id
 ),
+media_cleared AS (
+  DELETE FROM product_media existing
+   USING upserted changed
+   WHERE existing.product_id = 'ed-' || changed.supplier_code
+  RETURNING existing.product_id
+),
+media_written AS (
+  INSERT INTO product_media
+    (product_id, source_url, position, is_primary, alt_text, provenance, updated_at)
+  SELECT
+    'ed-' || changed.supplier_code,
+    NULLIF(media.value->>'url', ''),
+    COALESCE(NULLIF(media.value->>'position', '')::integer, 0),
+    COALESCE((media.value->>'isPrimary')::boolean, false),
+    COALESCE(media.value->>'altText', source.title, ''),
+    'UNKNOWN_ED',
+    now()
+  FROM upserted changed
+  JOIN input source ON source.code = changed.supplier_code
+  CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.images, '[]'::jsonb)) AS media
+  CROSS JOIN (SELECT count(*) FROM media_cleared) AS barrier
+  WHERE NULLIF(media.value->>'url', '') IS NOT NULL
+  ON CONFLICT (product_id, source_url) DO UPDATE SET
+    position = EXCLUDED.position,
+    is_primary = EXCLUDED.is_primary,
+    alt_text = EXCLUDED.alt_text,
+    updated_at = now()
+  RETURNING product_id
+),
 search_queue AS (
   INSERT INTO search_sync_queue (product_id, reason, enqueued_at, processed_at, last_error)
   SELECT 'ed-' || supplier_code, 'catalog_sync', now(), NULL, NULL FROM upserted

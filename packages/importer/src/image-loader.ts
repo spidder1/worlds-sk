@@ -95,6 +95,19 @@ async function main() {
               WHERE id = $4`,
             [JSON.stringify(merged), Number(detail.ImgCount || merged.length) || merged.length, imageChangedAt(detail.ImgLastChanged), product.id],
           );
+          await pool.query('DELETE FROM product_media WHERE product_id = $1', [product.id]);
+          await pool.query(
+            `INSERT INTO product_media (product_id, source_url, position, is_primary, alt_text, provenance, updated_at)
+             SELECT $1, item.value->>'url', COALESCE((item.value->>'position')::integer, 0),
+                    COALESCE((item.value->>'isPrimary')::boolean, false), COALESCE(item.value->>'altText', ''),
+                    'UNKNOWN_ED', NOW()
+               FROM jsonb_array_elements($2::jsonb) AS item
+              WHERE NULLIF(item.value->>'url', '') IS NOT NULL
+             ON CONFLICT (product_id, source_url) DO UPDATE SET
+               position = EXCLUDED.position, is_primary = EXCLUDED.is_primary,
+               alt_text = EXCLUDED.alt_text, updated_at = NOW()`,
+            [product.id, JSON.stringify(merged)],
+          );
           await pool.query(`INSERT INTO search_sync_queue (product_id, reason, enqueued_at, processed_at, last_error)
             VALUES ($1, 'image_sync', NOW(), NULL, NULL)
             ON CONFLICT (product_id) DO UPDATE SET reason = EXCLUDED.reason, enqueued_at = NOW(), processed_at = NULL, last_error = NULL`, [product.id]);
