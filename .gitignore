@@ -14,4 +14,6 @@ downloads/
 
 .vercel
 .env*
+# The template carries no real values and documents what a deploy must set.
+!.env.example
 supabase/.temp/

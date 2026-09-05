@@ -1,5 +1,5 @@
-import { MasterProduct, TaxonomyCategory } from '@worlds/types';
-import { queryNeon } from './neon-client';
+import { MasterProduct, TaxonomyCategory, calculateQualityScore } from '@worlds/types';
+import { queryNeon, rethrowIfMisconfigured } from './neon-client';
 
 export const CATEGORIES: TaxonomyCategory[] = [
   {
@@ -551,17 +551,23 @@ function mapDbRowToMasterProduct(row: any): MasterProduct {
     seoDescription: row.seo_description || '',
     searchKeywords: Array.isArray(row.search_keywords) ? row.search_keywords : [],
     pricing: {
-      supplierCost: Number(row.base_price || 0),
+      // Supplier cost, dealer price and margin are internal commercial data.
+      // This object is serialized into client components, so purchasing terms
+      // are deliberately not hydrated here.
+      supplierCost: 0,
       supplierFees: {
-        garbageFee: 0,
-        authorFee: 0,
+        // Recycling (SNC) and copyright (AO) levies are already included in the
+        // sell price and must be disclosed. They come from the eD feed; rows
+        // imported before the columns existed report 0 until the next full sync.
+        garbageFee: Number(row.garbage_fee || 0),
+        authorFee: Number(row.author_fee || 0),
       },
-      totalCostWithFees: Number(row.base_price || 0),
+      totalCostWithFees: 0,
       vatRate: Number(row.vat_rate || 20),
-      marginPercentage: 12,
+      marginPercentage: 0,
       basePrice: Number(row.base_price || 0),
       finalPrice: Number(row.final_price || 0),
-      recommendedRetailPrice: Number(row.final_price || 0),
+      recommendedRetailPrice: Number(row.recommended_retail_price || row.final_price || 0),
       currency: row.currency || 'EUR',
     },
     stockCount: Number(row.stock_count || 0),
@@ -576,21 +582,32 @@ function mapDbRowToMasterProduct(row: any): MasterProduct {
     status: row.status || 'ACTIVE',
     reviewStatus: 'AUTO_APPROVED',
     aiEnrichment: undefined,
-    qualityScore: {
-      total: 95,
-      breakdown: {
-        ean: 10,
-        brand: 10,
-        mpn: 10,
-        category: 10,
-        images: 10,
-        attributes: 10,
-        description: 10,
-        seo: 10,
-        price: 10,
-        stock: 15,
+    // Scored from what this row actually contains, using the same rules the
+    // importer applies. It used to be hardcoded to 95 for every product.
+    qualityScore: calculateQualityScore({
+      ean: row.ean ?? undefined,
+      brand: row.brand,
+      mpn: row.mpn || '',
+      categorySlug: row.category_slug,
+      categoryHierarchy: Array.isArray(row.category_hierarchy) ? row.category_hierarchy : [],
+      images: Array.isArray(row.images) ? row.images : [],
+      attributes: typeof row.attributes === 'object' && row.attributes !== null ? row.attributes : {},
+      supplierDescription: row.supplier_description || '',
+      enrichedDescription: row.enriched_description || '',
+      seoTitle: row.seo_title || undefined,
+      seoDescription: row.seo_description || undefined,
+      pricing: {
+        supplierCost: Number(row.supplier_cost || 0),
+        supplierFees: { garbageFee: Number(row.garbage_fee || 0), authorFee: Number(row.author_fee || 0) },
+        totalCostWithFees: Number(row.total_cost_with_fees || row.base_price || 0),
+        vatRate: Number(row.vat_rate || 20),
+        marginPercentage: Number(row.margin_percentage || 0),
+        basePrice: Number(row.base_price || 0),
+        finalPrice: Number(row.final_price || 0),
+        currency: row.currency || 'EUR',
       },
-    },
+      stockCount: Number(row.stock_count || 0),
+    }),
     dataHash: row.data_hash || '',
     lastSyncedAt: row.last_synced_at ? new Date(row.last_synced_at).toISOString() : new Date().toISOString(),
     lastReprocessedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
@@ -621,20 +638,72 @@ export interface ManufacturerItem {
   count: number;
 }
 
+export interface FacetValue {
+  name: string;
+  count: number;
+}
+
+export interface CatalogFacets {
+  brands: FacetValue[];
+  cpus: FacetValue[];
+  rams: FacetValue[];
+  ssds: FacetValue[];
+}
+
 export interface ProductPageResult {
   products: MasterProduct[];
-  allCategoryProducts: MasterProduct[];
-  facets?: ProductFacetCounts;
+  /**
+   * Facet counts for the current category or search, aggregated in Postgres.
+   * Previously the whole result set was shipped to the browser so the sidebar
+   * could count it client-side, which meant every category page transferred
+   * thousands of full product records.
+   */
+  facets: CatalogFacets;
   page: number;
   pageSize: number;
   total: number;
   pageCount: number;
 }
 
-export interface ProductFacetCounts {
-  cpus: Array<{ name: string; count: number }>;
-  rams: Array<{ name: string; count: number }>;
-  ssds: Array<{ name: string; count: number }>;
+/**
+ * Facet buckets. The regular expressions are duplicated by
+ * appendMultiFilterConditions when a bucket is selected, so the label a user
+ * clicks always filters on exactly what was counted.
+ */
+const CPU_BUCKETS: Array<[label: string, pattern: string]> = [
+  ['High-End (Intel i7 / Ryzen 7)', 'ryzen 7|core i7|ultra 7'],
+  ['Mainstream (Intel i5 / Ryzen 5)', 'ryzen 5|core i5|ultra 5'],
+  ['Basic (Intel i3 / Ryzen 3)', 'ryzen 3|core i3'],
+];
+
+const RAM_BUCKETS: Array<[label: string, pattern: string]> = [
+  ['64 GB RAM', '64\\s*gb|64g'],
+  ['32 GB RAM', '32\\s*gb|32g'],
+  ['16 GB RAM', '16\\s*gb|16g'],
+  ['8 GB RAM', '8\\s*gb|8g'],
+];
+
+const SSD_BUCKETS: Array<[label: string, pattern: string]> = [
+  ['2 TB SSD', '2\\s*tb|2000gb'],
+  ['1 TB SSD', '1\\s*tb|1000gb|1tssd'],
+  ['512 GB SSD', '512\\s*gb|512ssd'],
+  ['256 GB SSD', '256\\s*gb|256ssd'],
+];
+
+/** Builds a CASE expression that assigns each title to its first matching bucket. */
+function bucketCaseExpression(buckets: Array<[string, string]>): string {
+  const branches = buckets
+    .map(([label, pattern]) => `WHEN title ~* '${pattern}' THEN '${label.replace(/'/g, "''")}'`)
+    .join('\n        ');
+  return `CASE\n        ${branches}\n      END`;
+}
+
+const EMPTY_FACETS: CatalogFacets = { brands: [], cpus: [], rams: [], ssds: [] };
+
+function orderFacet(buckets: Array<[string, string]>, counts: Map<string, number>): FacetValue[] {
+  return buckets
+    .map(([label]) => ({ name: label, count: counts.get(label) ?? 0 }))
+    .filter((facet) => facet.count > 0);
 }
 
 function collectCategorySlugs(category: TaxonomyCategory): string[] {
@@ -762,6 +831,7 @@ export async function getManufacturers(options: ManufacturerOptions = {}): Promi
 
     return rows.map((r) => ({ name: r.brand, count: Number(r.count) }));
   } catch (err) {
+    rethrowIfMisconfigured(err);
     console.error('Chyba pri načítaní výrobcov z Neon DB:', err);
     return [
       { name: 'ASUS', count: 0 },
@@ -839,39 +909,49 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
     const pageRows = await queryNeon(pageSql, [...filteredParams, pageSize, offset]);
     const products = pageRows.map(mapDbRowToMasterProduct);
 
-    const facetRows = await queryNeon<Record<string, string>>(
-      `SELECT
-        COUNT(*) FILTER (WHERE title ~* 'ryzen 7|core i7|ultra 7')::int AS cpu_high,
-        COUNT(*) FILTER (WHERE title ~* 'ryzen 5|core i5|ultra 5')::int AS cpu_mid,
-        COUNT(*) FILTER (WHERE title ~* 'ryzen 3|core i3')::int AS cpu_basic,
-        COUNT(*) FILTER (WHERE title ~* '64\\s*gb|64g')::int AS ram_64,
-        COUNT(*) FILTER (WHERE title ~* '32\\s*gb|32g')::int AS ram_32,
-        COUNT(*) FILTER (WHERE title ~* '16\\s*gb|16g')::int AS ram_16,
-        COUNT(*) FILTER (WHERE title ~* '8\\s*gb|8g')::int AS ram_8,
-        COUNT(*) FILTER (WHERE title ~* '2\\s*tb|2000gb')::int AS ssd_2tb,
-        COUNT(*) FILTER (WHERE title ~* '1\\s*tb|1000gb|1tssd')::int AS ssd_1tb,
-        COUNT(*) FILTER (WHERE title ~* '512\\s*gb|512ssd')::int AS ssd_512,
-        COUNT(*) FILTER (WHERE title ~* '256\\s*gb|256ssd')::int AS ssd_256
-       FROM storefront_products ${baseWhereClause}`,
-      baseParams,
-    );
-    const facetRow = facetRows[0] || {};
-    const facet = (entries: Array<[string, string]>) => entries
-      .map(([name, key]) => ({ name, count: Number(facetRow[key] || 0) }))
-      .filter((item) => item.count > 0);
-    const facets: ProductFacetCounts = {
-      cpus: facet([
-        ['High-End (Intel i7 / Ryzen 7)', 'cpu_high'],
-        ['Mainstream (Intel i5 / Ryzen 5)', 'cpu_mid'],
-        ['Basic (Intel i3 / Ryzen 3)', 'cpu_basic'],
-      ]),
-      rams: facet([['64 GB RAM', 'ram_64'], ['32 GB RAM', 'ram_32'], ['16 GB RAM', 'ram_16'], ['8 GB RAM', 'ram_8']]),
-      ssds: facet([['2 TB SSD', 'ssd_2tb'], ['1 TB SSD', 'ssd_1tb'], ['512 GB SSD', 'ssd_512'], ['256 GB SSD', 'ssd_256']]),
+    // Facet counts are aggregated in Postgres over brand and title only. The
+    // previous implementation selected every matching row (descriptions,
+    // attributes and image JSON included) and counted them in the browser.
+    const facetSql = `
+      WITH scoped AS (SELECT brand, title FROM products ${baseWhereClause})
+      SELECT 'brand' AS kind, brand AS label, COUNT(*)::int AS count
+        FROM scoped
+       WHERE brand IS NOT NULL AND brand <> '' AND brand <> 'Unbranded'
+       GROUP BY brand
+      UNION ALL
+      SELECT 'cpu', bucket.label, COUNT(*)::int
+        FROM scoped, LATERAL (SELECT ${bucketCaseExpression(CPU_BUCKETS)} AS label) AS bucket
+       WHERE bucket.label IS NOT NULL GROUP BY bucket.label
+      UNION ALL
+      SELECT 'ram', bucket.label, COUNT(*)::int
+        FROM scoped, LATERAL (SELECT ${bucketCaseExpression(RAM_BUCKETS)} AS label) AS bucket
+       WHERE bucket.label IS NOT NULL GROUP BY bucket.label
+      UNION ALL
+      SELECT 'ssd', bucket.label, COUNT(*)::int
+        FROM scoped, LATERAL (SELECT ${bucketCaseExpression(SSD_BUCKETS)} AS label) AS bucket
+       WHERE bucket.label IS NOT NULL GROUP BY bucket.label
+    `;
+    const facetRows = await queryNeon<{ kind: string; label: string; count: number }>(facetSql, baseParams);
+
+    const byKind = (kind: string) => {
+      const counts = new Map<string, number>();
+      for (const row of facetRows) {
+        if (row.kind === kind && row.label) counts.set(row.label, row.count);
+      }
+      return counts;
+    };
+
+    const facets: CatalogFacets = {
+      brands: [...byKind('brand').entries()]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'sk')),
+      cpus: orderFacet(CPU_BUCKETS, byKind('cpu')),
+      rams: orderFacet(RAM_BUCKETS, byKind('ram')),
+      ssds: orderFacet(SSD_BUCKETS, byKind('ssd')),
     };
 
     return {
       products,
-      allCategoryProducts: [],
       facets,
       page,
       pageSize,
@@ -879,8 +959,9 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
       pageCount: total === 0 ? 0 : Math.ceil(total / pageSize),
     };
   } catch (err) {
+    rethrowIfMisconfigured(err);
     console.error('Chyba pri stránkovanom čítaní katalógu z Neon DB:', err);
-    return { products: [], allCategoryProducts: [], facets: { cpus: [], rams: [], ssds: [] }, page, pageSize, total: 0, pageCount: 0 };
+    return { products: [], facets: EMPTY_FACETS, page, pageSize, total: 0, pageCount: 0 };
   }
 }
 
@@ -915,6 +996,7 @@ export async function getProductBySlug(slug: string): Promise<MasterProduct | nu
 
     return null;
   } catch (e) {
+    rethrowIfMisconfigured(e);
     console.error(`Chyba pri čítaní produktu ${slug} z Neon DB:`, e);
     return null;
   }
@@ -932,6 +1014,7 @@ export async function getFeaturedProducts(limit = 8): Promise<MasterProduct[]> {
     );
     return rows.map(mapDbRowToMasterProduct);
   } catch (e) {
+    rethrowIfMisconfigured(e);
     console.error('Chyba pri čítaní featured produktov z Neon DB:', e);
     return [];
   }
@@ -975,6 +1058,7 @@ export async function getCategories(): Promise<TaxonomyCategory[]> {
 
     return rootNodes.length > 0 ? rootNodes : CATEGORIES;
   } catch (e) {
+    rethrowIfMisconfigured(e);
     console.error('Chyba pri načítaní kategórií z Neon DB:', e);
     return CATEGORIES;
   }

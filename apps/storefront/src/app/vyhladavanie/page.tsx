@@ -138,7 +138,6 @@ export default async function SearchPage({ searchParams }: Props) {
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Left Sidebar Filter */}
         <ProductFilterSidebar
-          products={results.products}
           facets={results.facets}
           totalCount={results.total}
           allManufacturers={manufacturers}

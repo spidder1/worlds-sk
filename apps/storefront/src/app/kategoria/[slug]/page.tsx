@@ -6,6 +6,7 @@ import { Pagination } from '../../../components/Pagination';
 import { ProductCard } from '../../../components/ProductCard';
 import { ProductFilterSidebar } from '../../../components/ProductFilterSidebar';
 import { findCategoryBySlug, getManufacturers, getProductsPage, type ProductSort } from '../../../lib/catalog';
+import { absoluteUrl } from '../../../lib/site';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -28,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${category.name} | Worlds.sk`,
     description: `Produkty v kategórii ${category.name} s aktuálnou cenou a dostupnosťou.`,
-    alternates: { canonical: `https://worlds.sk/kategoria/${category.slug}` },
+    alternates: { canonical: absoluteUrl(`/kategoria/${category.slug}`) },
   };
 }
 
@@ -190,7 +191,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Left Sidebar Filter */}
         <ProductFilterSidebar
-          products={result.products}
           facets={result.facets}
           totalCount={result.total}
           allManufacturers={manufacturers}

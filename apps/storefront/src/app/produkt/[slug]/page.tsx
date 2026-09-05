@@ -4,8 +4,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { getProductBySlug } from '../../../lib/catalog';
 import { ProductDescription } from '../../../components/ProductDescription';
-import { AddToCartButton } from '../../../components/AddToCartButton';
-import { ProductGallery } from '../../../components/ProductGallery';
+import { absoluteUrl } from '../../../lib/site';
 import {
   ShieldCheck,
   Truck,
@@ -38,7 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: product.seoTitle || `${product.title} | Worlds.sk`,
     description: product.seoDescription || product.supplierDescription?.slice(0, 155),
     alternates: {
-      canonical: `https://worlds.sk/produkt/${product.slug}`,
+      canonical: absoluteUrl(`/produkt/${product.slug}`),
     },
     openGraph: {
       title: product.title,
@@ -76,11 +75,16 @@ export default async function ProductDetailPage({ params }: Props) {
       !['brand', 'mpn', 'warranty_months'].includes(a.code)
   );
 
-  // Schema.org Product JSON-LD
+  const productUrl = absoluteUrl(`/produkt/${product.slug}`);
+
+  // Schema.org Product JSON-LD. Without an Offer node Google will not show the
+  // product as a rich result and Merchant Center rejects the listing, so price,
+  // currency and availability are part of the markup.
   const productJsonLd = {
     '@context': 'https://schema.org/',
     '@type': 'Product',
     name: product.title,
+    url: productUrl,
     image: product.images.map((img) => img.url),
     description: product.supplierDescription || product.seoDescription,
     sku: product.sku,
@@ -90,6 +94,45 @@ export default async function ProductDetailPage({ params }: Props) {
       '@type': 'Brand',
       name: product.brand,
     },
+    ...(product.pricing.finalPrice > 0
+      ? {
+          offers: {
+            '@type': 'Offer',
+            url: productUrl,
+            priceCurrency: product.pricing.currency || 'EUR',
+            price: product.pricing.finalPrice.toFixed(2),
+            itemCondition: 'https://schema.org/NewCondition',
+            availability: product.isInStock
+              ? 'https://schema.org/InStock'
+              : 'https://schema.org/BackOrder',
+            seller: { '@type': 'Organization', name: 'Worlds.sk' },
+          },
+        }
+      : {}),
+  };
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org/',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Domov', item: absoluteUrl('/') },
+      ...(product.categorySlug
+        ? [
+            {
+              '@type': 'ListItem',
+              position: 2,
+              name: product.categoryHierarchy[product.categoryHierarchy.length - 1] || product.categorySlug,
+              item: absoluteUrl(`/kategoria/${product.categorySlug}`),
+            },
+          ]
+        : []),
+      {
+        '@type': 'ListItem',
+        position: product.categorySlug ? 3 : 2,
+        name: product.title,
+        item: productUrl,
+      },
+    ],
   };
 
   return (
@@ -98,6 +141,10 @@ export default async function ProductDetailPage({ params }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
       {/* Breadcrumbs */}

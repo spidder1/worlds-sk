@@ -3,13 +3,15 @@
 import React, { useState, useMemo } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Check, X, ChevronDown, ChevronUp, RotateCcw, Building2, SlidersHorizontal, Search } from 'lucide-react';
-import type { MasterProduct } from '@worlds/types';
-import type { ProductFacetCounts } from '../lib/catalog';
+import type { CatalogFacets } from '../lib/catalog';
 
 interface ProductFilterSidebarProps {
-  products: MasterProduct[];
-  allCategoryProducts?: MasterProduct[];
-  facets?: ProductFacetCounts;
+  /**
+   * Facet counts for the whole category or search result, aggregated in
+   * Postgres. The sidebar used to receive every matching product and count
+   * them here, which shipped the entire catalogue to the browser.
+   */
+  facets: CatalogFacets;
   totalCount: number;
   allManufacturers?: Array<{ name: string; count: number }>;
 }
@@ -25,7 +27,7 @@ interface FilterSectionState {
   gpu: boolean;
 }
 
-export function ProductFilterSidebar({ products, allCategoryProducts, facets, totalCount, allManufacturers = [] }: ProductFilterSidebarProps) {
+export function ProductFilterSidebar({ facets, totalCount, allManufacturers = [] }: ProductFilterSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -65,30 +67,15 @@ export function ProductFilterSidebar({ products, allCategoryProducts, facets, to
     setSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // 1. Calculate Available Manufacturers with Counts
+  // 1. Available manufacturers. Counts come from the database, either as an
+  // explicit catalogue-wide list or as the facet counts for this result set.
   const availableBrands = useMemo(() => {
-    const brandMap = new Map<string, number>();
-
-    if (allManufacturers.length > 0) {
-      for (const m of allManufacturers) {
-        if (m.name && m.name !== 'Unbranded') {
-          brandMap.set(m.name, m.count);
-        }
-      }
-    } else {
-      const sourceList = allCategoryProducts && allCategoryProducts.length > 0 ? allCategoryProducts : products;
-      for (const p of sourceList) {
-        const b = p.brand?.trim();
-        if (b && b !== 'Unbranded') {
-          brandMap.set(b, (brandMap.get(b) || 0) + 1);
-        }
-      }
-    }
-
-    return Array.from(brandMap.entries())
-      .map(([name, count]) => ({ name, count }))
+    const source = allManufacturers.length > 0 ? allManufacturers : facets.brands;
+    return source
+      .filter((brand) => brand.name && brand.name !== 'Unbranded')
+      .map(({ name, count }) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
-  }, [products, allCategoryProducts, allManufacturers]);
+  }, [facets.brands, allManufacturers]);
 
   // Filtered brands by local search input
   const filteredBrands = useMemo(() => {
@@ -97,41 +84,11 @@ export function ProductFilterSidebar({ products, allCategoryProducts, facets, to
     return availableBrands.filter((b) => b.name.toLowerCase().includes(q));
   }, [availableBrands, brandSearch]);
 
-  // 2. Extract Extracted Specs from Product Titles & Attributes
-  const extractedSpecs = useMemo(() => {
-    if (facets) return facets;
-    const cpus = new Map<string, number>();
-    const rams = new Map<string, number>();
-    const ssds = new Map<string, number>();
-    const sourceList = allCategoryProducts && allCategoryProducts.length > 0 ? allCategoryProducts : products;
-
-    for (const p of sourceList) {
-      const title = p.title || '';
-
-      // Extract CPU
-      if (/ryzen 7|core i7|ultra 7/i.test(title)) cpus.set('High-End (Intel i7 / Ryzen 7)', (cpus.get('High-End (Intel i7 / Ryzen 7)') || 0) + 1);
-      else if (/ryzen 5|core i5|ultra 5/i.test(title)) cpus.set('Mainstream (Intel i5 / Ryzen 5)', (cpus.get('Mainstream (Intel i5 / Ryzen 5)') || 0) + 1);
-      else if (/ryzen 3|core i3/i.test(title)) cpus.set('Basic (Intel i3 / Ryzen 3)', (cpus.get('Basic (Intel i3 / Ryzen 3)') || 0) + 1);
-
-      // Extract RAM
-      if (/64\s*gb|64g/i.test(title)) rams.set('64 GB RAM', (rams.get('64 GB RAM') || 0) + 1);
-      else if (/32\s*gb|32g/i.test(title)) rams.set('32 GB RAM', (rams.get('32 GB RAM') || 0) + 1);
-      else if (/16\s*gb|16g/i.test(title)) rams.set('16 GB RAM', (rams.get('16 GB RAM') || 0) + 1);
-      else if (/8\s*gb|8g/i.test(title)) rams.set('8 GB RAM', (rams.get('8 GB RAM') || 0) + 1);
-
-      // Extract SSD
-      if (/2\s*tb|2000gb/i.test(title)) ssds.set('2 TB SSD', (ssds.get('2 TB SSD') || 0) + 1);
-      else if (/1\s*tb|1000gb|1tssd/i.test(title)) ssds.set('1 TB SSD', (ssds.get('1 TB SSD') || 0) + 1);
-      else if (/512\s*gb|512ssd/i.test(title)) ssds.set('512 GB SSD', (ssds.get('512 GB SSD') || 0) + 1);
-      else if (/256\s*gb|256ssd/i.test(title)) ssds.set('256 GB SSD', (ssds.get('256 GB SSD') || 0) + 1);
-    }
-
-    return {
-      cpus: Array.from(cpus.entries()).map(([name, count]) => ({ name, count })),
-      rams: Array.from(rams.entries()).map(([name, count]) => ({ name, count })),
-      ssds: Array.from(ssds.entries()).map(([name, count]) => ({ name, count })),
-    };
-  }, [products, allCategoryProducts, facets]);
+  // 2. Spec facets, counted in Postgres over the whole result set.
+  const extractedSpecs = useMemo(
+    () => ({ cpus: facets.cpus, rams: facets.rams, ssds: facets.ssds }),
+    [facets.cpus, facets.rams, facets.ssds],
+  );
 
   // Helper to toggle multi-select filter item
   const toggleMultiFilter = (key: string, value: string) => {

@@ -4,8 +4,15 @@ import { TaxonomyCategory } from '@worlds/types';
 
 const { Pool } = pg;
 
-const connectionString = process.env.DATABASE_URL?.trim();
-if (!connectionString) throw new Error('DATABASE_URL is required');
+function requireDatabaseUrl(): string {
+  const connectionString = process.env.DATABASE_URL?.trim();
+  if (!connectionString) {
+    throw new Error('DATABASE_URL is required. Refusing to guess a production database.');
+  }
+  return connectionString;
+}
+
+const connectionString = requireDatabaseUrl();
 
 export const NEW_ACCESSORY_CATEGORIES: TaxonomyCategory[] = [
   {

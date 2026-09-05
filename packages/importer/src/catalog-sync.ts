@@ -11,13 +11,13 @@ import slugify from 'slugify';
 import { EDSystemClient } from '@worlds/ed-client';
 import { extractStructuredAttributes } from './attribute-extractor.js';
 import { sanitizeAndFormatHtml } from './html-sanitizer.js';
-import { getSupabaseRestConfig } from './runtime-config.js';
 import { classifyProductIndependently } from './taxonomy-definition.js';
 import { assessCatalogScope } from './catalog-scope.js';
+import { createNeonRpcClient } from './neon-rpc.js';
+import { calculateQualityScore } from '@worlds/types';
 
 type SyncMode = 'full' | 'stock-price';
 type CatalogScope = 'it-only' | 'all';
-type ImportTransport = 'rest' | 'supabase-cli';
 
 interface CliOptions {
   mode: SyncMode;
@@ -27,7 +27,7 @@ interface CliOptions {
   allowCachedFull: boolean;
   scope: CatalogScope;
   dryRun: boolean;
-  transport: ImportTransport;
+  brandScope: string[];
 }
 
 interface RpcBatchResult {
@@ -57,21 +57,22 @@ function parseArgs(argv: string[]): CliOptions {
   const rawLimit = valueOf('--limit');
   const rawBatchSize = valueOf('--batch-size') ?? process.env.IMPORT_BATCH_SIZE ?? '50';
   const rawScope = valueOf('--scope') ?? process.env.ED_CATALOG_SCOPE ?? 'it-only';
-  const rawTransport = valueOf('--transport') ?? process.env.SUPABASE_IMPORT_TRANSPORT ?? 'rest';
+  const rawBrandScope = valueOf('--brands') ?? process.env.ED_BRAND_SCOPE ?? '';
+  const brandScope = rawBrandScope
+    .split(',')
+    .map((brand) => brand.trim())
+    .filter(Boolean);
   const limit = rawLimit && rawLimit !== 'all' ? Number.parseInt(rawLimit, 10) : undefined;
   const batchSize = Number.parseInt(rawBatchSize, 10);
   if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1)) {
     throw new Error('--limit must be a positive integer or "all".');
   }
-  const maximumBatchSize = rawTransport === 'supabase-cli' ? 500 : 200;
+  const maximumBatchSize = 200;
   if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > maximumBatchSize) {
-    throw new Error(`--batch-size must be between 1 and ${maximumBatchSize} for ${rawTransport}.`);
+    throw new Error(`--batch-size must be between 1 and ${maximumBatchSize}.`);
   }
   if (rawScope !== 'it-only' && rawScope !== 'all') {
     throw new Error('--scope must be "it-only" or "all".');
-  }
-  if (rawTransport !== 'rest' && rawTransport !== 'supabase-cli') {
-    throw new Error('--transport must be "rest" or "supabase-cli".');
   }
 
   return {
@@ -82,7 +83,7 @@ function parseArgs(argv: string[]): CliOptions {
     allowCachedFull: argv.includes('--allow-cached-full') || process.env.ALLOW_CACHED_FULL === 'true',
     scope: rawScope,
     dryRun: argv.includes('--dry-run'),
-    transport: rawTransport,
+    brandScope,
   };
 }
 
@@ -234,6 +235,42 @@ function transformFullProduct(product: Record<string, unknown>): Record<string, 
   const extracted = extractStructuredAttributes(title, rawDescription, specs, brand, mpn, warrantyMonths);
   const imageUrls = extractProductImageUrls(product);
   const proId = value(product.ProId) || code;
+  const shortDescription = plainText.slice(0, 300);
+  const seoTitle = `${title} | Worlds.sk`;
+  const seoDescription = (plainText || title).replace(/\s+/g, ' ').trim().slice(0, 155);
+  const searchKeywords = [...new Set([brand, mpn, mpn2, ean, ...title.split(/[\s/,]+/)]
+    .filter((keyword): keyword is string => Boolean(keyword && keyword.length > 1))
+    .map((keyword) => keyword.toLowerCase()))].slice(0, 30);
+  const images = imageUrls.map((url, position) => ({
+    url,
+    position,
+    isPrimary: position === 0,
+    altText: title,
+  }));
+  const qualityScore = calculateQualityScore({
+    ean: ean ?? undefined,
+    brand,
+    mpn,
+    categorySlug: category.slug,
+    categoryHierarchy: category.hierarchy,
+    images: images.map((image) => ({ ...image, id: `${code}-${image.position}` })),
+    attributes: extracted.allAttributes,
+    supplierDescription: plainText,
+    enrichedDescription: cleanHtml,
+    seoTitle,
+    seoDescription,
+    pricing: {
+      supplierCost,
+      supplierFees: { garbageFee, authorFee },
+      totalCostWithFees,
+      vatRate,
+      marginPercentage,
+      basePrice,
+      finalPrice,
+      currency: 'EUR',
+    },
+    stockCount,
+  }).total;
   const contentHash = hash([title, brand, mpn, mpn2, ean, cleanHtml, category.slug, imageUrls, extracted.allAttributes]);
   const priceHash = hash([supplierCost, garbageFee, authorFee, totalCostWithFees, vatRate, basePrice, finalPrice]);
   const inventoryHash = hash([stockCount, isInStock, value(product.DateOfDelivery)]);
@@ -251,6 +288,11 @@ function transformFullProduct(product: Record<string, unknown>): Record<string, 
     slug: safeSlug(title, code),
     enriched_description: cleanHtml,
     supplier_description: plainText,
+    short_description: shortDescription,
+    seo_title: seoTitle,
+    seo_description: seoDescription,
+    search_keywords: searchKeywords,
+    quality_score: qualityScore,
     supplier_cost: supplierCost,
     garbage_fee: garbageFee,
     author_fee: authorFee,
@@ -274,12 +316,7 @@ function transformFullProduct(product: Record<string, unknown>): Record<string, 
     order_multiple: Math.max(1, numberValue(product.MultipleQuantity, 1)),
     b2c_eligible: booleanValue(product.B2C ?? true),
     is_premium: booleanValue(product.IsPremium ?? product.Premium) || finalPrice > 1500,
-    images: imageUrls.map((url, position) => ({
-      url,
-      position,
-      isPrimary: position === 0,
-      altText: title,
-    })),
+    images,
     attributes: extracted.allAttributes,
     identity_hash: hash([code, proId, mpn, mpn2, ean]),
     content_hash: contentHash,
@@ -498,117 +535,8 @@ async function resolveSources(options: CliOptions): Promise<ResolvedSource[]> {
   );
 }
 
-function sqlLiteral(raw: unknown): string {
-  return `'${String(raw ?? '').replace(/'/g, "''")}'`;
-}
-
-function cliRpcSql(functionName: string, parameters: Record<string, unknown>): string {
-  const json = (name: string) => `${sqlLiteral(JSON.stringify(parameters[name] ?? null))}::jsonb`;
-  const uuid = (name: string) => `${sqlLiteral(parameters[name])}::uuid`;
-  switch (functionName) {
-    case 'begin_ed_import':
-      return `select public.begin_ed_import(${sqlLiteral(parameters.p_batch_type)}, ${sqlLiteral(parameters.p_source_method)}, ${json('p_parameters')}) as result;`;
-    case 'stage_ed_catalog_batch':
-    case 'sync_ed_stock_price_batch':
-      return `select public.${functionName}(${uuid('p_batch_id')}, ${json('p_items')}) as result;`;
-    case 'heartbeat_ed_import':
-      return `select public.heartbeat_ed_import(${uuid('p_batch_id')}) as result;`;
-    case 'complete_ed_import':
-      return `select public.complete_ed_import(${uuid('p_batch_id')}, ${json('p_metrics')}) as result;`;
-    case 'fail_ed_import':
-      return `select public.fail_ed_import(${uuid('p_batch_id')}, ${sqlLiteral(parameters.p_error)}) as result;`;
-    default:
-      throw new Error(`Unsupported Supabase CLI RPC: ${functionName}`);
-  }
-}
-
-function createCliRpcClient() {
-  const execFileAsync = promisify(execFile);
-  const windowsPnpmCandidates = [
-    process.env.PNPM_HOME ? path.join(process.env.PNPM_HOME, 'pnpm.ps1') : '',
-    process.env.APPDATA ? path.join(process.env.APPDATA, 'npm', 'pnpm.ps1') : '',
-  ].filter(Boolean);
-  const windowsPnpmScript = windowsPnpmCandidates.find((candidate) => fs.existsSync(candidate));
-  const windowsPnpmModule = windowsPnpmScript
-    ? path.join(path.dirname(windowsPnpmScript), 'node_modules', 'pnpm', 'bin', 'pnpm.cjs')
-    : undefined;
-  if (process.platform === 'win32' && (!windowsPnpmModule || !fs.existsSync(windowsPnpmModule))) {
-    throw new Error('Supabase CLI transport needs an installed pnpm Node module on Windows.');
-  }
-  const command = process.platform === 'win32' ? process.execPath : 'pnpm';
-  const commandPrefix = process.platform === 'win32'
-    ? [windowsPnpmModule as string]
-    : [];
-  const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'worlds-supabase-query-'));
-  process.once('exit', () => {
-    try {
-      fs.rmSync(tempDirectory, { recursive: true, force: true });
-    } catch {
-      // Best-effort cleanup only; individual SQL files are removed after every call.
-    }
-  });
-  let sequence = 0;
-
-  return async function rpc<T>(functionName: string, parameters: Record<string, unknown>): Promise<T> {
-    const queryFile = path.join(tempDirectory, `${String(sequence += 1).padStart(6, '0')}.sql`);
-    fs.writeFileSync(queryFile, cliRpcSql(functionName, parameters), { encoding: 'utf8', mode: 0o600 });
-    try {
-      const { stdout } = await execFileAsync(command, [...commandPrefix,
-        'dlx', 'supabase', 'db', 'query', '--linked', '--output', 'json', '--file', queryFile,
-      ], {
-        cwd: process.cwd(),
-        encoding: 'utf8',
-        maxBuffer: 10 * 1024 * 1024,
-        timeout: 180_000,
-        windowsHide: true,
-      });
-      const start = stdout.indexOf('{');
-      if (start < 0) throw new Error(`Supabase CLI returned an invalid response for ${functionName}.`);
-      const response = JSON.parse(stdout.slice(start)) as { rows?: Array<{ result?: T }> };
-      if (!response.rows?.length || response.rows[0].result === undefined) {
-        throw new Error(`Supabase CLI returned no result for ${functionName}.`);
-      }
-      return response.rows[0].result as T;
-    } finally {
-      if (fs.existsSync(queryFile)) fs.unlinkSync(queryFile);
-    }
-  };
-}
-
-function createRestRpcClient() {
-  const { url, secretKey } = getSupabaseRestConfig();
-  return async function rpc<T>(functionName: string, parameters: Record<string, unknown>): Promise<T> {
-    let lastError: unknown;
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      try {
-        const response = await fetch(`${url}/rest/v1/rpc/${functionName}`, {
-          method: 'POST',
-          headers: {
-            apikey: secretKey,
-            Authorization: `Bearer ${secretKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(parameters),
-          signal: AbortSignal.timeout(120_000),
-        });
-        const body = await response.text();
-        if (response.ok) return (body ? JSON.parse(body) : null) as T;
-        const error = new Error(`${functionName} failed (${response.status}): ${body.slice(0, 1000)}`);
-        if (response.status < 500 && response.status !== 429) throw error;
-        lastError = error;
-      } catch (error) {
-        lastError = error;
-        const message = error instanceof Error ? error.message : String(error);
-        if (/failed \((4\d\d)\)/.test(message) && !message.includes('(429)')) throw error;
-      }
-      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** (attempt - 1)));
-    }
-    throw lastError instanceof Error ? lastError : new Error(String(lastError));
-  };
-}
-
-function createRpcClient(transport: ImportTransport) {
-  return transport === 'supabase-cli' ? createCliRpcClient() : createRestRpcClient();
+function createRpcClient(brandScope: string[]) {
+  return createNeonRpcClient({ brandScope });
 }
 
 function addResult(target: RpcBatchResult, update: Partial<RpcBatchResult>): void {
@@ -621,11 +549,11 @@ function addResult(target: RpcBatchResult, update: Partial<RpcBatchResult>): voi
 
 export async function runCatalogSync(options = parseArgs(process.argv.slice(2))): Promise<RpcBatchResult> {
   const startedAt = Date.now();
-  const rpc = options.dryRun ? undefined : createRpcClient(options.transport);
+  const rpc = options.dryRun ? undefined : createRpcClient(options.brandScope);
   const sources = await resolveSources(options);
   const sourceBytes = sources.reduce((total, source) => total + fs.statSync(source.filePath).size, 0);
   const sourceMethod = sources.map((source) => source.sourceMethod).join(',');
-  console.log(`[import] mode=${options.mode} sources=${sources.length} bytes=${sourceBytes}`);
+  console.log(`[import] mode=${options.mode} transport=neon scope=${options.scope} brands=${options.brandScope.join(',') || 'all'} sources=${sources.length} bytes=${sourceBytes}`);
 
   const batchId = rpc ? await rpc<string>('begin_ed_import', {
     p_batch_type: options.mode === 'full' ? 'FULL_CATALOG' : 'STOCK_PRICE',
@@ -635,7 +563,7 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
       limit: options.limit ?? null,
       batchSize: options.batchSize,
       scope: options.scope,
-      transport: options.transport,
+      transport: 'neon',
     },
   }) : 'dry-run';
   const result: RpcBatchResult = { processed: 0, created: 0, changed: 0, unchanged: 0, missing: 0 };
@@ -709,6 +637,16 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
           }
         }
         const transformed = options.mode === 'full' ? transformFullProduct(rawProduct) : transformStockProduct(rawProduct);
+        if (transformed && options.mode === 'full' && options.brandScope.length > 0) {
+          const brand = String(transformed.brand ?? '').toLowerCase();
+          const inScope = options.brandScope.some((allowed) => allowed.toLowerCase() === brand);
+          if (!inScope) {
+            filtered += 1;
+            const key = `BRAND_OUT_OF_SCOPE:${transformed.brand}`;
+            filteredByReason[key] = (filteredByReason[key] ?? 0) + 1;
+            continue;
+          }
+        }
         if (transformed && options.mode === 'full') {
           const scope = assessCatalogScope({
             title: rawProduct.Name ?? rawProduct.ProductName,

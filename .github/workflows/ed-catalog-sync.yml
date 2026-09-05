@@ -1,5 +1,9 @@
 name: eD catalog synchronization
 
+# Writes straight into the Neon database the storefront reads. The previous
+# version of this workflow pushed into the retired Supabase project, so nothing
+# it imported ever reached production.
+
 on:
   workflow_dispatch:
     inputs:
@@ -12,9 +16,10 @@ on:
           - sample
           - full
   schedule:
-    - cron: '7 * * * *'
-    - cron: '17 */2 * * *'
-    - cron: '43 2 * * 0'
+    # Stock and purchase prices, hourly.
+    - cron: '0 * * * *'
+    # Full catalogue, twice a day (06:30 and 20:30 UTC).
+    - cron: '30 6,20 * * *'
 
 permissions:
   contents: read
@@ -23,32 +28,14 @@ concurrency:
   group: ed-catalog-import
   cancel-in-progress: false
 
-jobs:
-  stock-price-sync:
-    if: github.event_name == 'schedule' && github.event.schedule == '7 * * * *'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.12.2
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
-      - run: pnpm import:neon:stock
-        env:
-          ED_STOCK_ONLY: true
-          ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
-          ED_LOGIN: ${{ secrets.ED_LOGIN }}
-          ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+env:
+  ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
+  IMPORT_TRANSPORT: neon
+  IMPORT_BATCH_SIZE: 200
 
-  sample-catalog:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'sample' || github.event.schedule == '17 */2 * * *'
+jobs:
+  stock-price:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'stock-price' || github.event.schedule == '0 * * * *'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -64,17 +51,12 @@ jobs:
       - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
       - run: pnpm import:sample-neon
         env:
-          ED_SAMPLE_ONLY: true
-          ED_SAMPLE_LIMIT: 250
-          ED_SAMPLE_BRANDS: ASUS,Lenovo
-          ED_MIN_COST_EUR: ${{ vars.ED_MIN_COST_EUR || '0' }}
-          ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ED_LOGIN: ${{ secrets.ED_LOGIN }}
           ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-  sample-catalog-weekly:
-    if: github.event.schedule == '43 2 * * 0'
+  full-catalog:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'full' || github.event.schedule == '30 6,20 * * *'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -90,36 +72,10 @@ jobs:
       - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
       - run: pnpm import:sample-neon
         env:
-          ED_SAMPLE_ONLY: true
-          ED_SAMPLE_LIMIT: 250
-          ED_SAMPLE_BRANDS: ASUS,Lenovo
-          ED_MIN_COST_EUR: ${{ vars.ED_MIN_COST_EUR || '0' }}
-          ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ED_LOGIN: ${{ secrets.ED_LOGIN }}
           ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-  full-catalog-manual:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'full'
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.12.2
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
-      - run: pnpm import:neon
-        env:
-          ED_SAMPLE_ONLY: false
-          ED_SAMPLE_BRANDS: ALL
-          ED_MIN_COST_EUR: ${{ vars.ED_MIN_COST_EUR || '0' }}
-          ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
-          ED_LOGIN: ${{ secrets.ED_LOGIN }}
-          ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ED_CATALOG_SCOPE: it-only
+          # Launch catalogue is ASUS + Lenovo. Widening this widens the shop;
+          # products outside the list are never retired by a full run.
+          ED_BRAND_SCOPE: ${{ vars.ED_BRAND_SCOPE || 'ASUS,Lenovo' }}
