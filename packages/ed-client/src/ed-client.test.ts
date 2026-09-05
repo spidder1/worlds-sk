@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import test from 'node:test';
+import { EDSystemClient } from './ed-client.js';
+
+async function withSoapServer(handler: (body: string, action: string) => string, run: (url: string) => Promise<void>) {
+  const server = createServer(async (request, response) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) chunks.push(Buffer.from(chunk));
+    const body = Buffer.concat(chunks).toString('utf8');
+    response.writeHead(200, { 'content-type': 'text/xml; charset=utf-8' });
+    response.end(handler(body, String(request.headers.soapaction || '')));
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  try {
+    await run(`http://127.0.0.1:${address.port}/service.asmx`);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+}
+
+test('createNewOrder serializes the WSDL B2B order head and parses response', async () => {
+  await withSoapServer((body, action) => {
+    assert.match(action, /createNewOrder$/);
+    assert.match(body, /<ProductCode>SKU-1<\/ProductCode>/);
+    assert.match(body, /<Qty>2<\/Qty>/);
+    assert.match(body, /<test>true<\/test>/);
+    assert.match(body, /<password>secret<\/password>/);
+    return `<?xml version="1.0"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><createNewOrderResponse><createNewOrderResult><OrderSymbol>ED-42</OrderSymbol><Status><StatusCode>DONE</StatusCode></Status></createNewOrderResult></createNewOrderResponse></soap:Body></soap:Envelope>`;
+  }, async (url) => {
+    const result = await new EDSystemClient({ endpointUrl: url, login: 'login', password: 'secret' }).createNewOrder({
+      NewOrderItems: [{ ProductCode: 'SKU-1', Qty: 2 }],
+      TransportCode: 7,
+      ShippingAddress: { name: 'Buyer', street: 'Street 1', city: 'Bratislava', zipCode: '81101', countryCode: 'SK' },
+    });
+    assert.equal(result.OrderSymbol, 'ED-42');
+    assert.equal(result.Status.StatusCode, 'DONE');
+  });
+});
+
+test('createNewOrderXML rejects envelope and entity payloads before sending', async () => {
+  const client = new EDSystemClient({ endpointUrl: 'http://127.0.0.1:1/service.asmx', login: 'login', password: 'secret' });
+  await assert.rejects(() => client.createNewOrderXML('<soap:Envelope />'), /inner order XML payload/);
+  await assert.rejects(() => client.createNewOrderXML('<!DOCTYPE order [<!ENTITY x "x">]><order>&x;</order>'), /inner order XML payload/);
+});
