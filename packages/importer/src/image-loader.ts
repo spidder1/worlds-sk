@@ -58,14 +58,16 @@ async function main() {
   });
   const limit = positiveInt('IMAGE_LOADER_LIMIT', 1000);
   const delayMs = positiveInt('IMAGE_LOADER_DELAY_MS', 150);
+  const concurrency = Math.min(positiveInt('IMAGE_LOADER_CONCURRENCY', 4), 16);
   const staleDays = positiveInt('IMAGE_LOADER_STALE_DAYS', 14);
   const candidates = await pool.query<Candidate>(
     `SELECT id, COALESCE(supplier_code, sku) AS sku, images
        FROM products
       WHERE image_sync_checked_at IS NULL
          OR image_sync_checked_at < NOW() - ($1::text || ' days')::interval
-         OR COALESCE(jsonb_array_length(images), 0) = 0
-      ORDER BY image_sync_checked_at NULLS FIRST, updated_at ASC
+      ORDER BY (COALESCE(jsonb_array_length(images), 0) = 0) DESC,
+               image_sync_checked_at NULLS FIRST,
+               updated_at ASC
       LIMIT $2`,
     [staleDays, limit],
   );
@@ -73,37 +75,42 @@ async function main() {
   let checked = 0;
   let updated = 0;
   let failed = 0;
-  for (const product of candidates.rows) {
-    try {
-      const detail = await client.getProductDetail(product.sku);
-      const urls = detail ? extractProductImageUrls(detail as unknown as Record<string, unknown>) : [];
-      if (detail && urls.length > 0) {
-        const existingImages = Array.isArray(product.images) ? product.images : [];
-        const merged = mergeImages(existingImages, urls, product.sku);
-        await pool.query(
-          `UPDATE products
-              SET images = $1::jsonb,
-                  image_count = $2,
-                  images_last_changed = CASE WHEN $3::text IS NULL OR $3::text = '' THEN images_last_changed ELSE $3::timestamptz END,
-                  image_sync_checked_at = NOW(),
-                  updated_at = NOW()
-            WHERE id = $4`,
-          [JSON.stringify(merged), Number(detail.ImgCount || merged.length) || merged.length, imageChangedAt(detail.ImgLastChanged), product.id],
-        );
-        updated += merged.length > existingImages.length ? 1 : 0;
-      } else {
-        await pool.query('UPDATE products SET image_count = COALESCE($1, image_count), image_sync_checked_at = NOW() WHERE id = $2', [detail?.ImgCount ?? null, product.id]);
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < candidates.rows.length) {
+      const product = candidates.rows[cursor++];
+      try {
+        const detail = await client.getProductDetail(product.sku);
+        const urls = detail ? extractProductImageUrls(detail as unknown as Record<string, unknown>) : [];
+        if (detail && urls.length > 0) {
+          const existingImages = Array.isArray(product.images) ? product.images : [];
+          const merged = mergeImages(existingImages, urls, product.sku);
+          await pool.query(
+            `UPDATE products
+                SET images = $1::jsonb,
+                    image_count = $2,
+                    images_last_changed = CASE WHEN $3::text IS NULL OR $3::text = '' THEN images_last_changed ELSE $3::timestamptz END,
+                    image_sync_checked_at = NOW(),
+                    updated_at = NOW()
+              WHERE id = $4`,
+            [JSON.stringify(merged), Number(detail.ImgCount || merged.length) || merged.length, imageChangedAt(detail.ImgLastChanged), product.id],
+          );
+          if (merged.length > existingImages.length) updated += 1;
+        } else {
+          await pool.query('UPDATE products SET image_count = COALESCE($1, image_count), image_sync_checked_at = NOW() WHERE id = $2', [detail?.ImgCount ?? null, product.id]);
+        }
+        checked += 1;
+      } catch (error) {
+        failed += 1;
+        console.error(`image detail failed for ${product.sku}:`, error instanceof Error ? error.message : error);
+        await pool.query('UPDATE products SET image_sync_checked_at = NOW() WHERE id = $1', [product.id]).catch(() => undefined);
       }
-      checked += 1;
-    } catch (error) {
-      failed += 1;
-      console.error(`image detail failed for ${product.sku}:`, error instanceof Error ? error.message : error);
-      await pool.query('UPDATE products SET image_sync_checked_at = NOW() WHERE id = $1', [product.id]).catch(() => undefined);
+      if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
-    if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, candidates.rows.length) }, () => worker()));
 
-  console.log(JSON.stringify({ candidates: candidates.rowCount, checked, updated, failed, limit, delayMs, staleDays }));
+  console.log(JSON.stringify({ candidates: candidates.rowCount, checked, updated, failed, limit, delayMs, concurrency, staleDays }));
   await pool.end();
 }
 
