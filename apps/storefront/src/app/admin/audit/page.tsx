@@ -25,7 +25,7 @@ type AdminAuditRow = { action: string; entity_type: string; entity_id: string | 
 export default async function AdminAuditPage() {
   const [lifecycle, issues, outbox, adminAudit] = await Promise.all([
     queryNeon<LifecycleRow>(
-      `SELECT h.product_id, COALESCE(p.name, p.name_b2c) AS product_name,
+      `SELECT h.product_id, COALESCE(NULLIF(p.name_b2c, ''), p.title) AS product_name,
               h.old_status, h.new_status, h.reason, h.changed_at
          FROM product_lifecycle_history h
          LEFT JOIN products p ON p.id = h.product_id
