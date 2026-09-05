@@ -14,6 +14,17 @@ test('re-importing never rewrites a live product URL', () => {
   assert.match(upsert, /INSERT INTO products \([^)]*\bslug\b/, 'new products still get a slug on insert');
 });
 
+test('full imports preserve administrator-owned category decisions', () => {
+  const updateClause = upsert.slice(upsert.indexOf('DO UPDATE SET'), upsert.indexOf('WHERE products.content_hash'));
+  for (const column of ['category_slug', 'category_hierarchy', 'category_source', 'category_confidence', 'category_reasoning']) {
+    assert.match(
+      updateClause,
+      new RegExp(`${column} = CASE WHEN products\\.category_source = 'ADMIN' THEN products\\.${column} ELSE EXCLUDED\\.${column} END`),
+      `${column} must remain admin-owned after a later feed import`,
+    );
+  }
+});
+
 test('unchanged products are skipped but still stamped with the current batch', () => {
   assert.match(upsert, /products\.content_hash IS DISTINCT FROM EXCLUDED\.content_hash/);
   assert.match(upsert, /products\.price_hash IS DISTINCT FROM EXCLUDED\.price_hash/);
