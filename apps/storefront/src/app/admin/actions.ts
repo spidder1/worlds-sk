@@ -52,18 +52,33 @@ export async function updateCategoryPresentation(formData: FormData) {
   await queryNeon(`UPDATE categories
     SET name = $1, display_order = $2, active = $3, updated_at = NOW()
     WHERE slug = $4`, [name, displayOrder, active, slug]);
-  await queryNeon(`WITH RECURSIVE category_path AS (
-    SELECT c.id, c.slug, c.parent_id, c.parent_slug, ARRAY[c.name]::text[] AS names
+  await queryNeon(`WITH RECURSIVE category_paths AS (
+    SELECT c.id AS category_id, c.parent_id, c.parent_slug, ARRAY[c.name]::text[] AS names
+      FROM categories c
+    UNION ALL
+    SELECT path.category_id, parent.parent_id, parent.parent_slug, ARRAY[parent.name] || path.names
+      FROM category_paths path
+      JOIN categories parent ON parent.slug = path.parent_slug OR parent.id = path.parent_id
+  ), canonical_paths AS (
+    SELECT DISTINCT ON (category_id) category_id, names
+      FROM category_paths
+     WHERE parent_slug IS NULL AND parent_id IS NULL
+     ORDER BY category_id
+  ), subtree AS (
+    SELECT c.id, c.slug
       FROM categories c WHERE c.slug = $1
     UNION ALL
-    SELECT parent.id, parent.slug, parent.parent_id, parent.parent_slug, ARRAY[parent.name] || path.names
-      FROM categories parent JOIN category_path path
-        ON parent.slug = path.parent_slug OR parent.id = path.parent_id
+    SELECT child.id, child.slug
+      FROM categories child
+      JOIN subtree parent ON child.parent_slug = parent.slug OR child.parent_id = parent.id
   )
-  UPDATE products
-     SET category_hierarchy = COALESCE((SELECT to_jsonb(names) FROM category_path WHERE parent_slug IS NULL AND parent_id IS NULL LIMIT 1), category_hierarchy),
+  UPDATE products p
+     SET category_hierarchy = COALESCE(to_jsonb(paths.names), p.category_hierarchy),
          updated_at = NOW()
-   WHERE category_slug = $1`, [slug]);
+    FROM subtree, canonical_paths paths, categories category
+   WHERE p.category_slug = subtree.slug
+     AND category.slug = p.category_slug
+     AND paths.category_id = category.id`, [slug]);
   redirect('/admin/kategorie?saved=1');
 }
 
