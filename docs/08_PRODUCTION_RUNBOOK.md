@@ -97,7 +97,9 @@ DATABASE_URL='postgresql://...' pnpm audit:normalized
 ```
 
 The command exits non-zero if required price, supplier-offer, localization,
-search, media or inventory projections are missing.
+search or inventory projections are missing. Media links discovered by the
+catalogue import may remain pending until the asynchronous image-loader runs;
+those are reported as warnings rather than blocking the catalogue publish.
 
 The first production sequence is: apply migrations, run `reference-data`, run a
 limited full catalogue import, inspect `staging_products` and `import_issues`,
