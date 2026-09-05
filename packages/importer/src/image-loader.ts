@@ -119,6 +119,17 @@ async function main() {
                alt_text = EXCLUDED.alt_text, updated_at = NOW()`,
             [product.id, JSON.stringify(merged)],
           );
+          await pool.query(
+            `INSERT INTO source_media_assets
+               (supplier_product_id, media_asset_id, role, source_position, updated_at)
+             SELECT l.supplier_product_id, pm.media_asset_id, 'PRODUCT', pm.position, NOW()
+               FROM product_supplier_links l
+               JOIN product_media pm ON pm.product_id = l.product_id
+              WHERE l.product_id = $1 AND pm.media_asset_id IS NOT NULL
+             ON CONFLICT (supplier_product_id, media_asset_id) DO UPDATE SET
+               source_position = EXCLUDED.source_position, updated_at = NOW()`,
+            [product.id],
+          );
           await pool.query(`INSERT INTO search_sync_queue (product_id, reason, enqueued_at, processed_at, last_error)
             VALUES ($1, 'image_sync', NOW(), NULL, NULL)
             ON CONFLICT (product_id) DO UPDATE SET reason = EXCLUDED.reason, enqueued_at = NOW(), processed_at = NULL, last_error = NULL`, [product.id]);
