@@ -220,6 +220,10 @@ upserted AS (
     LEFT JOIN manufacturer_upsert ON manufacturer_upsert.name = input.brand
   ON CONFLICT (supplier_code) DO UPDATE SET
         ${updates},
+        missing_streak = 0,
+        missing_candidate_at = NULL,
+        discontinued_at = NULL,
+        status = CASE WHEN products.status = 'DISCONTINUED' THEN 'ACTIVE' ELSE products.status END,
         last_import_batch = EXCLUDED.last_import_batch,
         last_seen_at = EXCLUDED.last_seen_at,
         last_synced_at = EXCLUDED.last_synced_at,
@@ -233,7 +237,10 @@ seen AS (
   -- Unchanged rows are skipped by the upsert, but they were still present in
   -- this feed and must not be treated as disappeared.
   UPDATE products p
-     SET last_import_batch = $1::uuid, last_seen_at = now()
+     SET last_import_batch = $1::uuid, last_seen_at = now(),
+         missing_streak = 0, missing_candidate_at = NULL,
+         discontinued_at = NULL,
+         status = CASE WHEN p.status = 'DISCONTINUED' THEN 'ACTIVE' ELSE p.status END
     FROM input i
    WHERE p.supplier_code = i.supplier_code
      AND p.last_import_batch IS DISTINCT FROM $1::uuid
@@ -636,13 +643,21 @@ export function createNeonRpcClient(options: { brandScope?: string[] } = {}): Rp
 
         if (isFullRun) {
           const { rows } = await pool.query<{ missing: number }>(
-            `WITH retired AS (
+            `WITH candidates AS (
                UPDATE products
-                  SET status = 'DISCONTINUED', updated_at = now()
-                WHERE status = 'ACTIVE'
+                  SET missing_streak = missing_streak + 1,
+                      missing_candidate_at = COALESCE(missing_candidate_at, now()),
+                      updated_at = now()
+                WHERE status IN ('ACTIVE', 'OUT_OF_STOCK')
                   AND (last_import_batch IS NULL OR last_import_batch <> $1::uuid)
                   AND ($2::text[] IS NULL OR brand = ANY($2::text[]))
                RETURNING id
+             ), retired AS (
+               UPDATE products p
+                  SET status = 'DISCONTINUED', discontinued_at = now(), updated_at = now()
+                WHERE p.id IN (SELECT id FROM candidates)
+                  AND p.missing_streak >= 2
+               RETURNING p.id
              )
              SELECT count(*)::int AS missing FROM retired`,
             [parameters.p_batch_id, brandScope],
