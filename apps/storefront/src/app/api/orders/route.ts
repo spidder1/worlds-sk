@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getNeonPool } from '../../../lib/neon-client';
+import { normalizeVatId, validateVatId } from '../../../lib/vies';
 import Stripe from 'stripe';
 
 export const runtime = 'nodejs';
@@ -63,6 +64,30 @@ export async function POST(request: Request) {
         await client.query('ROLLBACK');
         return NextResponse.json({ error: 'IČ DPH musí mať formát krajiny a 8 až 12 číslic, napríklad SK2022595311.' }, { status: 400 });
       }
+      const vatSetting = await client.query<{ value: { value?: number } }>("SELECT value FROM store_settings WHERE key = 'pricing.vat_rate' LIMIT 1");
+      const vatRate = Number(vatSetting.rows[0]?.value?.value ?? 20);
+      const vatId = normalizeVatId(customerIcDph);
+      let reverseCharge = false;
+      let vatValidationStatus: 'NOT_CHECKED' | 'VALID' | 'INVALID' | 'UNAVAILABLE' = 'NOT_CHECKED';
+      if (customerIcDph && vatId && vatId.countryCode !== 'SK') {
+        if (customerType !== 'LEGAL') {
+          await client.query('ROLLBACK');
+          return NextResponse.json({ error: 'IČ DPH pre režim prenesenia daňovej povinnosti môže uviesť iba právnická osoba.' }, { status: 400 });
+        }
+        const vies = await validateVatId(customerIcDph);
+        vatValidationStatus = vies.status === 'VALID' ? 'VALID' : vies.status === 'INVALID' ? 'INVALID' : 'UNAVAILABLE';
+        if (vies.status === 'INVALID') {
+          await client.query('ROLLBACK');
+          return NextResponse.json({ error: 'IČ DPH sa nepodarilo overiť ako platné vo VIES.' }, { status: 400 });
+        }
+        if (vies.status === 'UNAVAILABLE') {
+          await client.query('ROLLBACK');
+          return NextResponse.json({ error: 'Overenie IČ DPH vo VIES je momentálne nedostupné. Skúste objednávku neskôr.' }, { status: 503 });
+        }
+        reverseCharge = true;
+      } else if (customerIcDph && vatId?.countryCode === 'SK') {
+        vatValidationStatus = 'NOT_CHECKED';
+      }
       const existing = await client.query<{ id: string; order_number: string; total: string; payment_status: string; payment_method: string }>(
         'SELECT id, order_number, total, payment_status, payment_method FROM orders WHERE idempotency_key = $1 LIMIT 1', [idempotencyKey]);
       if (existing.rows.length) {
@@ -91,7 +116,10 @@ export async function POST(request: Request) {
         await client.query('ROLLBACK');
         return NextResponse.json({ error: `Produkt ${stockLimitedItem.title} už nemá požadované množstvo na sklade.` }, { status: 409 });
       }
-      const subtotal = items.rows.reduce((sum, item) => sum + Number(item.final_price) * item.quantity, 0);
+      const grossSubtotal = items.rows.reduce((sum, item) => sum + Number(item.final_price) * item.quantity, 0);
+      const netSubtotal = grossSubtotal / (1 + vatRate / 100);
+      const subtotal = reverseCharge ? netSubtotal : grossSubtotal;
+      const vatTotal = reverseCharge ? 0 : grossSubtotal - netSubtotal;
       const orderId = randomUUID();
       const orderNumber = `W-${new Date().getFullYear()}-${orderId.slice(0, 8).toUpperCase()}`;
       let stripeSessionId: string | null = null;
@@ -105,7 +133,7 @@ export async function POST(request: Request) {
         const stripe = new Stripe(secret);
         const session = await stripe.checkout.sessions.create({
           mode: 'payment',
-          line_items: items.rows.map((item) => ({ price_data: { currency: item.currency.toLowerCase(), product_data: { name: item.title.slice(0, 500) }, unit_amount: Math.round(Number(item.final_price) * 100) }, quantity: item.quantity })),
+          line_items: items.rows.map((item) => ({ price_data: { currency: item.currency.toLowerCase(), product_data: { name: item.title.slice(0, 500) }, unit_amount: Math.round((reverseCharge ? Number(item.final_price) / (1 + vatRate / 100) : Number(item.final_price)) * 100) }, quantity: item.quantity })),
           customer_email: customerEmail,
           success_url: `${process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin}/kosik?stripe=success&order=${encodeURIComponent(orderNumber)}`,
           cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin}/kosik?stripe=cancelled`,
@@ -115,20 +143,20 @@ export async function POST(request: Request) {
         checkoutUrl = session.url;
       }
       await client.query(
-        `INSERT INTO orders (id, order_number, idempotency_key, session_token, customer_name, customer_email, customer_phone, customer_type, customer_ico, customer_dic, customer_ic_dph, shipping_address, payment_method, stripe_session_id, subtotal, total)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $15)`,
-        [orderId, orderNumber, idempotencyKey, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, customerType, customerIco, customerDic, customerIcDph, JSON.stringify(shippingAddress), paymentMethod, stripeSessionId, subtotal.toFixed(2)],
+        `INSERT INTO orders (id, order_number, idempotency_key, session_token, customer_name, customer_email, customer_phone, customer_type, customer_ico, customer_dic, customer_ic_dph, shipping_address, payment_method, stripe_session_id, subtotal, total, vat_rate, subtotal_net, vat_total, reverse_charge, vat_validation_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
+        [orderId, orderNumber, idempotencyKey, body.sessionToken, customerName, customerEmail, body.customerPhone?.trim() || null, customerType, customerIco, customerDic, customerIcDph, JSON.stringify(shippingAddress), paymentMethod, stripeSessionId, subtotal.toFixed(2), subtotal.toFixed(2), vatRate.toFixed(2), netSubtotal.toFixed(2), vatTotal.toFixed(2), reverseCharge, vatValidationStatus],
       );
       for (const item of items.rows) {
         await client.query(
           `INSERT INTO order_items (order_id, product_id, sku, title, quantity, unit_price, line_total, currency)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [orderId, item.product_id, item.sku, item.title, item.quantity, item.final_price, (Number(item.final_price) * item.quantity).toFixed(2), item.currency],
+          [orderId, item.product_id, item.sku, item.title, item.quantity, (reverseCharge ? Number(item.final_price) / (1 + vatRate / 100) : Number(item.final_price)).toFixed(2), ((reverseCharge ? Number(item.final_price) / (1 + vatRate / 100) : Number(item.final_price)) * item.quantity).toFixed(2), item.currency],
         );
       }
       await client.query('DELETE FROM cart_items WHERE cart_id = $1', [cart.rows[0].id]);
       await client.query('COMMIT');
-      return NextResponse.json({ orderId, orderNumber, status: 'NEW', paymentStatus: 'PENDING', paymentMethod, checkoutUrl, total: subtotal.toFixed(2), currency: 'EUR' }, { status: 201 });
+      return NextResponse.json({ orderId, orderNumber, status: 'NEW', paymentStatus: 'PENDING', paymentMethod, checkoutUrl, total: subtotal.toFixed(2), vatTotal: vatTotal.toFixed(2), reverseCharge, currency: 'EUR' }, { status: 201 });
     } catch (transactionError) {
       await client.query('ROLLBACK').catch(() => undefined);
       if (transactionError && typeof transactionError === 'object' && 'code' in transactionError && transactionError.code === '23505') {

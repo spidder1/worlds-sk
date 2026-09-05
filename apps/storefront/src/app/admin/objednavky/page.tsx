@@ -6,12 +6,12 @@ import { queryNeon } from '../../../lib/neon-client';
 export const dynamic = 'force-dynamic';
 const statusLabels: Record<string, string> = { NEW: 'Nová', PROCESSING: 'Spracováva sa', SHIPPED: 'Odoslaná', COMPLETED: 'Dokončená', CANCELLED: 'Zrušená' };
 const paymentLabels: Record<string, string> = { PENDING: 'Čaká na platbu', PAID: 'Zaplatená', FAILED: 'Neúspešná', REFUNDED: 'Vrátená' };
-type Order = { id: string; order_number: string; customer_name: string; customer_email: string; customer_type: string; customer_ico: string | null; customer_dic: string | null; customer_ic_dph: string | null; total: string; currency: string; status: string; payment_status: string; payment_method: string; supplier_order_status: string; supplier_order_symbol: string | null; supplier_order_error: string | null; created_at: string };
+type Order = { id: string; order_number: string; customer_name: string; customer_email: string; customer_type: string; customer_ico: string | null; customer_dic: string | null; customer_ic_dph: string | null; total: string; currency: string; reverse_charge: boolean; vat_validation_status: string | null; status: string; payment_status: string; payment_method: string; supplier_order_status: string; supplier_order_symbol: string | null; supplier_order_error: string | null; created_at: string };
 
 export default async function AdminOrders({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
   if (!(await isAdminAuthenticated())) redirect('/admin');
   const params = await searchParams;
-  const orders = await queryNeon<Order>(`SELECT id, order_number, customer_name, customer_email, COALESCE(customer_type, 'PRIVATE') AS customer_type, customer_ico, customer_dic, customer_ic_dph, total, currency, status, payment_status, payment_method, COALESCE(supplier_order_status, 'NOT_SENT') AS supplier_order_status, supplier_order_symbol, supplier_order_error, created_at FROM orders ORDER BY created_at DESC LIMIT 200`);
+  const orders = await queryNeon<Order>(`SELECT id, order_number, customer_name, customer_email, COALESCE(customer_type, 'PRIVATE') AS customer_type, customer_ico, customer_dic, customer_ic_dph, total, currency, COALESCE(reverse_charge, false) AS reverse_charge, vat_validation_status, status, payment_status, payment_method, COALESCE(supplier_order_status, 'NOT_SENT') AS supplier_order_status, supplier_order_symbol, supplier_order_error, created_at FROM orders ORDER BY created_at DESC LIMIT 200`);
   return <div>
     <h2 className="text-2xl font-bold">Objednávky</h2>
     <p className="mt-1 text-sm text-slate-600">Prehľad objednávok, platieb a odoslania dodávateľovi.</p>
@@ -19,7 +19,7 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
     <div className="mt-6 space-y-4">
       {orders.map((order) => <article key={order.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div><h3 className="font-bold"><a href={`/api/orders/${order.id}/invoice`} className="hover:text-brand-700">{order.order_number}</a></h3><p className="mt-1 text-sm text-slate-600">{order.customer_name} · {order.customer_email}</p><p className="text-xs text-slate-500">{order.customer_type === 'LEGAL' ? `Právnická osoba · IČO ${order.customer_ico || '—'} · DIČ ${order.customer_dic || '—'} · IČ DPH ${order.customer_ic_dph || '—'}` : 'Súkromná osoba'}</p></div>
+          <div><h3 className="font-bold"><a href={`/api/orders/${order.id}/invoice`} className="hover:text-brand-700">{order.order_number}</a></h3><p className="mt-1 text-sm text-slate-600">{order.customer_name} · {order.customer_email}</p><p className="text-xs text-slate-500">{order.customer_type === 'LEGAL' ? `Právnická osoba · IČO ${order.customer_ico || '—'} · DIČ ${order.customer_dic || '—'} · IČ DPH ${order.customer_ic_dph || '—'}` : 'Súkromná osoba'}{order.reverse_charge ? ' · Reverse charge' : ''}</p></div>
           <div className="text-right"><p className="text-lg font-black">{Number(order.total).toFixed(2)} {order.currency}</p><p className="text-xs text-slate-500">{new Date(order.created_at).toLocaleString('sk-SK')}</p><a href={`/api/orders/${order.id}/invoice`} className="mt-1 inline-block text-xs font-semibold text-brand-700 hover:underline">Stiahnuť PDF faktúru</a></div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-slate-100 px-2 py-1">{statusLabels[order.status] || order.status}</span><span className="rounded-full bg-slate-100 px-2 py-1">{paymentLabels[order.payment_status] || order.payment_status}</span><span className="rounded-full bg-slate-100 px-2 py-1">eD: {order.supplier_order_status}</span></div>

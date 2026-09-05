@@ -10,12 +10,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!(await isAdminAuthenticated())) return NextResponse.json({ error: 'Neautorizované.' }, { status: 401 });
   const { id } = await params;
   const pool = getNeonPool();
-  const orders = await pool.query(`SELECT order_number, customer_name, customer_email, customer_ico, customer_dic, customer_ic_dph, shipping_address, subtotal, total, currency, created_at FROM orders WHERE id = $1 LIMIT 1`, [id]);
+  const orders = await pool.query(`SELECT order_number, customer_name, customer_email, customer_ico, customer_dic, customer_ic_dph, shipping_address, subtotal, subtotal_net, vat_total, vat_rate, reverse_charge, total, currency, created_at FROM orders WHERE id = $1 LIMIT 1`, [id]);
   if (!orders.rows.length) return NextResponse.json({ error: 'Objednávka neexistuje.' }, { status: 404 });
   const items = await pool.query(`SELECT sku, title, quantity, line_total, currency FROM order_items WHERE order_id = $1 ORDER BY id`, [id]);
   const order = orders.rows[0];
   const address = order.shipping_address || {};
-  const vat = Number(order.total) - Number(order.subtotal);
+  const netSubtotal = Number(order.subtotal_net ?? order.subtotal);
+  const vat = Number(order.vat_total ?? (Number(order.total) - netSubtotal));
   const document = new PDFDocument({ size: 'A4', margin: 50 });
   const chunks: Buffer[] = [];
   document.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
@@ -28,7 +29,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (order.customer_ico || order.customer_dic || order.customer_ic_dph) document.text(`IČO: ${order.customer_ico || '—'} · DIČ: ${order.customer_dic || '—'} · IČ DPH: ${order.customer_ic_dph || '—'}`);
   document.moveDown().fillColor('#0f172a').fontSize(11).text('Položky').moveDown(0.5);
   for (const item of items.rows) document.fontSize(9).fillColor('#334155').text(`${item.title} (${item.sku}) · ${item.quantity} ks · ${Number(item.line_total).toFixed(2)} ${item.currency}`);
-  document.moveDown().fontSize(10).fillColor('#334155').text(`Medzisúčet bez DPH: ${Number(order.subtotal).toFixed(2)} ${order.currency}`).text(`DPH: ${vat.toFixed(2)} ${order.currency}`).fontSize(14).fillColor('#0f172a').text(`CELKOM: ${Number(order.total).toFixed(2)} ${order.currency}`);
+  document.moveDown().fontSize(10).fillColor('#334155').text(`Medzisúčet bez DPH: ${netSubtotal.toFixed(2)} ${order.currency}`).text(order.reverse_charge ? 'Režim prenesenia daňovej povinnosti – DPH 0,00' : `DPH (${Number(order.vat_rate ?? 20).toFixed(2)} %): ${vat.toFixed(2)} ${order.currency}`).fontSize(14).fillColor('#0f172a').text(`CELKOM: ${Number(order.total).toFixed(2)} ${order.currency}`);
   document.end();
   await finished;
   return new NextResponse(Buffer.concat(chunks), { status: 200, headers: { 'content-type': 'application/pdf', 'content-disposition': `attachment; filename="${order.order_number}.pdf"`, 'cache-control': 'private, no-store' } });

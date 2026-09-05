@@ -35,7 +35,7 @@ Posledná revízia: 2026-09-04.
 | Platobná brána | ✅ | Stripe Checkout + podpisovaný webhook, bankový prevod a dobierka |
 | `createNewOrderCustomer` dropshipping | ✅ | Platené objednávky sa zaraďujú do eD fronty a odosielajú workerom |
 | PDF fakturácia | ✅ | Chránený endpoint s položkami, DPH a identifikátormi zákazníka |
-| EU VAT reverse charge / VIES | 🟡 | `/api/vat/validate` volá oficiálnu VIES službu; reverse-charge účtovanie ešte treba zapojiť do fakturačnej logiky |
+| EU VAT reverse charge / VIES | ✅ | VIES endpoint, validácia zahraničného IČ DPH pri objednávke, netto prepočet, nulová DPH a označenie reverse charge na PDF |
 | `/admin` dashboard, AI approval queue, karanténa | 🟡 | Admin obsahuje objednávky, importy, kategórie, výrobcov, produkty, nastavenia a kvalitu; AI karanténa je mimo aktuálneho scope |
 | AI konverzačný asistent (`/api/chat`) | ❌ | V `apps/storefront` neexistuje adresár `api/` |
 | Meilisearch | ❌ | Vyhľadávanie ide cez Postgres `ILIKE` + `pg_trgm` |
@@ -62,6 +62,5 @@ Posledná revízia: 2026-09-04.
 
 ## Ďalšie kroky (poradie)
 
-1. Zapojenie overeného VIES výsledku do B2B reverse-charge režimu a fakturácie.
-2. E2E testy pokladne (Playwright) pred ostrým zapnutím platieb.
-3. Priebežná QA a rozšírenie automatizovaných testov importu/katalógu.
+1. E2E testy pokladne (Playwright) pred ostrým zapnutím platieb.
+2. Priebežná QA a rozšírenie automatizovaných testov importu/katalógu.
