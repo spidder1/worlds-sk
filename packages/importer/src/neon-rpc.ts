@@ -237,7 +237,38 @@ seen AS (
      AND p.last_import_batch IS DISTINCT FROM $1::uuid
   RETURNING p.supplier_code
 ),
-queued AS (
+attributes_cleared AS (
+  DELETE FROM product_attribute_values existing
+   USING upserted changed
+   WHERE existing.product_id = 'ed-' || changed.supplier_code
+  RETURNING existing.product_id
+),
+attributes_written AS (
+  INSERT INTO product_attribute_values
+    (product_id, attribute_key, source_attribute_code, attribute_name, raw_value, normalized_value, source_payload, updated_at)
+  SELECT
+    'ed-' || changed.supplier_code,
+    attr.key,
+    NULLIF(attr.value->>'code', ''),
+    COALESCE(attr.value->>'name', ''),
+    COALESCE(attr.value->>'rawValue', attr.value->>'value', ''),
+    COALESCE(attr.value->>'value', attr.value->>'rawValue', ''),
+    attr.value,
+    now()
+  FROM upserted changed
+  JOIN input source ON source.code = changed.supplier_code
+  CROSS JOIN LATERAL jsonb_each(COALESCE(source.attributes, '{}'::jsonb)) AS attr
+  CROSS JOIN (SELECT count(*) FROM attributes_cleared) AS barrier
+  ON CONFLICT (product_id, attribute_key) DO UPDATE SET
+    source_attribute_code = EXCLUDED.source_attribute_code,
+    attribute_name = EXCLUDED.attribute_name,
+    raw_value = EXCLUDED.raw_value,
+    normalized_value = EXCLUDED.normalized_value,
+    source_payload = EXCLUDED.source_payload,
+    updated_at = now()
+  RETURNING product_id
+),
+search_queue AS (
   INSERT INTO search_sync_queue (product_id, reason, enqueued_at, processed_at, last_error)
   SELECT 'ed-' || supplier_code, 'catalog_sync', now(), NULL, NULL FROM upserted
   ON CONFLICT (product_id) DO UPDATE SET
@@ -255,7 +286,7 @@ SELECT
     - (SELECT count(*) FROM upserted)::int                              AS unchanged,
   0::int                                                                AS missing,
   (SELECT count(*) FROM seen)::int                                      AS touched,
-  (SELECT count(*) FROM queued)::int                                   AS queued;
+  (SELECT count(*) FROM search_queue)::int                             AS queued;
 `;
 }
 

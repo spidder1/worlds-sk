@@ -28,6 +28,8 @@ test('full imports preserve administrator-owned category decisions', () => {
 test('full imports persist the extensible source payload', () => {
   assert.match(upsert, /source_extra/);
   assert.match(upsert, /source_extra jsonb/);
+  assert.match(upsert, /product_attribute_values/);
+  assert.match(upsert, /jsonb_each\(COALESCE\(source\.attributes/);
 });
 
 test('full imports persist B2C naming and feed currency', () => {
