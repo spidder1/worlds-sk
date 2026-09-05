@@ -191,8 +191,8 @@ async function main() {
     }
 
     const batch = await db.query(
-      `INSERT INTO sync_batches (batch_number, mode, status, source_method, started_at)
-       VALUES ($1, 'reference', 'RUNNING', 'getProductCategoryAttributeList/getProductCategoryAttributeValueList/getProductProducerList/getProductCommodityList/getProductInformationList/getProductRelationList/getProductIndexTree1/getProductIndexTree2', NOW())
+      `INSERT INTO sync_batches (batch_number, mode, status, source_method, started_at, source_system_code)
+       VALUES ($1, 'reference', 'RUNNING', 'getProductCategoryAttributeList/getProductCategoryAttributeValueList/getProductProducerList/getProductCommodityList/getProductInformationList/getProductRelationList/getProductIndexTree1/getProductIndexTree2', NOW(), 'ED_SK')
        RETURNING id`,
       [`reference-${new Date().toISOString()}`],
     );

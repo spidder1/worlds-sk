@@ -573,8 +573,8 @@ export function createNeonRpcClient(options: { brandScope?: string[] } = {}): Rp
     switch (functionName) {
       case 'begin_ed_import': {
         const { rows } = await pool.query<{ id: string }>(
-          `INSERT INTO sync_batches (batch_number, mode, source_method, parameters, status, started_at, heartbeat_at)
-           VALUES (to_char(now(), 'YYYYMMDDHH24MISS'), $1, $2, $3::jsonb, 'RUNNING', now(), now())
+          `INSERT INTO sync_batches (batch_number, mode, source_method, parameters, status, started_at, heartbeat_at, source_system_code)
+           VALUES (to_char(now(), 'YYYYMMDDHH24MISS'), $1, $2, $3::jsonb, 'RUNNING', now(), now(), 'ED_SK')
            RETURNING id`,
           [parameters.p_batch_type, parameters.p_source_method, jsonParameter(parameters.p_parameters)],
         );
