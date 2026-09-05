@@ -40,7 +40,10 @@ export default async function SearchPage({ searchParams }: Props) {
   const validMinPrice = Number.isFinite(minPrice) && minPrice >= 0 ? minPrice : undefined;
   const validMaxPrice = Number.isFinite(maxPrice) && maxPrice > 0 ? maxPrice : undefined;
 
-  const indexed = page === 1 && query && !vyrobca && !cpu && !ram && !ssd && !inStockOnly && !rawMinPrice && !rawMaxPrice ? await searchMeilisearch(query, 1000) : null;
+  const indexedCandidate = page === 1 && query && !vyrobca && !cpu && !ram && !ssd && !inStockOnly && !rawMinPrice && !rawMaxPrice ? await searchMeilisearch(query, 1000) : null;
+  // Meilisearch is intentionally capped at 1,000 IDs. For larger result sets
+  // use the full Neon query so pagination can cover the complete catalogue.
+  const indexed = indexedCandidate && indexedCandidate.estimatedTotalHits > 0 && indexedCandidate.estimatedTotalHits <= 1000 ? indexedCandidate : null;
   const [results, manufacturers] = await Promise.all([
     getProductsPage({ query: indexed ? '' : query, searchIds: indexed?.ids, brand: vyrobca, inStockOnly, page, cpu, ram, ssd, minPrice: validMinPrice, maxPrice: validMaxPrice }),
     getManufacturers({ query, inStockOnly }),
