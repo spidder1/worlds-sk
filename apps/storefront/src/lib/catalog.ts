@@ -1021,15 +1021,17 @@ export async function getCategories(): Promise<TaxonomyCategory[]> {
   try {
     const rows = await queryNeon<{ id: string; parent_slug: string | null; name: string; slug: string; level: number; display_order: number }>(
       `WITH RECURSIVE category_tree AS (
-        SELECT c.id, c.parent_slug, c.name, c.slug, c.level, c.display_order,
+        SELECT c.id, COALESCE(c.parent_slug, parent.slug) AS parent_slug, c.name, c.slug, c.level, c.display_order,
                ARRAY[LPAD(c.display_order::text, 8, '0') || ':' || c.name]::text[] AS sort_path
           FROM categories c
-         WHERE c.active = true AND c.parent_slug IS NULL
+          LEFT JOIN categories parent ON parent.id = c.parent_id
+         WHERE c.active = true AND c.parent_slug IS NULL AND c.parent_id IS NULL
         UNION ALL
-        SELECT child.id, child.parent_slug, child.name, child.slug, child.level, child.display_order,
+        SELECT child.id, COALESCE(child.parent_slug, parent.slug) AS parent_slug, child.name, child.slug, child.level, child.display_order,
                tree.sort_path || (LPAD(child.display_order::text, 8, '0') || ':' || child.name)
           FROM categories child
-          JOIN category_tree tree ON child.parent_slug = tree.slug
+          LEFT JOIN categories parent ON parent.id = child.parent_id
+          JOIN category_tree tree ON child.parent_slug = tree.slug OR child.parent_id = tree.id
          WHERE child.active = true
       )
       SELECT id, parent_slug, name, slug, level, display_order

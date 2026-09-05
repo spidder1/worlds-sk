@@ -9,13 +9,16 @@ export default async function AdminCategories({ searchParams }: { searchParams: 
   if (!(await isAdminAuthenticated())) redirect('/admin');
   const params = await searchParams;
   const categories = await queryNeon<{ slug: string; name: string; parent_slug: string | null; level: number; active: boolean; display_order: number; count: string }>(`WITH RECURSIVE category_tree AS (
-    SELECT c.slug, c.name, c.parent_slug, c.level, c.active, c.display_order,
+    SELECT c.slug, c.name, COALESCE(c.parent_slug, parent.slug) AS parent_slug, c.level, c.active, c.display_order,
            ARRAY[LPAD(c.display_order::text, 6, '0') || ':' || c.name]::text[] AS sort_path
-      FROM categories c WHERE c.parent_slug IS NULL
+      FROM categories c LEFT JOIN categories parent ON parent.id = c.parent_id
+     WHERE c.parent_slug IS NULL AND c.parent_id IS NULL
     UNION ALL
-    SELECT child.slug, child.name, child.parent_slug, child.level, child.active, child.display_order,
+    SELECT child.slug, child.name, COALESCE(child.parent_slug, parent.slug) AS parent_slug, child.level, child.active, child.display_order,
            tree.sort_path || (LPAD(child.display_order::text, 6, '0') || ':' || child.name)
-      FROM categories child JOIN category_tree tree ON child.parent_slug = tree.slug
+      FROM categories child
+      LEFT JOIN categories parent ON parent.id = child.parent_id
+      JOIN category_tree tree ON child.parent_slug = tree.slug OR child.parent_id = tree.id
   )
   SELECT tree.slug, tree.name, tree.parent_slug, tree.level, tree.active, tree.display_order, COUNT(p.id)::text AS count
     FROM category_tree tree LEFT JOIN products p ON p.category_slug = tree.slug
