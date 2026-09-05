@@ -588,6 +588,7 @@ export interface ProductPageOptions {
   ram?: string;
   ssd?: string;
   maxPrice?: number;
+  searchIds?: string[];
 }
 
 export interface ManufacturerItem {
@@ -840,6 +841,11 @@ export async function getProductsPage(options: ProductPageOptions = {}): Promise
   if (typeof options.maxPrice === 'number' && Number.isFinite(options.maxPrice) && options.maxPrice > 0) {
     baseConditions.push(`final_price <= $${baseParamIdx++}`);
     baseParams.push(options.maxPrice);
+  }
+
+  if (options.searchIds) {
+    baseConditions.push(`id = ANY($${baseParamIdx++}::text[])`);
+    baseParams.push(options.searchIds);
   }
 
   if (query) {

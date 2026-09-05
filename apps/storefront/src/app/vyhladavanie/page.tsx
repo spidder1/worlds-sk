@@ -5,6 +5,7 @@ import { Pagination } from '../../components/Pagination';
 import { ProductCard } from '../../components/ProductCard';
 import { ProductFilterSidebar } from '../../components/ProductFilterSidebar';
 import { getManufacturers, getProductsPage } from '../../lib/catalog';
+import { searchMeilisearch } from '../../lib/meilisearch';
 
 interface Props {
   searchParams: Promise<{ q?: string; vyrobca?: string; inStock?: string; page?: string; cpu?: string; ram?: string; ssd?: string }>;
@@ -35,8 +36,9 @@ export default async function SearchPage({ searchParams }: Props) {
   const ramFilters = ram.split(',').map((s) => s.trim()).filter(Boolean);
   const ssdFilters = ssd.split(',').map((s) => s.trim()).filter(Boolean);
 
+  const indexed = page === 1 && query && !vyrobca && !cpu && !ram && !ssd && !inStockOnly ? await searchMeilisearch(query, 1000) : null;
   const [results, manufacturers] = await Promise.all([
-    getProductsPage({ query, brand: vyrobca, inStockOnly, page, cpu, ram, ssd }),
+    getProductsPage({ query: indexed ? '' : query, searchIds: indexed?.ids, brand: vyrobca, inStockOnly, page, cpu, ram, ssd }),
     getManufacturers({ query, inStockOnly }),
   ]);
 
