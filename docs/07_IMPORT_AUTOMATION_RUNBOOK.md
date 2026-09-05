@@ -20,6 +20,14 @@ pnpm import:sample-neon
 
 Import vytvorí záznam v `sync_batches` a pri úspechu ho označí ako `COMPLETED`. Pri chybe zapíše `FAILED` s chybovou správou. Opakovaný beh je nedestruktívny a existujúce produkty nemaže.
 
+Samostatná hodinová synchronizácia cien a skladu načíta iba stock feed bez veľkého katalógového ZIP-u:
+
+```powershell
+pnpm import:neon:stock
+```
+
+V GitHub Actions ju spúšťa job `stock-price-sync` každú hodinu.
+
 Pre kontrolu celého feedu bez zápisu produktov:
 
 ```powershell
