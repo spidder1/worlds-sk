@@ -103,7 +103,7 @@ export function Footer() {
             <div className="text-slate-300 font-semibold mb-1">Stav katalógu</div>
             <div className="flex items-center gap-2 text-amber-300">
               <span className="w-2 h-2 rounded-full bg-amber-300" />
-              Objednávanie zatiaľ nie je aktívne
+              Objednávky a synchronizácia sú aktívne
             </div>
           </div>
         </div>

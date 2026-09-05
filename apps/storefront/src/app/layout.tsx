@@ -4,6 +4,7 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { getCategories } from '../lib/catalog';
 import { SITE_URL, IS_PRODUCTION_SITE } from '../lib/site';
+import { CookieConsent } from '../components/CookieConsent';
 
 export const metadata: Metadata = {
   title: 'Worlds.sk | Moderný IT & Tech E-Shop s AI Data Engine',
@@ -39,6 +40,7 @@ export default async function RootLayout({
           {children}
         </main>
         <Footer />
+        <CookieConsent />
       </body>
     </html>
   );
