@@ -14,6 +14,7 @@ $env:ED_LOGIN = '<eD login>'
 $env:ED_PASSWORD = '<eD password>'
 $env:ED_SAMPLE_ONLY = 'true'
 $env:ED_SAMPLE_LIMIT = '250'
+$env:ED_MIN_COST_EUR = '0'
 pnpm build
 pnpm import:sample-neon
 ```
@@ -49,6 +50,7 @@ GitHub Actions secrets:
 - `ED_PASSWORD`
 
 Všetky tri hodnoty musia zostať iba v secrets alebo lokálnom `.env` súbore mimo commitu.
+Minimálnu nákupnú cenu nastavte ako repository variable `ED_MIN_COST_EUR`; hodnota `0` filter vypína.
 
 ## Overenie po importe
 

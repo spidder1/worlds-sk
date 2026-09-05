@@ -33,6 +33,14 @@ function configuredTargetBrands(): Set<string> {
   );
 }
 
+function configuredMinimumCostEur(): number {
+  const raw = process.env.ED_MIN_COST_EUR?.trim();
+  if (!raw) return 0;
+  const value = Number(raw.replace(',', '.'));
+  if (!Number.isFinite(value) || value < 0) throw new Error('ED_MIN_COST_EUR musí byť nezáporné číslo.');
+  return value;
+}
+
 function targetBrandsLabel(): string {
   if (process.env.ED_STOCK_ONLY === 'true') return 'SKLAD & CENY';
   const configured = [...configuredTargetBrands()];
@@ -277,33 +285,48 @@ async function syncCategoriesAndManufacturers(pool: pg.Pool) {
 }
 
 async function syncProductMedia(pool: pg.Pool, products: any[]): Promise<void> {
+  const productIds = products.map((product) => String(product.id));
+  if (productIds.length === 0) return;
+  await pool.query('DELETE FROM product_media WHERE product_id = ANY($1::text[])', [productIds]);
+
+  const mediaRows: Array<[string, string, string, string, number, boolean, string]> = [];
   for (const product of products) {
     const images = Array.isArray(product.images) ? product.images : [];
-    await pool.query('DELETE FROM product_media WHERE product_id = $1', [product.id]);
     for (const image of images) {
       const url = String(image.url || '').trim();
       if (!url) continue;
-      await pool.query(
-        `INSERT INTO product_media (
-           id, product_id, url, normalized_url, position, is_primary, alt_text, source
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'eD_SYSTEM')
-         ON CONFLICT (product_id, normalized_url) DO UPDATE SET
-           url = EXCLUDED.url,
-           position = EXCLUDED.position,
-           is_primary = EXCLUDED.is_primary,
-           alt_text = EXCLUDED.alt_text,
-           updated_at = NOW()`,
-        [
-          String(image.id || `${product.id}-image-${image.position || 0}`),
-          product.id,
-          url,
-          url,
-          Number(image.position || 0),
-          Boolean(image.isPrimary),
-          String(image.altText || product.title),
-        ],
-      );
+      mediaRows.push([
+        String(image.id || `${product.id}-image-${image.position || 0}`),
+        String(product.id),
+        url,
+        url,
+        Number(image.position || 0),
+        Boolean(image.isPrimary),
+        String(image.altText || product.title),
+      ]);
     }
+  }
+
+  for (let offset = 0; offset < mediaRows.length; offset += 400) {
+    const rows = mediaRows.slice(offset, offset + 400);
+    const params: unknown[] = [];
+    const values = rows.map((row) => {
+      const start = params.length + 1;
+      params.push(...row);
+      return `($${start}, $${start + 1}, $${start + 2}, $${start + 3}, $${start + 4}, $${start + 5}, $${start + 6}, 'eD_SYSTEM')`;
+    });
+    await pool.query(
+      `INSERT INTO product_media (
+         id, product_id, url, normalized_url, position, is_primary, alt_text, source
+       ) VALUES ${values.join(', ')}
+       ON CONFLICT (product_id, normalized_url) DO UPDATE SET
+         url = EXCLUDED.url,
+         position = EXCLUDED.position,
+         is_primary = EXCLUDED.is_primary,
+         alt_text = EXCLUDED.alt_text,
+         updated_at = NOW()`,
+      params,
+    );
   }
 }
 
@@ -489,6 +512,7 @@ export async function importAsusLenovoToNeon() {
   const targetProducts: any[] = [];
   const sampleOnly = process.env.ED_SAMPLE_ONLY === 'true';
   const dryRun = process.argv.includes('--dry-run') || process.env.ED_DRY_RUN === 'true';
+  const minimumCostEur = configuredMinimumCostEur();
   const targetBrands = configuredTargetBrands();
   const sampleLimitRaw = Number.parseInt(process.env.ED_SAMPLE_LIMIT || '250', 10);
   const sampleLimit = Number.isFinite(sampleLimitRaw) && sampleLimitRaw > 0 ? sampleLimitRaw : 250;
@@ -499,6 +523,9 @@ export async function importAsusLenovoToNeon() {
   let imageProductCount = 0;
   let imageCount = 0;
   let multiImageProductCount = 0;
+  let lowCostFilteredCount = 0;
+
+  if (minimumCostEur > 0) console.log(`💶 Minimálna nákupná cena: ${minimumCostEur.toFixed(2)} €`);
 
   for (const block of productBlocks) {
     const parsed = parser.parse(block);
@@ -526,6 +553,10 @@ export async function importAsusLenovoToNeon() {
     // Look up price from live stockMap first, then eD product fields
     const stockInfo = stockMap.get(code) || stockMap.get(String(p.ProId)) || stockMap.get(partNumber);
     let cost = stockInfo ? stockInfo.price : Number(p.YourPriceWithFees || p.YourPrice || p.DealerPrice || 0);
+    if (cost < minimumCostEur) {
+      lowCostFilteredCount++;
+      continue;
+    }
 
     const classification = classifyWithStoredRules(p, classificationConfig);
     const { slug: catSlug, hierarchy: catPath } = classification;
@@ -672,7 +703,7 @@ export async function importAsusLenovoToNeon() {
             SET total_read = $1, imported_count = $2, filtered_count = $3,
                 metrics = $4::jsonb, status = 'COMPLETED', completed_at = NOW()
           WHERE id = $5`,
-        [productBlocks.length, targetProducts.length, Math.max(0, productBlocks.length - targetProducts.length), JSON.stringify({ priced_count: pricedCount, image_product_count: imageProductCount, image_count: imageCount, multi_image_product_count: multiImageProductCount }), batchId],
+        [productBlocks.length, targetProducts.length, Math.max(0, productBlocks.length - targetProducts.length), JSON.stringify({ priced_count: pricedCount, image_product_count: imageProductCount, image_count: imageCount, multi_image_product_count: multiImageProductCount, low_cost_filtered_count: lowCostFilteredCount, minimum_cost_eur: minimumCostEur }), batchId],
       );
     }
     return;
@@ -779,7 +810,7 @@ export async function importAsusLenovoToNeon() {
           SET total_read = $1, imported_count = $2, filtered_count = $3,
               metrics = $4::jsonb, status = 'COMPLETED', completed_at = NOW()
         WHERE id = $5`,
-      [productBlocks.length, inserted, Math.max(0, productBlocks.length - targetProducts.length), JSON.stringify({ priced_count: pricedCount, image_product_count: imageProductCount, image_count: imageCount, multi_image_product_count: multiImageProductCount }), batchId],
+      [productBlocks.length, inserted, Math.max(0, productBlocks.length - targetProducts.length), JSON.stringify({ priced_count: pricedCount, image_product_count: imageProductCount, image_count: imageCount, multi_image_product_count: multiImageProductCount, low_cost_filtered_count: lowCostFilteredCount, minimum_cost_eur: minimumCostEur }), batchId],
     );
   }
 
