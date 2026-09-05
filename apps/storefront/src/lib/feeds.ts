@@ -36,7 +36,7 @@ function cleanDescription(value: string | null): string {
 }
 
 export async function getFeedProducts(): Promise<FeedProduct[]> {
-  return queryNeon<FeedProduct>(`SELECT id, title, slug,
+  return queryNeon<FeedProduct>(`SELECT id, COALESCE(NULLIF(name_b2c, ''), title) AS title, slug,
       COALESCE(enriched_description, supplier_description, short_description, '') AS description,
       brand, mpn, ean, final_price, currency, stock_count, category_slug,
       category_hierarchy, images->0->>'url' AS image_url
