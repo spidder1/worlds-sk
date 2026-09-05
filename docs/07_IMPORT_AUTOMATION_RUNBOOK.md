@@ -20,6 +20,12 @@ pnpm import:sample-neon
 
 Import vytvorí záznam v `sync_batches` a pri úspechu ho označí ako `COMPLETED`. Pri chybe zapíše `FAILED` s chybovou správou. Opakovaný beh je nedestruktívny a existujúce produkty nemaže.
 
+Pre kontrolu celého feedu bez zápisu produktov:
+
+```powershell
+pnpm import:neon:dry-run
+```
+
 ## Automatizácia
 
 Workflow `.github/workflows/ed-catalog-sync.yml` spúšťa sample import:
@@ -48,6 +54,6 @@ Storefront health endpoint `/api/health` musí vrátiť `ok: true`, databázu `n
 
 ## Budúci full import
 
-Full-feed import všetkých IT značiek a delta synchronizácia cien/skladu ešte nie sú zapnuté. Pred ich aktiváciou treba doplniť dedikovaný full-feed režim, kontrolu chýbajúcich produktov, inventárnu rezerváciu a produkčné pravidlá pre ceny, dopravu a platobnú bránu.
+Full-feed import všetkých IT značiek je dostupný iba manuálne cez workflow `full` alebo po dry-run kontrole. Delta synchronizácia cien/skladu, kontrola chýbajúcich produktov, inventárna rezervácia a produkčné pravidlá pre ceny, dopravu a platobnú bránu ešte nie sú zapnuté.
 
 Staršie Supabase importéry v repozitári sú historický kód a nie sú súčasťou aktívneho workflow.
