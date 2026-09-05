@@ -47,7 +47,7 @@ const IT_PATTERNS: Array<[string, RegExp]> = [
   ['computer', /\b(notebook|laptop|ultrabook|chromebook|macbook|desktop|pocitac|workstation|mini pc|all in one|imac|thin client|server|proliant|poweredge|thinksystem)\b/],
   ['mobile', /\b(tablet|smartphone|mobilny telefon|iphone|ipad|android telefon|smart hodinky|smartwatch|wearable)\b/],
   ['display', /\b(monitor|lcd|oled|display|projektor|projection|digital signage|interaktivna tabula)\b/],
-  ['components', /\b(procesor|cpu|graficka karta|gpu|geforce|radeon|opera[cč]na pam[aä]t|ram|ddr[345]|ssd|nvme|pevny disk|hdd|motherboard|zakladna doska|chipset|pc skrinka|computer case|chladic cpu|pc ventilator|thermal paste|termalna pasta)\b/],
+  ['components', /\b(procesor|cpu|graficka karta|gpu|geforce|radeon|opera[cč]na pam[aä]t|ram|ddr[345]|ssd|nvme|pevny disk|hdd|motherboard|z[aá]kladna doska|chipset|pc skrinka|pc skri[nň]a|computer case|mid tower|full tower|eatx|e-atx|chladic cpu|pc ventilator|thermal paste|termalna pasta)\b/],
   ['network', /\b(router|switch|access point|wi-?fi|ethernet|lan|wan|firewall|modem|mesh system|sietov|network|transceiver|sfp\+?|poe|patch panel|rack|optick[ay] kabel|fiber optic)\b/],
   ['printing', /\b(tlaciaren|printer|multifunk|laserjet|deskjet|ecotank|pixma|skener|scanner|toner|cartridge|atramentov[ay] napln|print server|plotter|etiketov[ay] tlaciaren)\b/],
   ['peripheral', /\b(klavesnic|keyboard|mys|mouse|trackball|touchpad|gamepad|joystick|headset|sluchadl|mikrofon|webkamera|webcam|pc reproduktor|dokovaci[ae]|docking station|usb hub|port replicator|grafick[y] tablet|citacka kariet|barcode scanner|citacka ciarovych kodov)\b/],
@@ -71,10 +71,12 @@ export function assessCatalogScope(input: CatalogScopeInput): CatalogScopeDecisi
   ].join(' '));
 
   const excludedBy = firstMatch(haystack, NON_IT_PATTERNS);
-  if (excludedBy) return { included: false, reason: 'NON_IT_KEYWORD', matchedTerm: excludedBy };
-
   const includedBy = firstMatch(haystack, IT_PATTERNS);
+  const explicitHardware = /\b(motherboard|z[aá]kladna doska|pc skrinka|pc skri[nň]a|computer case|mid tower|full tower|eatx|e-atx)\b/.test(haystack);
+  if (excludedBy && !explicitHardware) return { included: false, reason: 'NON_IT_KEYWORD', matchedTerm: excludedBy };
   if (includedBy) return { included: true, reason: 'IT_SIGNAL', matchedTerm: includedBy };
+
+  if (excludedBy) return { included: false, reason: 'NON_IT_KEYWORD', matchedTerm: excludedBy };
 
   return { included: false, reason: 'NO_IT_SIGNAL' };
 }
