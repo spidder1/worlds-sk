@@ -1,0 +1,41 @@
+name: eD nightly image enrichment
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 02:15 UTC every night. The loader is intentionally incremental.
+    - cron: '15 2 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ed-image-loader
+  cancel-in-progress: false
+
+env:
+  ED_ENDPOINT_URL: https://private-ws-sk.elinkx.biz/service.asmx
+  IMAGE_LOADER_LIMIT: 1000
+  IMAGE_LOADER_DELAY_MS: 150
+  IMAGE_LOADER_STALE_DAYS: 14
+
+jobs:
+  load-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @worlds/types build && pnpm --filter @worlds/ed-client build && pnpm --filter @worlds/importer build
+      - run: pnpm --filter @worlds/importer run sync:images
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ED_LOGIN: ${{ secrets.ED_LOGIN }}
+          ED_PASSWORD: ${{ secrets.ED_PASSWORD }}

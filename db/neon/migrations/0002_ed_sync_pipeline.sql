@@ -37,6 +37,14 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS scope_signal text;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS last_import_batch uuid;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
 
+-- 8. Incremental detail-image enrichment. The full catalogue can contain only
+-- the primary image; getProductDetail is used by the nightly loader to fill
+-- the complete ImageList without re-importing prices or stock.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS image_count integer;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS images_last_changed timestamptz;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS image_sync_checked_at timestamptz;
+CREATE INDEX IF NOT EXISTS idx_products_image_sync ON products (image_sync_checked_at NULLS FIRST, updated_at);
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_products_supplier_code ON products (supplier_code);
 CREATE INDEX IF NOT EXISTS idx_products_last_import_batch ON products (last_import_batch);
 CREATE INDEX IF NOT EXISTS idx_products_status ON products (status);

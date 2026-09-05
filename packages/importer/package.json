@@ -16,6 +16,7 @@
     "dev": "tsc --watch",
     "sync:catalog": "node dist/catalog-sync.js --mode=full",
     "sync:stock-price": "node dist/catalog-sync.js --mode=stock-price",
+    "sync:images": "node dist/image-loader.js",
     "import:sample": "node dist/cli.js --sample",
     "test": "node --test dist/**/*.test.js"
   },
