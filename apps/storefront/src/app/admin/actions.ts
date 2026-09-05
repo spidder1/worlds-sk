@@ -145,7 +145,7 @@ export async function updateManufacturerReview(formData: FormData) {
        SET audit_class = $1, updated_at = NOW()
      WHERE id = $2
      RETURNING name, audit_class
-  ), reassigned AS (
+   ), reassigned AS (
     UPDATE products p
        SET brand = COALESCE((
          SELECT candidate.name
@@ -160,9 +160,19 @@ export async function updateManufacturerReview(formData: FormData) {
       FROM changed
      WHERE changed.audit_class = 'REMOVED'
        AND lower(p.brand) = lower(changed.name)
-    RETURNING p.id
-  )
-  SELECT count(*)::int AS reassigned_count FROM reassigned`, [auditClass, id]);
+     RETURNING p.id
+   ), queued AS (
+     INSERT INTO search_sync_queue (product_id, reason, enqueued_at, processed_at, last_error)
+     SELECT id, 'manufacturer_review', NOW(), NULL, NULL
+       FROM reassigned
+     ON CONFLICT (product_id) DO UPDATE
+       SET reason = EXCLUDED.reason,
+           enqueued_at = EXCLUDED.enqueued_at,
+           processed_at = NULL,
+           last_error = NULL
+     RETURNING product_id
+   )
+   SELECT count(*)::int AS reassigned_count, (SELECT count(*)::int FROM queued) AS queued_count FROM reassigned`, [auditClass, id]);
   redirect('/admin/vyrobcovia?saved=1');
 }
 
