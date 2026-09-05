@@ -643,6 +643,11 @@ export async function runCatalogSync(options = parseArgs(process.argv.slice(2)))
           continue;
         }
         const transformed = options.mode === 'full' ? transformFullProduct(rawProduct, pricing) : transformStockProduct(rawProduct, pricing);
+        if (transformed && options.mode === 'full' && ['zaruky-a-sluzby', 'predlzenia-zaruky', 'licencie-a-predplatne', 'servisne-a-profesionalne-sluzby'].includes(String(transformed.category_slug))) {
+          filtered += 1;
+          filteredByReason.SERVICE_CATEGORY = (filteredByReason.SERVICE_CATEGORY ?? 0) + 1;
+          continue;
+        }
         if (transformed && options.mode === 'full' && options.brandScope.length > 0) {
           const brand = String(transformed.brand ?? '').toLowerCase();
           const inScope = options.brandScope.some((allowed) => allowed.toLowerCase() === brand);

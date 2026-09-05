@@ -67,7 +67,7 @@ export const WORLDS_IT_CATEGORIES: TaxonomyCategory[] = [
             id: 'cat-prislusenstvo-k-notebookom',
             slug: 'prislusenstvo-k-notebookom',
             name: 'Príslušenstvo k notebookom',
-            parentSlug: null,
+            parentSlug: undefined,
             level: 1,
             isSeoIndexed: true,
             displayOrder: 5,
