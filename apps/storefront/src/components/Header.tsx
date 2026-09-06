@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronDown, Grid3X3, Menu, Search, ShieldCheck, ShoppingCart } from 'lucide-react';
 import type { TaxonomyCategory } from '@worlds/types';
+import { logoutAdmin } from '../app/admin/actions';
 
 function MegaMenu({ categories }: { categories: TaxonomyCategory[] }) {
   return (
@@ -43,6 +44,17 @@ function MegaMenu({ categories }: { categories: TaxonomyCategory[] }) {
       </div>
     </div>
   );
+}
+
+const ADMIN_GROUPS: { title: string; links: [string, string][] }[] = [
+  { title: 'Prehľad a obchod', links: [['/admin', 'Prehľad'], ['/admin/objednavky', 'Objednávky']] },
+  { title: 'Katalóg', links: [['/admin/produkty', 'Produkty'], ['/admin/kategorie', 'Kategórie'], ['/admin/atributy', 'Atribúty'], ['/admin/vyrobcovia', 'Výrobcovia'], ['/admin/kategorizacia', 'Kategorizácia']] },
+  { title: 'Import a kontrola', links: [['/admin/importy', 'Importy a synchronizácia'], ['/admin/karantena', 'Karanténa'], ['/admin/kvalita', 'Audit katalógu'], ['/admin/audit', 'Prevádzkový audit']] },
+  { title: 'Nastavenia', links: [['/admin/nastavenia', 'Ceny a pravidlá'], ['/admin/obsah', 'Obsah stránok']] },
+];
+
+function AdminMegaMenu() {
+  return <div className="group relative"><button className="flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-white/20 focus:outline-none"><Grid3X3 className="h-4 w-4" /><span>Administrácia</span><ChevronDown className="h-4 w-4 transition-transform group-hover:rotate-180" /></button><div className="invisible absolute left-0 top-full z-50 w-[min(62rem,calc(100vw-2rem))] translate-y-2 rounded-b-2xl border border-slate-700 bg-slate-950 p-5 opacity-0 shadow-2xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{ADMIN_GROUPS.map((group) => <div key={group.title} className="space-y-2"><h3 className="border-b border-slate-800 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">{group.title}</h3><div className="grid gap-1">{group.links.map(([href, label]) => <Link key={href} href={href} className="rounded-lg px-2.5 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800 hover:text-white">{label}</Link>)}</div></div>)}</div></div></div>;
 }
 
 function MobileCategory({ category }: { category: TaxonomyCategory }) {
@@ -100,9 +112,8 @@ export function Header({ categories }: { categories: TaxonomyCategory[] }) {
       </div>
 
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 lg:flex-nowrap lg:gap-6">
-        <Link href="/" className="flex items-center gap-2 text-2xl font-black tracking-tight text-slate-900">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-xl text-white">W</span>
-          <span>Worlds<span className="text-brand-600">.sk</span></span>
+        <Link href={isAdmin ? '/admin' : '/'} className={`flex items-center gap-2 tracking-tight ${isAdmin ? 'text-xl font-extrabold text-slate-900' : 'text-2xl font-black text-slate-900'}`}>
+          {isAdmin ? <><span>Worlds.sk</span><span className="text-sm font-semibold text-slate-500">Administrácia</span></> : <><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-xl text-white">W</span><span>Worlds<span className="text-brand-600">.sk</span></span></>}
         </Link>
         <form onSubmit={handleSearch} className="order-3 w-full lg:order-none lg:max-w-2xl lg:flex-1">
           <div className="relative flex items-center">
@@ -111,15 +122,12 @@ export function Header({ categories }: { categories: TaxonomyCategory[] }) {
             <button type="submit" className="absolute right-1.5 rounded-full bg-brand-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-700">Hľadať</button>
           </div>
         </form>
-        <Link href="/kosik" className="flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-200">
-          <ShoppingCart className="h-4 w-4 text-brand-600" /><span className="hidden sm:inline">Košík</span>
-        </Link>
-        <Link href="/asistent" className="hidden rounded-full bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100 sm:inline">Asistent</Link>
+        {isAdmin ? <form action={logoutAdmin}><button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Odhlásiť</button></form> : <><Link href="/kosik" className="flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-200"><ShoppingCart className="h-4 w-4 text-brand-600" /><span className="hidden sm:inline">Košík</span></Link><Link href="/asistent" className="hidden rounded-full bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100 sm:inline">Asistent</Link></>}
       </div>
 
       <nav className={`relative hidden border-t lg:block ${isAdmin ? 'border-slate-800 bg-black' : 'border-slate-200 bg-slate-50'}`} aria-label={isAdmin ? 'Hlavne kategorie' : 'Hlavné kategórie'}>
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2 text-sm">
-          {isAdmin ? <AdminHeaderLinks /> : <>
+          {isAdmin ? <><AdminMegaMenu /><div className="flex flex-1 items-center gap-1 overflow-x-auto no-scrollbar py-0.5">{ADMIN_GROUPS.map((group) => { const [href, label] = group.links[0]; return <Link key={href} href={href} className="whitespace-nowrap rounded-lg px-3 py-1.5 font-semibold text-slate-100 hover:bg-slate-800">{label}</Link>; })}</div></> : <>
             <MegaMenu categories={categories} />
             <div className="flex flex-1 items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">
               {primaryCategories.map((category) => (
@@ -133,7 +141,7 @@ export function Header({ categories }: { categories: TaxonomyCategory[] }) {
       <details className="border-t border-slate-200 bg-white lg:hidden">
         <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold text-slate-800"><Menu className="h-4 w-4" /> {isAdmin ? 'Administrácia' : 'Kategórie a produkty'}</summary>
         <div className="max-h-[65vh] overflow-y-auto border-t border-slate-100">
-          {isAdmin ? <div className="grid gap-1 bg-black p-3">{ADMIN_LINKS.map(([href, label]) => <Link key={href} href={href} className="rounded-lg px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">{label}</Link>)}</div> : <>
+          {isAdmin ? <div className="grid gap-3 bg-black p-3">{ADMIN_GROUPS.map((group) => <div key={group.title}><p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{group.title}</p>{group.links.map(([href, label]) => <Link key={href} href={href} className="block rounded-lg px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">{label}</Link>)}</div>)}</div> : <>
             <Link href="/produkty" className="block bg-brand-600 px-4 py-3 text-sm font-bold text-white">Všetky produkty</Link>
             {categories.map((category) => <MobileCategory key={category.id} category={category} />)}
           </>}
@@ -141,24 +149,4 @@ export function Header({ categories }: { categories: TaxonomyCategory[] }) {
       </details>
     </header>
   );
-}
-
-const ADMIN_LINKS: [string, string][] = [
-  ['/admin', 'Prehľad'],
-  ['/admin/produkty', 'Produkty'],
-  ['/admin/objednavky', 'Objednávky'],
-  ['/admin/kategorie', 'Kategórie'],
-  ['/admin/atributy', 'Atribúty'],
-  ['/admin/vyrobcovia', 'Výrobcovia'],
-  ['/admin/kategorizacia', 'Kategorizácia'],
-  ['/admin/importy', 'Importy a synchronizácia'],
-  ['/admin/karantena', 'Karanténa'],
-  ['/admin/kvalita', 'Audit katalógu'],
-  ['/admin/audit', 'Prevádzkový audit'],
-  ['/admin/nastavenia', 'Ceny a pravidlá'],
-  ['/admin/obsah', 'Obsah stránok'],
-];
-
-function AdminHeaderLinks() {
-  return <div className="flex flex-1 items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">{ADMIN_LINKS.map(([href, label]) => <Link key={href} href={href} className="whitespace-nowrap rounded-lg px-3 py-1.5 font-semibold text-slate-100 transition-colors hover:bg-slate-800 hover:text-white">{label}</Link>)}</div>;
 }
