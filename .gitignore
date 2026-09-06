@@ -8,6 +8,7 @@ build
 .env
 .env.local
 .env.*.local
+!apps/medusa/.env.example
 *.tsbuildinfo
 tmp/
 downloads/
